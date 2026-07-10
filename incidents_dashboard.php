@@ -1,0 +1,524 @@
+<?php
+// incidents_dashboard.php
+require_once 'includes/auth.php';
+require_once 'includes/db.php';
+
+if (!isLoggedIn()) {
+    header('Location: login.php');
+    exit();
+}
+
+$userType = $_SESSION['user_type'] ?? '';
+
+// Core Counts
+$totalIncidents = $pdo->query("SELECT COUNT(*) FROM utility_incidents")->fetchColumn();
+$pendingIncidents = $pdo->query("SELECT COUNT(*) FROM utility_incidents WHERE status = 'Submitted'")->fetchColumn();
+$reviewingIncidents = $pdo->query("SELECT COUNT(*) FROM utility_incidents WHERE status = 'Under Review'")->fetchColumn();
+$forwardedIncidents = $pdo->query("SELECT COUNT(*) FROM utility_incidents WHERE status = 'Forwarded to Maintenance System'")->fetchColumn();
+$resolvedIncidents = $pdo->query("SELECT COUNT(*) FROM utility_incidents WHERE status IN ('Resolved', 'Closed')")->fetchColumn();
+
+// Category frequency counts for charts
+$categoryCounts = $pdo->query("
+    SELECT c.name, COUNT(i.id) as count 
+    FROM incident_categories c 
+    LEFT JOIN utility_incidents i ON c.id = i.category_id 
+    GROUP BY c.id
+")->fetchAll();
+
+$categoriesJson = json_encode(array_column($categoryCounts, 'name'));
+$categoryCountsJson = json_encode(array_column($categoryCounts, 'count'));
+
+// Recent incidents list
+$recentIncidents = $pdo->query("
+    SELECT i.*, c.name as category_name 
+    FROM utility_incidents i 
+    JOIN incident_categories c ON i.category_id = c.id 
+    ORDER BY i.created_at DESC 
+    LIMIT 6
+")->fetchAll();
+
+// Simulated AI Analytics (Complaints summarization logic)
+$allDescriptions = $pdo->query("
+    SELECT i.incident_id, c.name as category_name, i.description, i.location, i.priority 
+    FROM utility_incidents i 
+    JOIN incident_categories c ON i.category_id = c.id
+")->fetchAll();
+
+function generateAISummary($allIncidents) {
+    if (empty($allIncidents)) {
+        return "No incident descriptions available in database for AI text analysis.";
+    }
+
+    $summary = "<strong>LGU AI Assistant Insights (Generated " . date('F Y') . ")</strong><br><br>";
+    
+    // Grouping count
+    $groups = [];
+    $emergencies = 0;
+    foreach ($allIncidents as $inc) {
+        $groups[$inc['category_name']][] = $inc['location'];
+        if ($inc['priority'] === 'Emergency') {
+            $emergencies++;
+        }
+    }
+    
+    $summary .= "📊 <strong>Issue Clustering Summary:</strong><br>";
+    foreach ($groups as $cat => $locs) {
+        $locCounts = array_count_values($locs);
+        $locStr = [];
+        foreach ($locCounts as $loc => $qty) {
+            $locStr[] = "{$loc} ({$qty} report" . ($qty > 1 ? 's' : '') . ")";
+        }
+        $summary .= "• <strong>{$cat}</strong> clusters detected at: " . implode(', ', $locStr) . ".<br>";
+    }
+    
+    $summary .= "<br>⚠️ <strong>Urgency Notification:</strong><br>";
+    if ($emergencies > 0) {
+        $summary .= "• AI detected <strong>{$emergencies} critical emergency incident(s)</strong> requiring immediate administrative validation and dispatch to the Maintenance Management System.";
+    } else {
+        $summary .= "• No critical safety or structural emergency anomalies identified. General maintenance queues remain normal.";
+    }
+    
+    return $summary;
+}
+
+$aiAnalysisOutput = generateAISummary($allDescriptions);
+
+// Retrieve all incidents for geolocations
+$mapIncidents = $pdo->query("
+    SELECT i.*, c.name as category_name 
+    FROM utility_incidents i 
+    JOIN incident_categories c ON i.category_id = c.id 
+    WHERE i.latitude IS NOT NULL AND i.longitude IS NOT NULL
+")->fetchAll();
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LGU Incident Management Dashboard</title>
+    <link rel="icon" type="image/png" href="assets/images/logocityhall.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Leaflet CSS and JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            background: url("assets/images/cityhall.jpeg") center/cover no-repeat fixed;
+            position: relative;
+        }
+
+        body::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            backdrop-filter: blur(6px);
+            background: rgba(0, 0, 0, 0.35);
+            z-index: 0;
+        }
+
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            padding: 30px 40px;
+            transition: margin-left 0.25s ease;
+            z-index: 1;
+            position: relative;
+        }
+
+        .main-content.collapsed {
+            margin-left: 90px;
+        }
+
+        .card {
+            width: 100%;
+            max-width: 1700px;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(15px);
+            border-radius: 18px;
+            padding: 40px;
+            color: #000;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.25);
+        }
+
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .dashboard-header h1 {
+            color: #2c3e50;
+            font-size: 32px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .dashboard-header h1 i {
+            color: #3762c8;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .btn-primary { background: #3762c8; color: white; }
+        .btn-primary:hover { background: #2851b0; }
+
+        .btn-outline { background: transparent; border: 1px solid #cbd5e1; color: #64748b; }
+        .btn-outline:hover { background: #f8f9fa; color: #2c3e50; }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 35px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-left: 5px solid #cbd5e1;
+        }
+
+        .stat-card.total { border-left-color: #3762c8; }
+        .stat-card.pending { border-left-color: #f1c40f; }
+        .stat-card.reviewing { border-left-color: #d97706; }
+        .stat-card.forwarded { border-left-color: #a55eea; }
+        .stat-card.resolved { border-left-color: #2ecc71; }
+
+        .stat-info h3 {
+            font-size: 26px;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+
+        .stat-info p {
+            font-size: 12px;
+            color: #64748b;
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-top: 3px;
+        }
+
+        .stat-icon {
+            font-size: 28px;
+            color: #cbd5e1;
+        }
+
+        .dashboard-layout {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 30px;
+            margin-bottom: 35px;
+        }
+
+        @media (max-width: 1000px) {
+            .dashboard-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .box {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .box h3 {
+            font-size: 16px;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 2px solid #f1f2f6;
+            padding-bottom: 10px;
+        }
+
+        /* AI Analytics Card styling */
+        .ai-box {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            border: none;
+        }
+
+        .ai-box h3 {
+            color: white;
+            border-bottom-color: rgba(255,255,255,0.15);
+        }
+
+        .ai-box h3 i {
+            color: #45aaf2;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.15); }
+            100% { transform: scale(1); }
+        }
+
+        .ai-content {
+            font-size: 13px;
+            line-height: 1.6;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* Map styling */
+        #map {
+            width: 100%;
+            height: 300px;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+        }
+
+        /* Recent Incident Feed */
+        .feed-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+        }
+
+        .feed-item {
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 18px;
+        }
+
+        .feed-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .feed-id { font-size: 13px; font-weight: 700; color: #2c3e50; }
+        
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 99px;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .badge-low { background: #e2fbe8; color: #1e7e34; }
+        .badge-medium { background: #e0f2fe; color: #0284c7; }
+        .badge-high { background: #fff4e5; color: #b45309; }
+        .badge-emergency { background: #fde8e8; color: #bd2130; }
+    </style>
+</head>
+<body>
+
+<?php include 'includes/utilities_sidebar.php'; ?>
+
+<main class="main-content" id="mainContent">
+    <div class="card">
+        
+        <!-- Header -->
+        <div class="dashboard-header">
+            <div>
+                <h1><i class="fas fa-bullhorn"></i> Incident Reports Control</h1>
+                <p style="color: #64748b; font-size: 14px; margin-top: 5px;">Monitor resident feedback, categorize issues, and coordinate workflows with LGU systems.</p>
+            </div>
+            <div>
+                <a href="incidents_list.php" class="btn btn-primary"><i class="fas fa-list"></i> Manage Reports</a>
+            </div>
+        </div>
+
+        <!-- Summary Cards Grid -->
+        <div class="stats-grid">
+            <div class="stat-card total">
+                <div class="stat-info">
+                    <h3><?php echo number_format($totalIncidents); ?></h3>
+                    <p>Total Incidents</p>
+                </div>
+                <div class="stat-icon"><i class="fas fa-clipboard-list"></i></div>
+            </div>
+            <div class="stat-card pending">
+                <div class="stat-info">
+                    <h3><?php echo number_format($pendingIncidents); ?></h3>
+                    <p>Submitted</p>
+                </div>
+                <div class="stat-icon"><i class="fas fa-clock"></i></div>
+            </div>
+            <div class="stat-card reviewing">
+                <div class="stat-info">
+                    <h3><?php echo number_format($reviewingIncidents); ?></h3>
+                    <p>Under Review</p>
+                </div>
+                <div class="stat-icon"><i class="fas fa-search"></i></div>
+            </div>
+            <div class="stat-card forwarded">
+                <div class="stat-info">
+                    <h3><?php echo number_format($forwardedIncidents); ?></h3>
+                    <p>Forwarded</p>
+                </div>
+                <div class="stat-icon"><i class="fas fa-paper-plane"></i></div>
+            </div>
+            <div class="stat-card resolved">
+                <div class="stat-info">
+                    <h3><?php echo number_format($resolvedIncidents); ?></h3>
+                    <p>Resolved</p>
+                </div>
+                <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+            </div>
+        </div>
+
+        <!-- Dashboard Analytics Grid -->
+        <div class="dashboard-layout">
+            <!-- Left Chart Category Frequency -->
+            <div class="box">
+                <h3><i class="fas fa-chart-bar"></i> Incident Frequency by Category</h3>
+                <div style="position:relative; height:280px; width:100%; display:flex; justify-content:center; align-items:center;">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Right AI Analytics Box -->
+            <div class="box ai-box">
+                <h3><i class="fas fa-robot"></i> LGU AI Text Complaint Summarizer</h3>
+                <div class="ai-content">
+                    <?php echo $aiAnalysisOutput; ?>
+                </div>
+            </div>
+        </div>
+
+        <!-- Map & Recent incidents row -->
+        <div class="dashboard-layout">
+            <!-- Left: GIS Incident Maps -->
+            <div class="box">
+                <h3><i class="fas fa-map-marked-alt"></i> Geolocated Incident Pins</h3>
+                <div id="map"></div>
+            </div>
+
+            <!-- Right: Recent Reports Feed -->
+            <div class="box">
+                <h3><i class="fas fa-bell"></i> Recently Submitted Reports</h3>
+                <div style="max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap:10px;">
+                    <?php if (empty($recentIncidents)): ?>
+                        <div style="color: #64748b; font-size: 13px;">No recent incident reports.</div>
+                    <?php else: ?>
+                        <?php foreach ($recentIncidents as $inc): ?>
+                            <div style="padding: 10px 15px; border-radius: 8px; background: #f8fafc; border-left: 3px solid #cbd5e1; display:flex; justify-content:space-between; align-items:center;">
+                                <div>
+                                    <div style="font-weight:600; font-size:13px; color:#2c3e50;"><?php echo htmlspecialchars($inc['category_name']); ?></div>
+                                    <div style="font-size:11px; color:#64748b;"><?php echo htmlspecialchars($inc['location']); ?></div>
+                                </div>
+                                <span class="badge badge-<?php echo strtolower($inc['priority']); ?>"><?php echo htmlspecialchars($inc['priority']); ?></span>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</main>
+
+<script>
+    // Category Chart
+    const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+    new Chart(categoryCtx, {
+        type: 'bar',
+        data: {
+            labels: <?php echo $categoriesJson; ?>,
+            datasets: [{
+                label: 'Report Count',
+                data: <?php echo $categoryCountsJson; ?>,
+                backgroundColor: '#3762c8',
+                borderRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1, font: { family: 'Poppins' } } },
+                x: { ticks: { font: { family: 'Poppins', size: 10 } } }
+            }
+        }
+    });
+
+    // Map configuration
+    const map = L.map('map').setView([14.5995, 120.9842], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    const incidents = <?php echo json_encode($mapIncidents); ?>;
+    
+    incidents.forEach(inc => {
+        const customIcon = L.divIcon({
+            html: `<div style="background-color: #e74c3c; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>`,
+            className: 'custom-div-icon',
+            iconSize: [12, 12]
+        });
+
+        const popupHtml = `
+            <div style="font-family: 'Poppins', sans-serif; width: 180px;">
+                <div style="font-weight: 700; font-size: 13px; color: #2c3e50;">${inc.category_name}</div>
+                <div style="font-size: 10px; color: #3762c8; font-weight: 600; margin-bottom: 5px;">${inc.incident_id}</div>
+                <p style="font-size: 11px; color: #64748b; line-height: 1.3;">${inc.description}</p>
+                <div style="font-size: 10px; font-weight: 600; margin-top: 5px;"><i class="fas fa-map-marker-alt"></i> ${inc.location}</div>
+            </div>
+        `;
+
+        L.marker([parseFloat(inc.latitude), parseFloat(inc.longitude)], { icon: customIcon })
+            .bindPopup(popupHtml)
+            .addTo(map);
+    });
+</script>
+
+</body>
+</html>

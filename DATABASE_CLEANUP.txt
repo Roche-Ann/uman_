@@ -1,0 +1,35 @@
+DATABASE CLEANUP - FIXING "Invalid request ID" ERROR
+====================================================
+
+The issue is that your database has a corrupted record with ID = 0, which is invalid.
+
+SOLUTION - Run the cleanup script:
+==================================
+
+1. Open this URL in your browser:
+   http://localhost/system/api/fix_requests_table.php
+
+2. The script will:
+   ✓ Find and delete records with ID = 0
+   ✓ Check AUTO_INCREMENT value
+   ✓ Fix AUTO_INCREMENT if needed
+   ✓ Verify all records are valid
+
+3. You should see a success message:
+   "✓ All records are now valid!"
+
+AFTER CLEANUP:
+==============
+
+✓ Request viewing will work properly
+✓ You can view all your requests without "Invalid request ID" error
+✓ New requests will have proper auto-incrementing IDs
+
+WHAT HAPPENED:
+==============
+
+- The database table had a record with ID = 0
+- The API validation rejects ID <= 0 as invalid
+- When you tried to view that request, it failed with "Invalid request ID"
+
+This is now fixed with the cleanup script!
