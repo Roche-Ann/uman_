@@ -1,0 +1,48 @@
+remote: error: GH013: Repository rule violations found for refs/heads/main.        
+remote: 
+remote: - GITHUB PUSH PROTECTION        
+remote:   —————————————————————————————————————————        
+remote:     Resolve the following violations before pushing again        
+remote: 
+remote:     - Push cannot contain secrets        
+remote: 
+remote:             
+remote:      (?) Learn how to resolve a blocked push        
+remote:      https://docs.github.com/code-security/secret-scanning/working-with-secret-scanning-and-push-protection/working-with-push-protection-from-the-command-line#resolving-a-blocked-push        
+remote:             
+remote:             
+remote:       —— Stripe Test API Secret Key ————————————————————————        
+remote:        locations:        
+remote:          - commit: 5065f8fb3804c7867c4c05732b27cb019fba3684        
+remote:            path: .env.example:8        
+remote:          - commit: 5065f8fb3804c7867c4c05732b27cb019fba3684        
+remote:            path: sql/utility_system (7).sql:1214        
+remote:          - commit: 5065f8fb3804c7867c4c05732b27cb019fba3684        
+remote:            path: sql/utility_system.sql:547        
+remote:             
+remote:        (?) To push, remove secret from commit(s) or follow this URL to allow the secret.        
+remote:        https://github.com/Roche-Ann/uman_/security/secret-scanning/unblock-secret/3GJaExa8BIrz3vYmrFe80B4nr3g        
+remote:             
+remote:             
+remote:       —— Stripe Test API Secret Key ————————————————————————        
+remote:        locations:        
+remote:          - commit: 5065f8fb3804c7867c4c05732b27cb019fba3684        
+remote:            path: includes/paymongo.php:13        
+remote:             
+remote:        (?) To push, remove secret from commit(s) or follow this URL to allow the secret.        
+remote:        https://github.com/Roche-Ann/uman_/security/secret-scanning/unblock-secret/3GJaExty2VdOOtqynZTcVXrDc61        
+remote:             
+remote:             
+remote:       —— Stripe API Key ————————————————————————————————————        
+remote:        locations:        
+remote:          - commit: 5065f8fb3804c7867c4c05732b27cb019fba3684        
+remote:            path: includes/paymongo.php:16        
+remote:             
+remote:        (?) To push, remove secret from commit(s) or follow this URL to allow the secret.        
+remote:        https://github.com/Roche-Ann/uman_/security/secret-scanning/unblock-secret/3GJaEzZqy6Vr4thUdKjM1O9jOsV        
+remote:             
+remote: 
+remote: 
+To https://github.com/Roche-Ann/uman_.git
+ ! [remote rejected] main -> main (push declined due to repository rule violations)
+error: failed to push some refs to 'https://github.com/Roche-Ann/uman_.git'
