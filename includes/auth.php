@@ -4,12 +4,32 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// 1. Direct Database Connection (Fixes the "null" error)
-$host = '127.0.0.1';
-$db   = 'utility_system';
-$user = 'root'; 
-$pass = '';     
-$charset = 'utf8mb4';
+// Load .env if not already loaded
+if (!isset($GLOBALS['_ENV_LOADED'])) {
+    $envPath = __DIR__ . '/../.env';
+    if (is_readable($envPath)) {
+        $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        foreach ($lines as $line) {
+            if (str_starts_with(trim($line), '#')) continue;
+            if (!str_contains($line, '=')) continue;
+            [$k, $v] = explode('=', $line, 2);
+            $k = trim($k);
+            $v = trim($v);
+            if ($k === '') continue;
+            putenv("$k=$v");
+            $_ENV[$k] = $v;
+            $_SERVER[$k] = $v;
+        }
+    }
+    $GLOBALS['_ENV_LOADED'] = true;
+}
+
+// 1. Database Connection from .env
+$host    = getenv('DB_HOST') ?: '127.0.0.1';
+$db      = getenv('DB_NAME') ?: 'utility_system';
+$user    = getenv('DB_USER') ?: 'root';
+$pass    = getenv('DB_PASS') ?: '';
+$charset = getenv('DB_CHARSET') ?: 'utf8mb4';
 
 $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
 try {
