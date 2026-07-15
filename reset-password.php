@@ -7,25 +7,7 @@ use Symfony\Component\Mailer\Mailer;
 use Symfony\Component\Mailer\Transport;
 use Symfony\Component\Mime\Email;
 
-// Direct database connection for Laragon to utility_system
-$host = '127.0.0.1';
-$db   = 'utility_system';
-$user = 'root'; 
-$pass = '';     
-$charset = 'utf8mb4';
-
-$dsn = "mysql:host=$host;dbname=$db;charset=$charset";
-$options = [
-    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-    PDO::ATTR_EMULATE_PREPARES   => false,
-];
-
-try {
-    $pdo = new PDO($dsn, $user, $pass, $options);
-} catch (\PDOException $e) {
-    die("Database connection failed: " . $e->getMessage());
-}
+// DB connection is handled by auth.php above
 
 // Minimal .env loader (key=value) for local use
 $envPath = __DIR__ . '/.env';
