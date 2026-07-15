@@ -9,6 +9,7 @@ header('Content-Type: text/plain');
 echo "Installing UMAN integration schema...\n";
 
 $sql = file_get_contents(__DIR__ . '/sql/utility_integration.sql');
+$pdo->exec("SET SESSION sql_mode = 'NO_ENGINE_SUBSTITUTION'");
 $pdo->exec($sql);
 
 echo "Done. Deploy api/assets.php and api/asset-requests.php for CPRF.\n";

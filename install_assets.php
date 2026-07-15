@@ -14,6 +14,9 @@ try {
     
     $sql = file_get_contents($sqlFile);
     
+    // Relax strict mode for installation
+    $pdo->exec("SET SESSION sql_mode = 'NO_ENGINE_SUBSTITUTION'");
+    
     // 2. Execute SQL schema queries
     $pdo->exec($sql);
     echo "Successfully created tables and seeded asset types!\n";
