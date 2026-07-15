@@ -7,6 +7,9 @@ declare(strict_types=1);
 
 header('Content-Type: application/json; charset=utf-8');
 
+// Load DB connection at file scope so $pdo is global
+require_once dirname(__DIR__) . '/includes/db.php';
+
 $UMAN_INTEGRATION_API_KEY = trim((string)(getenv('UMAN_INTEGRATION_API_KEY') ?: 'UMAN_SECURE_KEY_2025'));
 
 function uman_require_api_key(string $expectedKey): void
@@ -21,7 +24,6 @@ function uman_require_api_key(string $expectedKey): void
 
 function uman_integration_pdo(): PDO
 {
-    require_once dirname(__DIR__) . '/includes/db.php';
     global $pdo;
     return $pdo;
 }
