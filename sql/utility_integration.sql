@@ -13,8 +13,7 @@ CREATE TABLE IF NOT EXISTS `external_asset_requests` (
   `fulfilled_asset_id` INT NULL,
   `review_notes` TEXT NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  FOREIGN KEY (`fulfilled_asset_id`) REFERENCES `utility_assets`(`id`) ON DELETE SET NULL
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Facility equipment asset types (for CPRF venue requests)
