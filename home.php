@@ -3,20 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Home | Utilities Management System</title>
+    <title>LGU Utilities Management System</title>
     <link rel="icon" type="image/png" href="logocityhall.png">
     <link href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.0.0-beta.83/dist/themes/light.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/luminous-lightbox@2.3.5/dist/luminous-basic.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css">
-    
-
     <style>
-
         :root {
             --civic-sapphire: #0B3D91;
             --utility-teal: #00A896;
             --insight-amber: #FF9E00;
-            --municipal-slate: #2F4858;
+            --municipal-slate: #1E293B;
             --resident-sand: #F4F1DE;
             --infrastructure-gray: #E0E0E2;
             --progress-emerald: #2A9D8F;
@@ -110,29 +107,20 @@
         }
         
         .logo-marker {
-    background: none !important; 
-    border-radius: 0 !important;  
-}
-
-.logo-marker::before {
-    content: none !important; 
-}
-
-.logo-only {
-    width: 58px;
-    height: 58px;
-    object-fit: contain;
-}
-
-
-
-
-        
-        @keyframes shimmer {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(100%); }
+            background: none !important; 
+            border-radius: 0 !important;  
         }
-        
+
+        .logo-marker::before {
+            content: none !important; 
+        }
+
+        .logo-only {
+            width: 58px;
+            height: 58px;
+            object-fit: contain;
+        }
+
         .logo-icon {
             font-size: 1.5rem;
             color: white;
@@ -491,6 +479,7 @@
         .icon-payment { background: linear-gradient(135deg, #F59E0B, #FBBF24); color: white; }
         .icon-service { background: linear-gradient(135deg, #8B5CF6, #A78BFA); color: white; }
         .icon-complaint { background: linear-gradient(135deg, #EF4444, #F87171); color: white; }
+        .icon-planning { background: linear-gradient(135deg, #14B8A6, #2DD4BF); color: white; }
         
         .module-title {
             font-family: var(--font-heading);
@@ -549,6 +538,7 @@
             padding: 2.5rem;
             box-shadow: var(--shadow-gentle);
             transition: var(--transition-smooth);
+            border-left: 4px solid var(--civic-sapphire);
         }
         
         .method-card:hover {
@@ -608,20 +598,7 @@
             background: linear-gradient(135deg, var(--municipal-slate), #1E293B);
             padding: 2rem;
             box-shadow: var(--shadow-elevated);
-        }
-        
-        .ai-node {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: var(--insight-amber);
-            position: absolute;
-            animation: pulse 2s infinite;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.5; transform: scale(1.2); }
+            min-height: 300px;
         }
         
         .ai-insights {
@@ -825,18 +802,6 @@
             font-size: 0.875rem;
         }
         
-        .capstone-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: var(--radius-pill);
-            font-size: 0.875rem;
-            margin-top: 1rem;
-        }
-        
         @media (max-width: 1024px) {
             .hero-grid,
             .analytics-grid {
@@ -890,7 +855,6 @@
             }
         }
         
-        /* Micro-interactions */
         .hover-lift {
             transition: var(--transition-smooth);
         }
@@ -918,24 +882,23 @@
             <a href="#" class="logo-entity">
                 <div class="logo-marker">
                     <img src="logocityhall.png" alt="LGU Logo" class="logo-marker logo-only">
-
                     <i class="fas fa-bolt logo-icon"></i>
                 </div>
                 <div class="logo-text">
                     <span class="logo-primary">Utilities Management System</span>
-                    <span class="logo-secondary"> <span class="title-gradient">uMAN</span></span>
+                    <span class="logo-secondary"><span class="title-gradient">uMAN</span> · LGU Command Center</span>
                 </div>
             </a>
             
             <ul class="nav-links">
                 <li class="nav-link-item"><a href="#hero" class="nav-link">Home</a></li>
-                <li class="nav-link-item"><a href="#modules" class="nav-link">Utilities</a></li>
-                <li class="nav-link-item"><a href="#methodology" class="nav-link">History</a></li>
-                <li class="nav-link-item"><a href="#benefits" class="nav-link">Contacts</a></li>
+                <li class="nav-link-item"><a href="#modules" class="nav-link">Modules</a></li>
+                <li class="nav-link-item"><a href="#about" class="nav-link">About</a></li>
+                <li class="nav-link-item"><a href="#contacts" class="nav-link">Contact</a></li>
             </ul>
             
             <div class="nav-actions">
-              <a href="create.php" class="civic-button button-secondary">Register</a>
+                <a href="create.php" class="civic-button button-secondary">Register</a>
                 <a href="login.php" class="civic-button button-primary">Login</a>
             </div>
         </div>
@@ -951,21 +914,22 @@
                 </div>
                 
                 <h1 class="hero-title">
-                    A Web-based Utilities Management System<br>
-                    <span class="title-gradient">with resident portal and AI Analytics</span>
+                    Centralized Command for<br>
+                    <span class="title-gradient">LGU Utilities & Infrastructure</span>
                 </h1>
                 
                 <p class="hero-description">
-                    We streamline utility operations and provide easy access to monitor your consumption and service requests. Residents can monitor bills, payments, and service requests, while administrators use AI-powered analytics to optimize operations, predict resource needs, and improve service delivery. This platform is built to offer a reliable way to handle your daily utility management.
+                    Streamline operations with real-time asset tracking, automated incident routing, and AI-driven analytics. Unify your utility data—from streetlights to water pumps—into a single, intelligent command center for faster, smarter governance.
                 </p>
                 
                 <div class="cta-actions">
                     <a href="#modules" class="civic-button button-primary hover-lift">
                         <i class="fas fa-portal-entrance"></i>
-                       Explore Core Modules
-                        <a href="login.php" class="civic-button button-secondary hover-lift">
+                        Explore Modules
+                    </a>
+                    <a href="login.php" class="civic-button button-secondary hover-lift">
                         <i class="fas fa-layer-group"></i>
-                         Get Started
+                        Get Started
                     </a>
                 </div>
             </div>
@@ -973,209 +937,194 @@
             <div class="hero-visual">
                 <div class="visual-container">
                     <img src="assets/img/barangay.jpeg" 
-                         alt="Integrated Utility Dashboard Interface" class="img-responsive" 
+                         alt="LGU Utilities Dashboard Interface" class="img-responsive" 
                          style="width: 100%; height: 400px; object-fit: cover;">
                     <div class="visual-overlay"></div>
-                    
-
-                    </div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Modules Showcase -->
+    <!-- Modules Showcase (Accurate to your System) -->
      <section class="modules-section" id="modules">
         <div class="section-header">
-            <h2 class="section-title">Core Utility Modules</h2>
+            <div class="section-preface">Integrated Modules</div>
+            <h2 class="section-title">Complete Utility Oversight</h2>
             <p class="section-description">
-                Empirically designed digital solutions for utility billing, infrastructure resilience, and participatory governance.
+                Built specifically for LGUs. Manage every facet of utility operations with modules that talk to each other.
             </p>
         </div>
         
         <div class="modules-grid">
-            <div class="module-card hover-lift">
-                <div class="module-header">
-                    <div class="module-icon icon-reading">
-                        <i class="fas fa-users"></i>
-                    </div>
-                    <h3 class="module-title">Citizen Engagement Hub</h3>
-                </div>
-                <p class="module-description">
-                    A resident portal enables citizens to report utility issues, using automated keyword-based triage to categorize and prioritize reports by urgency.
-                </p>
-                <ul class="module-features">
-                    <li>Transparency Dashboards</li>
-                    <li>Public Issue Reporting</li>
-                    <li>District Usage Insights</li>
-                    <li>Civic Announcements</li>
-                </ul>
-            </div>
-            
-            <!-- Module 2 -->
+            <!-- 1. Asset Inventory -->
             <div class="module-card hover-lift">
                 <div class="module-header">
                     <div class="module-icon icon-service">
-                        <i class="fas fa-broadcast-tower"></i>
+                        <i class="fas fa-boxes"></i>
                     </div>
-                    <h3 class="module-title">Public Asset Tracking</h3>
+                    <h3 class="module-title">Asset Inventory</h3>
                 </div>
                 <p class="module-description">
-                    Shift focus to physical asset management. Monitor the health of transformers, water pumps, and local infrastructure.
+                    Comprehensive database of all LGU-owned utility assets with GPS mapping, condition tracking, and full lifecycle management.
                 </p>
                 <ul class="module-features">
-                    <li>Infrastructure Monitoring</li>
-                    <li>Asset Lifecycle Tracking</li>
-                    <li>GIS Service Mapping</li>
+                    <li>GIS Mapping & Geotagging</li>
+                    <li>Condition Monitoring</li>
+                    <li>Lifecycle Tracking</li>
                     <li>Automated Health Alerts</li>
                 </ul>
             </div>
             
-            <!-- Module 3 -->
-            <div class="module-card hover-lift">
-                <div class="module-header">
-                    <div class="module-icon icon-payment">
-                        <i class="fas fa-chart-line"></i>
-                    </div>
-                    <h3 class="module-title">Analytics for Public Good</h3>
-                </div>
-                <p class="module-description">
-                    Large-scale district analytics to track grid efficiency, locate non-revenue resource loss, and improve sustainability.
-                </p>
-                <ul class="module-features">
-                    <li>Grid Efficiency Tracking</li>
-                    <li>Predictive Urban Planning</li>
-                    <li>Sustainability Reporting</li>
-                    <li>Carbon Footprint Metrics</li>
-                </ul>
-            </div>
-            
-            <!-- Module 4 -->
+            <!-- 2. Incident Reporting -->
             <div class="module-card hover-lift">
                 <div class="module-header">
                     <div class="module-icon icon-complaint">
                         <i class="fas fa-exclamation-triangle"></i>
                     </div>
-                    <h3 class="module-title">Public Issue Reporting</h3>
+                    <h3 class="module-title">Incident Response</h3>
                 </div>
                 <p class="module-description">
-                    Citizens can actively report public utility failures like broken streetlights, water main leaks, or missed collections.
+                    Citizen-facing portal for reporting outages or leaks. Incidents are automatically categorized, prioritized, and routed to the right team.
                 </p>
                 <ul class="module-features">
-                    <li>Geo-tagged Incident Reports</li>
+                    <li>Geo-tagged Resident Reports</li>
+                    <li>Automatic Triage & Priority</li>
                     <li>Real-time Status Tracking</li>
                     <li>Direct LGU Routing</li>
-                    <li>Community Feedback Loop</li>
                 </ul>
             </div>
             
-            <!-- Module 5 -->
+            <!-- 3. Maintenance Dispatch -->
             <div class="module-card hover-lift">
                 <div class="module-header">
                     <div class="module-icon icon-billing">
                         <i class="fas fa-tools"></i>
                     </div>
-                    <h3 class="module-title">Vendor & Maintenance Logs</h3>
+                    <h3 class="module-title">Maintenance Dispatch</h3>
                 </div>
                 <p class="module-description">
-                    Coordinate private contractors, manage maintenance logs, and ensure public works are serviced on time.
+                    Seamless coordination with external maintenance systems to dispatch work orders and track repair progress in real-time.
                 </p>
                 <ul class="module-features">
-                    <li>Vendor Coordination</li>
-                    <li>Centralized Maintenance Logs</li>
-                    <li>Work Order Dispatch</li>
+                    <li>External Work Order Sync</li>
+                    <li>Technician Dispatching</li>
+                    <li>Progress Milestone Tracking</li>
                     <li>Service Level Auditing</li>
                 </ul>
             </div>
             
-            <!-- AI Integration -->
-            <div class="module-card hover-lift" style="border-left: 4px solid var(--insight-amber);">
+            <!-- 4. Energy Efficiency -->
+            <div class="module-card hover-lift">
                 <div class="module-header">
-                    <div class="module-icon" style="background: linear-gradient(135deg, var(--insight-amber), #FFB74D);">
-                        <i class="fas fa-brain"></i>
+                    <div class="module-icon icon-payment">
+                        <i class="fas fa-bolt"></i>
                     </div>
-                    <h3 class="module-title">AI-Powered Analytics Integration</h3>
+                    <h3 class="module-title">Energy Efficiency</h3>
                 </div>
                 <p class="module-description">
-                    Predictive intelligence layer analyzing consumption patterns, 
-                    detecting anomalies, and forecasting utility demands.
+                    Monitor electricity consumption across municipal facilities, identify anomalies, and sync data with external energy advisory systems.
                 </p>
                 <ul class="module-features">
-                    <li>Consumption anomaly detection</li>
-                    <li>Demand forecasting models</li>
-                    <li>Payment behavior analysis</li>
-                    <li>Operational insight generation</li>
+                    <li>Real-time Consumption Logs</li>
+                    <li>Anomaly Detection</li>
+                    <li>Cost Analysis</li>
+                    <li>External System Sync</li>
+                </ul>
+            </div>
+            
+            <!-- 5. Facility Management -->
+            <div class="module-card hover-lift">
+                <div class="module-header">
+                    <div class="module-icon icon-reading">
+                        <i class="fas fa-warehouse"></i>
+                    </div>
+                    <h3 class="module-title">Facility Management</h3>
+                </div>
+                <p class="module-description">
+                    Track the utility readiness of public venues (gyms, parks, evacuation centers) to ensure they are operational when needed.
+                </p>
+                <ul class="module-features">
+                    <li>Readiness Status Dashboard</li>
+                    <li>Utility Checklist (Water/Elec)</li>
+                    <li>Booking & Event Overlay</li>
+                    <li>Incident Linking</li>
+                </ul>
+            </div>
+            
+            <!-- 6. Planning & Expansion -->
+            <div class="module-card hover-lift">
+                <div class="module-header">
+                    <div class="module-icon icon-planning">
+                        <i class="fas fa-map-marked-alt"></i>
+                    </div>
+                    <h3 class="module-title">Planning & Expansion</h3>
+                </div>
+                <p class="module-description">
+                    Analyze utility coverage, manage expansion requests, and integrate with urban development projects to plan for future growth.
+                </p>
+                <ul class="module-features">
+                    <li>GIS Coverage Mapping</li>
+                    <li>Expansion Request Tracking</li>
+                    <li>Capacity Planning</li>
+                    <li>Project Integration</li>
                 </ul>
             </div>
         </div>
     </section>
 
-<!-- History Section -->
-<section class="methodology-section" id="methodology">
-    <div class="section-header">
-        <div class="section-preface">About the Barangay</div>
-        <h2 class="section-title">Our History</h2>
-        <p class="section-description">
-            Barangay Pasok Putik Proper, officially established in 1996 after the division of the original Pasong Putik, has evolved from a rural community into a bustling urban hub. Today, it serves nearly 40,000 residents, hosts key transport hubs and commercial centers, and continues to focus on efficient governance and accessible public services.
-        </p>
-    </div>
-    
-    <div class="methodology-container">
-        <div class="methodology-stack">
-            
-            <div class="method-card hover-lift" 
-                 style="position: relative; width: 100%; height: 250px; 
-                        background-image: url('assets/images/Manuel_Quezon.jpg'); 
-                        background-size: cover; background-position: center; 
-                        border-radius: 12px; color: white; 
-                        display: flex; flex-direction: column; justify-content: flex-end; 
-                        padding: 1rem; box-shadow: 0 4px 8px rgba(0,0,0,0.3); margin-bottom: 1rem;">
-                <h3 style="margin: 0; font-size: 1.5rem; font-weight: bold; text-shadow: 1px 1px 5px rgba(0,0,0,0.7);">1939: The Foundation</h3>
-                <p style="margin-top: 0.5rem; text-shadow: 1px 1px 4px rgba(0,0,0,0.7);">
-                    President Manuel L. Quezon signed Commonwealth Act No. 502, officially creating Quezon City to serve as the new capital of the Philippines, envisioned as a "showcase of the nation" with wide avenues and open spaces.
-                </p>
-            </div>
-
-            <div class="method-card hover-lift" 
-                 style="position: relative; width: 100%; height: 250px; 
-                        background-image: url('assets/images/QC.jpg'); 
-                        background-size: cover; background-position: center; 
-                        border-radius: 12px; color: white; 
-                        display: flex; flex-direction: column; justify-content: flex-end; 
-                        padding: 1rem; box-shadow: 0 4px 8px rgba(0,0,0,0.3); margin-bottom: 1rem;">
-                <h3 style="margin: 0; font-size: 1.5rem; font-weight: bold; text-shadow: 1px 1px 5px rgba(0,0,0,0.7);">1948: The Capital Move</h3>
-                <p style="margin-top: 0.5rem; text-shadow: 1px 1px 4px rgba(0,0,0,0.7);">
-                    Republic Act No. 333 officially declared Quezon City as the capital of the Philippines. This era marked a significant northward expansion, absorbing territories from Caloocan and San Juan to accommodate growing government infrastructure.
-                </p>
-            </div>
-
-            <div class="method-card hover-lift" 
-                 style="position: relative; width: 100%; height: 250px; 
-                        background-image: url('assets/images/The_Heart_of_Quezon_City.jpg'); 
-                        background-size: cover; background-position: center; 
-                        border-radius: 12px; color: white; 
-                        display: flex; flex-direction: column; justify-content: flex-end; 
-                        padding: 1rem; box-shadow: 0 4px 8px rgba(0,0,0,0.3);">
-                <h3 style="margin: 0; font-size: 1.5rem; font-weight: bold; text-shadow: 1px 1px 5px rgba(0,0,0,0.7);">Today: The City of Stars</h3>
-                <p style="margin-top: 0.5rem; text-shadow: 1px 1px 4px rgba(0,0,0,0.7);">
-                    Now the most populous city in the Philippines, Quezon City serves as a premier hub for information technology, entertainment, and governance, continuing to modernize while prioritizing sustainable urban development and social services.
-                </p>
-            </div>
-
+    <!-- About the System (Replaces incorrect history) -->
+    <section class="methodology-section" id="about">
+        <div class="section-header">
+            <div class="section-preface">Why uMAN</div>
+            <h2 class="section-title">Built to Bridge the Gaps</h2>
+            <p class="section-description">
+                The LGU Utilities Management System bridges the gap between field operations, resident feedback, and administrative oversight, transforming raw data into actionable insights.
+            </p>
         </div>
-    </div>
-</section>
+        
+        <div class="methodology-container">
+            <div class="methodology-stack">
+                <div class="method-card hover-lift">
+                    <div class="method-icon">
+                        <i class="fas fa-database"></i>
+                    </div>
+                    <h3 class="method-title">Unified Data Architecture</h3>
+                    <p class="method-description">
+                        All utility data—assets, incidents, maintenance, energy, and facilities—lives in a single relational database. Aggregated views power real-time dashboards for instant executive insights.
+                    </p>
+                </div>
 
+                <div class="method-card hover-lift">
+                    <div class="method-icon">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <h3 class="method-title">AI-Assisted Analytics</h3>
+                    <p class="method-description">
+                        Rule-based summarization and anomaly detection provide natural-language reports, highlight urgent issues, and forecast demand patterns to support proactive municipal planning.
+                    </p>
+                </div>
 
-    <!-- AI Analytics Showcase -->
-    <section class="analytics-showcase" id="analytics">
+                <div class="method-card hover-lift">
+                    <div class="method-icon">
+                        <i class="fas fa-sync-alt"></i>
+                    </div>
+                    <h3 class="method-title">Interoperable & Extensible</h3>
+                    <p class="method-description">
+                        Built with RESTful APIs to exchange data with external platforms (maintenance systems, energy efficiency systems). Modular design allows adding new features without disrupting workflows.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section class="analytics-showcase" id="contacts">
         <div class="analytics-grid">
             <div class="analytics-content">
-                <div class="section-preface" style="color: var(--insight-amber);">Contact Us</div>
-                <h2 class="section-title">Get in Touch with Us</h2>
+                <div class="section-preface" style="color: var(--insight-amber);">Get in Touch</div>
+                <h2 class="section-title">Let's Connect</h2>
                 <p class="section-description">
-                    Reach out with us for inquiries, concerns, or assistance. 
-                You can contact us through phone, email, or visit our location.
+                    Have questions or need technical support? Reach out to our team via the channels below. We're here to help you streamline your utility operations.
                 </p>
                 
                 <div class="ai-insights">
@@ -1187,7 +1136,7 @@
                             <h4 class="insight-title">Phone</h4>
                         </div>
                         <p class="insight-description">
-                           <a href="tel:+639128640498">+63 9 1286 40498</a>
+                            <a href="tel:+639128640498">+63 9 1286 40498</a>
                         </p>
                     </div>
                     
@@ -1199,7 +1148,7 @@
                             <h4 class="insight-title">Email</h4>
                         </div>
                         <p class="insight-description">
-                           <a href="mailto:lgu.uman@gmail.com">lgu.uman@gmail.com</a>
+                            <a href="mailto:lgu.uman@gmail.com">lgu.uman@gmail.com</a>
                         </p>
                     </div>
                     
@@ -1212,38 +1161,36 @@
                         </div>
                         <p class="insight-description">
                             <a href="https://maps.app.goo.gl/rkT3Jmmf69kcpvgo7" 
-                           target="_blank" style="color: var(--municipal-slate); text-decoration: underline;">
-                            View on Google Maps
+                               target="_blank" style="color: var(--municipal-slate); text-decoration: underline;">
+                                City Hall, Quezon City
                             </a>
                         </p>
                     </div>
                 </div>
             </div>
             
-        <div class="analytics-visual">
-            <div class="ai-visual" style="border-radius: 16px; overflow: hidden; height: 100%; min-height: 300px;">
-                <!-- Google Maps Embed -->
-                <iframe 
-                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3875.123456789!2d121.049987!3d14.655123!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3397b9e2f2f1d123%3A0xabcdef1234567890!2sBarangay+Pasong+Putik+Proper!5e0!3m2!1sen!2sph!4v1680000000000!5m2!1sen!2sph" 
-                    width="100%" 
-                    height="100%" 
-                    style="border:0;" 
-                    allowfullscreen="" 
-                    loading="lazy" 
-                    referrerpolicy="no-referrer-when-downgrade">
-                </iframe>
+            <div class="analytics-visual">
+                <div class="ai-visual" style="border-radius: 16px; overflow: hidden; height: 100%; min-height: 300px; padding: 0;">
+                    <iframe 
+                        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3860.764594425318!2d121.0433164754075!3d14.655570477760239!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3397b7f1f1f1f1f1%3A0xabcdef1234567890!2sQuezon%20City%20Hall!5e0!3m2!1sen!2sph!4v1700000000000" 
+                        width="100%" 
+                        height="100%" 
+                        style="border:0;" 
+                        allowfullscreen="" 
+                        loading="lazy" 
+                        referrerpolicy="no-referrer-when-downgrade">
+                    </iframe>
+                </div>
             </div>
         </div>
-    </div>
     </section>
 
-    <!-- CTA Section -->
+    <!-- Call to Action -->
     <section class="cta-section" id="cta">
         <div class="cta-container">
-            <h2 class="cta-title">Ready to Transform Utility Management?</h2>
+            <h2 class="cta-title">Ready to Transform Your Utility Operations?</h2>
             <p class="cta-description">
-                Join LGU 1 in pioneering intelligent utility service delivery through 
-                integrated digital transformation and predictive analytics.
+                Join us in pioneering intelligent utility service delivery through integrated digital transformation and predictive analytics.
             </p>
             
             <div class="cta-actions">
@@ -1267,249 +1214,239 @@
                     <div class="footer-logo-icon">
                         <i class="fas fa-bolt"></i>
                     </div>
-                    <span class="footer-logo-text">Barangay Pasong Putik Proper <h6>Web-Based Utilities Management System</h6></span>
+                    <span class="footer-logo-text">LGU Utilities Management System</span>
                 </div>
                 <p class="footer-description">
-                    Access barangay services anytime, anywhere. Manage your utilities, payments, and service requests online with real-time updates.
+                    Access local government services anytime, anywhere. Manage utilities, payments, and service requests online with real-time updates.
                 </p>
             </div>
-            <!-- Quick Links -->
-        <div>
-            <h4 class="footer-heading">Quick Links</h4>
-            <ul class="footer-links">
-                <li><a href="#hero">Home</a></li>
-                <li><a href="#modules">Utilities</a></li>
-                <li><a href="#methodology">History</a></li>
-                <li><a href="#analytics">Contacts</a></li>
-            </ul>
-        </div>
             
-        <!-- Services -->
-        <div>
-            <h4 class="footer-heading">Services</h4>
-            <ul class="footer-links">
-                <li><a href="#modules">View & Pay Bills</a></li>
-                <li><a href="#modules">Payment Collection</a></li>
-                <li><a href="#modules">Service Connection</a></li>
-                <li><a href="#modules">Complaint Handling</a></li>
-            </ul>
-        </div>
+            <div>
+                <h4 class="footer-heading">Quick Links</h4>
+                <ul class="footer-links">
+                    <li><a href="#hero">Home</a></li>
+                    <li><a href="#modules">Modules</a></li>
+                    <li><a href="#about">About</a></li>
+                    <li><a href="#contacts">Contact</a></li>
+                </ul>
+            </div>
             
-      <!-- Contact / Social -->
-        <div>
-            <h4 class="footer-heading">Contact Us</h4>
-            <ul class="footer-links">
-                <li>Email: <a href="mailto:info@pasokputik.gov.ph">info@pasokputik.gov.ph</a></li>
-                <li>Phone: <a href="tel:+63212345678">+63 2 1234 5678</a></li>
-                <li>Address: Barangay Hall, Pasok Putik Proper, Quezon City</li>
-                <li>
-                    <a href="https://www.google.com/maps/place/Barangay+Pasong+Putik+Proper,+Quezon+City" target="_blank">
-    <i class="fas fa-map-marker-alt"></i> Location
-</a>
-
-                </li>
-            </ul>
-        </div>
-    </div>
-
-<!-- Live Chat Section -->
-<section class="live-chat-section" id="live-chat-section">
-    <div class="live-chat-container">
-        <div class="chat-header" onclick="toggleChat()">
-            <i class="fas fa-comment-dots"></i> Chat with Barangay
-        </div>
-        <div class="chat-body">
-            <div class="chat-messages" id="chat-messages"></div>
-            <div class="chat-input-area">
-                <input type="text" id="chat-input" placeholder="Type your message..." onkeypress="handleKeyPress(event)">
-                <button onclick="sendMessage()">Send</button>
+            <div>
+                <h4 class="footer-heading">Core Services</h4>
+                <ul class="footer-links">
+                    <li><a href="#modules">Asset Inventory</a></li>
+                    <li><a href="#modules">Incident Reporting</a></li>
+                    <li><a href="#modules">Maintenance Dispatch</a></li>
+                    <li><a href="#modules">Energy Monitoring</a></li>
+                </ul>
+            </div>
+            
+            <div>
+                <h4 class="footer-heading">Contact</h4>
+                <ul class="footer-links">
+                    <li>Email: <a href="mailto:info@lgu.gov.ph">info@lgu.gov.ph</a></li>
+                    <li>Phone: <a href="tel:+63212345678">+63 2 1234 5678</a></li>
+                    <li>Address: City Hall, Quezon City</li>
+                    <li>
+                        <a href="https://www.google.com/maps/place/Quezon+City+Hall" target="_blank">
+                            <i class="fas fa-map-marker-alt"></i> Location
+                        </a>
+                    </li>
+                </ul>
             </div>
         </div>
-    </div>
-</section>
 
-<style>
-    .live-chat-section {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        width: 320px;
-        max-width: 95%;
-        font-family: 'Poppins', sans-serif;
-        z-index: 9999;
-    }
+        <!-- Live Chat Widget -->
+        <div class="live-chat-section" id="live-chat-section">
+            <div class="live-chat-container">
+                <div class="chat-header" onclick="toggleChat()">
+                    <i class="fas fa-comment-dots"></i> Chat with LGU
+                </div>
+                <div class="chat-body">
+                    <div class="chat-messages" id="chat-messages"></div>
+                    <div class="chat-input-area">
+                        <input type="text" id="chat-input" placeholder="Type your message..." onkeypress="handleKeyPress(event)">
+                        <button onclick="sendMessage()">Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-    .live-chat-container {
-        border-radius: 16px;
-        overflow: hidden;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-        display: flex;
-        flex-direction: column;
-    }
+        <style>
+            .live-chat-section {
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                width: 320px;
+                max-width: 95%;
+                font-family: 'Poppins', sans-serif;
+                z-index: 9999;
+            }
 
-    .chat-header {
-        background: linear-gradient(90deg, #f59e0b, #d97706);
-        color: white;
-        padding: 14px;
-        font-weight: 600;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        font-size: 16px;
-    }
+            .live-chat-container {
+                border-radius: 16px;
+                overflow: hidden;
+                box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+                display: flex;
+                flex-direction: column;
+            }
 
-    .chat-body {
-        display: none;
-        flex-direction: column;
-        background-color: #fff7ed;
-        max-height: 400px;
-        border-top: 2px solid #0b70f5;
-    }
+            .chat-header {
+                background: linear-gradient(90deg, #f59e0b, #d97706);
+                color: white;
+                padding: 14px;
+                font-weight: 600;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                font-size: 16px;
+            }
 
-    .chat-messages {
-        flex: 1;
-        padding: 12px;
-        overflow-y: auto;
-        font-size: 14px;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-    }
+            .chat-body {
+                display: none;
+                flex-direction: column;
+                background-color: #fff7ed;
+                max-height: 400px;
+                border-top: 2px solid #0b70f5;
+            }
 
-    .message {
-        padding: 10px 14px;
-        border-radius: 20px;
-        max-width: 75%;
-        word-wrap: break-word;
-        line-height: 1.4;
-        font-size: 14px;
-        display: flex;
-        align-items: flex-end;
-        gap: 8px;
-    }
+            .chat-messages {
+                flex: 1;
+                padding: 12px;
+                overflow-y: auto;
+                font-size: 14px;
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            }
 
-    /* User messages (right side) */
-    .message.user {
-        background-color: #f59e0b;
-        color: white;
-        align-self: flex-end;
-        border-bottom-right-radius: 4px;
-        border-bottom-left-radius: 20px;
-        justify-content: flex-end;
-    }
+            .message {
+                padding: 10px 14px;
+                border-radius: 20px;
+                max-width: 75%;
+                word-wrap: break-word;
+                line-height: 1.4;
+                font-size: 14px;
+                display: flex;
+                align-items: flex-end;
+                gap: 8px;
+            }
 
-    /* Bot messages (left side) */
-    .message.bot {
-        background-color: #ffffff;
-        color: #333;
-        align-self: flex-start;
-        border-bottom-left-radius: 4px;
-        border-bottom-right-radius: 20px;
-        justify-content: flex-start;
-    }
+            .message.user {
+                background-color: #f59e0b;
+                color: white;
+                align-self: flex-end;
+                border-bottom-right-radius: 4px;
+                border-bottom-left-radius: 20px;
+                justify-content: flex-end;
+            }
 
-    /* Robot icon for bot messages */
-    .message.bot .icon {
-        width: 24px;
-        height: 24px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-        font-size: 18px;
-        color: #f59e0b;
-    }
+            .message.bot {
+                background-color: #ffffff;
+                color: #333;
+                align-self: flex-start;
+                border-bottom-left-radius: 4px;
+                border-bottom-right-radius: 20px;
+                justify-content: flex-start;
+            }
 
-    .chat-input-area {
-        display: flex;
-        border-top: 2px solid #f59e0b;
-        background-color: #fff7ed;
-    }
+            .message.bot .icon {
+                width: 24px;
+                height: 24px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-shrink: 0;
+                font-size: 18px;
+                color: #f59e0b;
+            }
 
-    #chat-input {
-        flex: 1;
-        padding: 10px;
-        border: none;
-        outline: none;
-        font-size: 14px;
-    }
+            .chat-input-area {
+                display: flex;
+                border-top: 2px solid #f59e0b;
+                background-color: #fff7ed;
+            }
 
-    .chat-input-area button {
-        background: #d97706;
-        color: white;
-        border: none;
-        padding: 10px 14px;
-        cursor: pointer;
-        font-weight: 600;
-        transition: 0.2s;
-    }
+            #chat-input {
+                flex: 1;
+                padding: 10px;
+                border: none;
+                outline: none;
+                font-size: 14px;
+            }
 
-    .chat-input-area button:hover {
-        background: #b45309;
-    }
+            .chat-input-area button {
+                background: #d97706;
+                color: white;
+                border: none;
+                padding: 10px 14px;
+                cursor: pointer;
+                font-weight: 600;
+                transition: 0.2s;
+            }
 
-    @media(max-width: 480px) {
-        .live-chat-section {
-            width: 90%;
-            bottom: 10px;
-            right: 5%;
-        }
-    }
-</style>
+            .chat-input-area button:hover {
+                background: #b45309;
+            }
 
-<script>
-    const chatBody = document.querySelector('.chat-body');
-    const chatMessages = document.getElementById('chat-messages');
-    const chatInput = document.getElementById('chat-input');
+            @media(max-width: 480px) {
+                .live-chat-section {
+                    width: 90%;
+                    bottom: 10px;
+                    right: 5%;
+                }
+            }
+        </style>
 
-    function toggleChat() {
-        chatBody.style.display = chatBody.style.display === 'flex' ? 'none' : 'flex';
-    }
+        <script>
+            const chatBody = document.querySelector('.chat-body');
+            const chatMessages = document.getElementById('chat-messages');
+            const chatInput = document.getElementById('chat-input');
 
-    function sendMessage() {
-        const msg = chatInput.value.trim();
-        if(msg === "") return;
+            function toggleChat() {
+                chatBody.style.display = chatBody.style.display === 'flex' ? 'none' : 'flex';
+            }
 
-        appendMessage(msg, 'user');
-        chatInput.value = '';
+            function sendMessage() {
+                const msg = chatInput.value.trim();
+                if(msg === "") return;
 
-        // Simulated bot response
-        setTimeout(() => {
-            appendMessage('Hello! How may we assist you today?', 'bot');
-        }, 500);
-    }
+                appendMessage(msg, 'user');
+                chatInput.value = '';
 
-    function appendMessage(message, sender) {
-        const msgDiv = document.createElement('div');
-        msgDiv.classList.add('message', sender);
+                setTimeout(() => {
+                    appendMessage('Hello! How may we assist you today?', 'bot');
+                }, 500);
+            }
 
-        if(sender === 'bot') {
-            const iconDiv = document.createElement('div');
-            iconDiv.classList.add('icon');
-            iconDiv.innerHTML = '<i class="fas fa-robot"></i>';
-            msgDiv.appendChild(iconDiv);
-        }
+            function appendMessage(message, sender) {
+                const msgDiv = document.createElement('div');
+                msgDiv.classList.add('message', sender);
 
-        const textDiv = document.createElement('div');
-        textDiv.textContent = message;
-        msgDiv.appendChild(textDiv);
+                if(sender === 'bot') {
+                    const iconDiv = document.createElement('div');
+                    iconDiv.classList.add('icon');
+                    iconDiv.innerHTML = '<i class="fas fa-robot"></i>';
+                    msgDiv.appendChild(iconDiv);
+                }
 
-        chatMessages.appendChild(msgDiv);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
+                const textDiv = document.createElement('div');
+                textDiv.textContent = message;
+                msgDiv.appendChild(textDiv);
 
-    function handleKeyPress(event) {
-        if(event.key === 'Enter') sendMessage();
-    }
-</script>
+                chatMessages.appendChild(msgDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
 
-<li><a href="live_chat.php">Live Chat</a></li>
+            function handleKeyPress(event) {
+                if(event.key === 'Enter') sendMessage();
+            }
+        </script>
 
-    
         <div class="footer-bottom">
             <div class="footer-copyright">
-                 &copy; 2026 Barangay Pasong Putik Proper · All Rights Reserved
+                &copy; 2026 LGU · All Rights Reserved
             </div>
         </div>
     </footer>
@@ -1529,7 +1466,6 @@
             window.scrollTo(0, 0);
         }
         
-        // Show login form
         function showLoginForm() {
             document.getElementById('landing-page').style.display = 'none';
             document.getElementById('login-form').style.display = 'block';
@@ -1537,7 +1473,6 @@
             window.scrollTo(0, 0);
         }
         
-        // Show signup form
         function showSignupForm() {
             document.getElementById('landing-page').style.display = 'none';
             document.getElementById('login-form').style.display = 'none';
@@ -1545,7 +1480,6 @@
             window.scrollTo(0, 0);
         }
         
-        // Toggle password visibility
         function togglePassword(inputId) {
             const input = document.getElementById(inputId);
             const icon = input.parentNode.querySelector('.toggle-password i');
@@ -1561,7 +1495,6 @@
             }
         }
         
-        // Check password strength
         function checkPasswordStrength(password) {
             const strengthBar = document.getElementById('passwordStrength');
             let strength = 0;
@@ -1585,7 +1518,6 @@
             }
         }
         
-        // Check password match
         function checkPasswordMatch() {
             const password = document.getElementById('signupPassword').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
@@ -1600,7 +1532,6 @@
             }
         }
         
-        // Form validation for signup
         document.getElementById('signupForm').addEventListener('submit', function(e) {
             const password = document.getElementById('signupPassword').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
@@ -1628,7 +1559,6 @@
             }
         });
         
-        // Custom notification function
         function showNotification(message, type) {
             const notification = document.createElement('div');
             notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
@@ -1647,7 +1577,6 @@
             }, 5000);
         }
         
-        // Auto-hide alerts after 5 seconds
         setTimeout(function() {
             const alerts = document.querySelectorAll('.alert');
             alerts.forEach(function(alert) {
@@ -1656,7 +1585,6 @@
             });
         }, 5000);
         
-        // Initialize the page
         showLandingPage();
     </script>
 </body>
