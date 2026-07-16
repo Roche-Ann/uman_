@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Barangay Pasong Putik Proper</title>
+    <title>Home | Utilities Management System</title>
     <link rel="icon" type="image/png" href="logocityhall.png">
     <link href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.0.0-beta.83/dist/themes/light.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/luminous-lightbox@2.3.5/dist/luminous-basic.min.css" rel="stylesheet">
@@ -922,8 +922,8 @@
                     <i class="fas fa-bolt logo-icon"></i>
                 </div>
                 <div class="logo-text">
-                    <span class="logo-primary">Barangay Pasong Putik</span>
-                    <span class="logo-secondary"> <span class="title-gradient">Proper</span></span>
+                    <span class="logo-primary">Utilities Management System</span>
+                    <span class="logo-secondary"> <span class="title-gradient">uMAN</span></span>
                 </div>
             </a>
             
@@ -947,22 +947,22 @@
             <div class="hero-content">
                 <div class="context-badge">
                     <i class="fas fa-university"></i>
-                    <span>Local Government Unit</span>
+                    <span>Local Government Unit · Digital Governance</span>
                 </div>
                 
                 <h1 class="hero-title">
-                    Barangay Pasong Putik<br>
-                    <span class="title-gradient">Web-Based Utilities Management System</span>
+                    A Web-based Utilities Management System<br>
+                    <span class="title-gradient">with resident portal and AI Analytics</span>
                 </h1>
                 
                 <p class="hero-description">
-                    Access barangay services anytime, anywhere. Manage your utilities, payments, and service requests online with real-time updates, AI insights, and secure access—designed for Pasok Putik Proper residents and staff.
+                    We streamline utility operations and provide easy access to monitor your consumption and service requests. Residents can monitor bills, payments, and service requests, while administrators use AI-powered analytics to optimize operations, predict resource needs, and improve service delivery. This platform is built to offer a reliable way to handle your daily utility management.
                 </p>
                 
                 <div class="cta-actions">
                     <a href="#modules" class="civic-button button-primary hover-lift">
                         <i class="fas fa-portal-entrance"></i>
-                       Explore Utilities
+                       Explore Core Modules
                         <a href="login.php" class="civic-button button-secondary hover-lift">
                         <i class="fas fa-layer-group"></i>
                          Get Started
@@ -985,50 +985,49 @@
     </section>
 
     <!-- Modules Showcase -->
-    <section class="modules-section" id="modules">
+     <section class="modules-section" id="modules">
         <div class="section-header">
-            <h2 class="section-title">Featured Services</h2>
+            <h2 class="section-title">Core Utility Modules</h2>
             <p class="section-description">
-                Explore and Manage Your Utilities
+                Empirically designed digital solutions for utility billing, infrastructure resilience, and participatory governance.
             </p>
         </div>
         
         <div class="modules-grid">
-            <!-- Module 1 -->
             <div class="module-card hover-lift">
                 <div class="module-header">
                     <div class="module-icon icon-reading">
-                        <i class="fas fa-tachometer-alt"></i>
+                        <i class="fas fa-users"></i>
                     </div>
-                    <h3 class="module-title">View and Pay Bills</h3>
+                    <h3 class="module-title">Citizen Engagement Hub</h3>
                 </div>
                 <p class="module-description">
-                    Access water, electricity, and other utility bills anytime.
+                    A resident portal enables citizens to report utility issues, using automated keyword-based triage to categorize and prioritize reports by urgency.
                 </p>
                 <ul class="module-features">
-                    <li>Digital reading input with validation</li>
-                    <li>Consumption trend visualization</li>
-                    <li>Usage pattern recognition</li>
-                    <li>IoT-ready architecture</li>
+                    <li>Transparency Dashboards</li>
+                    <li>Public Issue Reporting</li>
+                    <li>District Usage Insights</li>
+                    <li>Civic Announcements</li>
                 </ul>
             </div>
             
             <!-- Module 2 -->
             <div class="module-card hover-lift">
                 <div class="module-header">
-                    <div class="module-icon icon-billing">
-                        <i class="fas fa-file-invoice-dollar"></i>
+                    <div class="module-icon icon-service">
+                        <i class="fas fa-broadcast-tower"></i>
                     </div>
-                    <h3 class="module-title">View and Pay Bills</h3>
+                    <h3 class="module-title">Public Asset Tracking</h3>
                 </div>
                 <p class="module-description">
-                    Easily access and settle your water, electricity, and other utility bills anytime, anywhere.
+                    Shift focus to physical asset management. Monitor the health of transformers, water pumps, and local infrastructure.
                 </p>
                 <ul class="module-features">
-                    <li>Secure digital bill access and payment</li>
-                    <li>Automatic meter reading integration</li>
-                    <li>Penalty and discount application</li>
-                    <li>Digital statement delivery</li>
+                    <li>Infrastructure Monitoring</li>
+                    <li>Asset Lifecycle Tracking</li>
+                    <li>GIS Service Mapping</li>
+                    <li>Automated Health Alerts</li>
                 </ul>
             </div>
             
@@ -1036,59 +1035,56 @@
             <div class="module-card hover-lift">
                 <div class="module-header">
                     <div class="module-icon icon-payment">
-                        <i class="fas fa-credit-card"></i>
+                        <i class="fas fa-chart-line"></i>
                     </div>
-                    <h3 class="module-title">Payment Collection & Tracking</h3>
+                    <h3 class="module-title">Analytics for Public Good</h3>
                 </div>
                 <p class="module-description">
-                    Multi-channel payment processing with real-time reconciliation 
-                    and comprehensive transaction auditing.
+                    Large-scale district analytics to track grid efficiency, locate non-revenue resource loss, and improve sustainability.
                 </p>
                 <ul class="module-features">
-                    <li>Multiple payment method support</li>
-                    <li>Real-time status updates</li>
-                    <li>Automated receipt generation</li>
-                    <li>Collection efficiency analytics</li>
+                    <li>Grid Efficiency Tracking</li>
+                    <li>Predictive Urban Planning</li>
+                    <li>Sustainability Reporting</li>
+                    <li>Carbon Footprint Metrics</li>
                 </ul>
             </div>
             
             <!-- Module 4 -->
             <div class="module-card hover-lift">
                 <div class="module-header">
-                    <div class="module-icon icon-service">
-                        <i class="fas fa-plug"></i>
+                    <div class="module-icon icon-complaint">
+                        <i class="fas fa-exclamation-triangle"></i>
                     </div>
-                    <h3 class="module-title">Service Connection Management</h3>
+                    <h3 class="module-title">Public Issue Reporting</h3>
                 </div>
                 <p class="module-description">
-                    Streamlined processing of service requests including new 
-                    connections, transfers, and scheduled disconnections.
+                    Citizens can actively report public utility failures like broken streetlights, water main leaks, or missed collections.
                 </p>
                 <ul class="module-features">
-                    <li>Online application submission</li>
-                    <li>Request tracking system</li>
-                    <li>Automated scheduling</li>
-                    <li>Document management</li>
+                    <li>Geo-tagged Incident Reports</li>
+                    <li>Real-time Status Tracking</li>
+                    <li>Direct LGU Routing</li>
+                    <li>Community Feedback Loop</li>
                 </ul>
             </div>
             
             <!-- Module 5 -->
             <div class="module-card hover-lift">
                 <div class="module-header">
-                    <div class="module-icon icon-complaint">
-                        <i class="fas fa-comment-dots"></i>
+                    <div class="module-icon icon-billing">
+                        <i class="fas fa-tools"></i>
                     </div>
-                    <h3 class="module-title">Complaint & Feedback Handling</h3>
+                    <h3 class="module-title">Vendor & Maintenance Logs</h3>
                 </div>
                 <p class="module-description">
-                    Centralized system for receiving, routing, and resolving 
-                    utility-related complaints with performance analytics.
+                    Coordinate private contractors, manage maintenance logs, and ensure public works are serviced on time.
                 </p>
                 <ul class="module-features">
-                    <li>Multi-channel complaint submission</li>
-                    <li>Priority-based routing</li>
-                    <li>Resolution timeline tracking</li>
-                    <li>Service quality analytics</li>
+                    <li>Vendor Coordination</li>
+                    <li>Centralized Maintenance Logs</li>
+                    <li>Work Order Dispatch</li>
+                    <li>Service Level Auditing</li>
                 </ul>
             </div>
             
@@ -1127,45 +1123,42 @@
     <div class="methodology-container">
         <div class="methodology-stack">
             
-            <!-- 1948 Card -->
             <div class="method-card hover-lift" 
                  style="position: relative; width: 100%; height: 250px; 
-                        background-image: url('assets/img/barangay.jpeg'); 
+                        background-image: url('assets/images/Manuel_Quezon.jpg'); 
                         background-size: cover; background-position: center; 
                         border-radius: 12px; color: white; 
                         display: flex; flex-direction: column; justify-content: flex-end; 
                         padding: 1rem; box-shadow: 0 4px 8px rgba(0,0,0,0.3); margin-bottom: 1rem;">
-                <h3 style="margin: 0; font-size: 1.5rem; font-weight: bold; text-shadow: 1px 1px 5px rgba(0,0,0,0.7);">1948</h3>
+                <h3 style="margin: 0; font-size: 1.5rem; font-weight: bold; text-shadow: 1px 1px 5px rgba(0,0,0,0.7);">1939: The Foundation</h3>
                 <p style="margin-top: 0.5rem; text-shadow: 1px 1px 4px rgba(0,0,0,0.7);">
-                    Original Pasong Putik included in Quezon City’s northward expansion into former Caloocan territory.
+                    President Manuel L. Quezon signed Commonwealth Act No. 502, officially creating Quezon City to serve as the new capital of the Philippines, envisioned as a "showcase of the nation" with wide avenues and open spaces.
                 </p>
             </div>
 
-            <!-- 1996 Card -->
             <div class="method-card hover-lift" 
                  style="position: relative; width: 100%; height: 250px; 
-                        background-image: url('assets/img/barangay.jpeg'); 
+                        background-image: url('assets/images/QC.jpg'); 
                         background-size: cover; background-position: center; 
                         border-radius: 12px; color: white; 
                         display: flex; flex-direction: column; justify-content: flex-end; 
                         padding: 1rem; box-shadow: 0 4px 8px rgba(0,0,0,0.3); margin-bottom: 1rem;">
-                <h3 style="margin: 0; font-size: 1.5rem; font-weight: bold; text-shadow: 1px 1px 5px rgba(0,0,0,0.7);">1996</h3>
+                <h3 style="margin: 0; font-size: 1.5rem; font-weight: bold; text-shadow: 1px 1px 5px rgba(0,0,0,0.7);">1948: The Capital Move</h3>
                 <p style="margin-top: 0.5rem; text-shadow: 1px 1px 4px rgba(0,0,0,0.7);">
-                    Barangay Pasok Putik Proper officially established after the division of Pasong Putik, along with Greater Lagro and North Fairview, ratified through plebiscite.
+                    Republic Act No. 333 officially declared Quezon City as the capital of the Philippines. This era marked a significant northward expansion, absorbing territories from Caloocan and San Juan to accommodate growing government infrastructure.
                 </p>
             </div>
 
-            <!-- Today Card -->
             <div class="method-card hover-lift" 
                  style="position: relative; width: 100%; height: 250px; 
-                        background-image: url('assets/img/barangay.jpeg'); 
+                        background-image: url('assets/images/The_Heart_of_Quezon_City.jpg'); 
                         background-size: cover; background-position: center; 
                         border-radius: 12px; color: white; 
                         display: flex; flex-direction: column; justify-content: flex-end; 
                         padding: 1rem; box-shadow: 0 4px 8px rgba(0,0,0,0.3);">
-                <h3 style="margin: 0; font-size: 1.5rem; font-weight: bold; text-shadow: 1px 1px 5px rgba(0,0,0,0.7);">Today</h3>
+                <h3 style="margin: 0; font-size: 1.5rem; font-weight: bold; text-shadow: 1px 1px 5px rgba(0,0,0,0.7);">Today: The City of Stars</h3>
                 <p style="margin-top: 0.5rem; text-shadow: 1px 1px 4px rgba(0,0,0,0.7);">
-                    Continues to prioritize efficient governance, public service accessibility, and modern urban solutions for all residents.
+                    Now the most populous city in the Philippines, Quezon City serves as a premier hub for information technology, entertainment, and governance, continuing to modernize while prioritizing sustainable urban development and social services.
                 </p>
             </div>
 
@@ -1189,38 +1182,39 @@
                     <div class="insight-item hover-lift">
                         <div class="insight-header">
                             <div class="insight-icon">
-                                <i class="fas fa-exclamation-triangle"></i>
+                                <i class="fas fa-phone"></i>
                             </div>
                             <h4 class="insight-title">Phone</h4>
                         </div>
                         <p class="insight-description">
-                           09128640498
+                           <a href="tel:+639128640498">+63 9 1286 40498</a>
                         </p>
                     </div>
                     
                     <div class="insight-item hover-lift">
                         <div class="insight-header">
                             <div class="insight-icon">
-                                <i class="fas fa-chart-line"></i>
+                                <i class="fas fa-envelope"></i>
                             </div>
                             <h4 class="insight-title">Email</h4>
                         </div>
                         <p class="insight-description">
-                            lgu.uman@gmail.com
+                           <a href="mailto:lgu.uman@gmail.com">lgu.uman@gmail.com</a>
                         </p>
                     </div>
                     
                     <div class="insight-item hover-lift">
                         <div class="insight-header">
                             <div class="insight-icon">
-                                <i class="fas fa-user-clock"></i>
+                                <i class="fas fa-map-marker-alt"></i>
                             </div>
                             <h4 class="insight-title">Location</h4>
                         </div>
                         <p class="insight-description">
-                            <a href="https://www.google.com/maps/place/Barangay+Pasong+Putik+Proper,+Quezon+City" 
+                            <a href="https://maps.app.goo.gl/rkT3Jmmf69kcpvgo7" 
                            target="_blank" style="color: var(--municipal-slate); text-decoration: underline;">
                             View on Google Maps
+                            </a>
                         </p>
                     </div>
                 </div>
