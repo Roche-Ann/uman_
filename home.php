@@ -4,7 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LGU Utilities Management System</title>
-    <link rel="icon" type="image/png" href="logocityhall.png">
+
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/images/logocityhall.png">
+    <link rel="shortcut icon" type="image/x-icon" href="assets/images/logocityhall.png">
+
     <link href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.0.0-beta.83/dist/themes/light.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/luminous-lightbox@2.3.5/dist/luminous-basic.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css">
@@ -914,12 +917,12 @@
                 </div>
                 
                 <h1 class="hero-title">
-                    Centralized Command for<br>
-                    <span class="title-gradient">LGU Utilities & Infrastructure</span>
+                    A Web-based Utilities Management System<br>
+                    <span class="title-gradient">with resident portal and AI Analytics</span>
                 </h1>
                 
                 <p class="hero-description">
-                    Streamline operations with real-time asset tracking, automated incident routing, and AI-driven analytics. Unify your utility data—from streetlights to water pumps—into a single, intelligent command center for faster, smarter governance.
+                    We Streamline utility management with easy access to utility operations with real-time monitoring, automated workflows, and AI-powered insights.
                 </p>
                 
                 <div class="cta-actions">
@@ -948,10 +951,9 @@
     <!-- Modules Showcase (Accurate to your System) -->
      <section class="modules-section" id="modules">
         <div class="section-header">
-            <div class="section-preface">Integrated Modules</div>
-            <h2 class="section-title">Complete Utility Oversight</h2>
+            <h2 class="section-title">Featured Services</h2>
             <p class="section-description">
-                Built specifically for LGUs. Manage every facet of utility operations with modules that talk to each other.
+                Explore and Manage utility operations.
             </p>
         </div>
         
@@ -1185,26 +1187,6 @@
         </div>
     </section>
 
-    <!-- Call to Action -->
-    <section class="cta-section" id="cta">
-        <div class="cta-container">
-            <h2 class="cta-title">Ready to Transform Your Utility Operations?</h2>
-            <p class="cta-description">
-                Join us in pioneering intelligent utility service delivery through integrated digital transformation and predictive analytics.
-            </p>
-            
-            <div class="cta-actions">
-                <a href="login.php" class="civic-button cta-button-light hover-lift">
-                    <i class="fas fa-user-check"></i>
-                    Resident Portal Access
-                </a>
-                <a href="admin/login.php" class="civic-button cta-button-outline hover-lift">
-                    <i class="fas fa-lock"></i>
-                    Administrative Login
-                </a>
-            </div>
-        </div>
-    </section>
 
     <!-- Footer -->
     <footer class="civic-footer">
@@ -1214,10 +1196,10 @@
                     <div class="footer-logo-icon">
                         <i class="fas fa-bolt"></i>
                     </div>
-                    <span class="footer-logo-text">LGU Utilities Management System</span>
+                    <span class="footer-logo-text">Quezon City<br><small>Web-Based Utilities Management</small></span>
                 </div>
                 <p class="footer-description">
-                    Access local government services anytime, anywhere. Manage utilities, payments, and service requests online with real-time updates.
+                    We streamline utility operations and provide easy access to monitor your consumption and service requests.
                 </p>
             </div>
             
@@ -1256,19 +1238,19 @@
             </div>
         </div>
 
-        <!-- Live Chat Widget -->
-        <div class="live-chat-section" id="live-chat-section">
-            <div class="live-chat-container">
-                <div class="chat-header" onclick="toggleChat()">
-                    <i class="fas fa-comment-dots"></i> Chat with LGU
-                </div>
-                <div class="chat-body">
-                    <div class="chat-messages" id="chat-messages"></div>
-                    <div class="chat-input-area">
-                        <input type="text" id="chat-input" placeholder="Type your message..." onkeypress="handleKeyPress(event)">
-                        <button onclick="sendMessage()">Send</button>
-                    </div>
-                </div>
+            <!-- Legal & Compliance Section  -->
+            <div>
+                <h4 class="footer-heading">Legal & Compliance</h4>
+                <ul class="footer-links">
+                    <li><a href="privacy.php">Privacy Policy</a></li>
+                    <li><a href="terms.php">Terms & Conditions</a></li>
+                    <li><a href="dataprivacy.php">Data Privacy Notice</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <div class="footer-copyright">
+                © 2026 Utilities Management System  All Rights Reserved
             </div>
         </div>
 
