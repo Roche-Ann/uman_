@@ -1,3 +1,4 @@
 .env
 .htaccess
 /vendor
+.DS_Store

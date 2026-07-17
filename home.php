@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LGU Utilities Management System</title>
+    <title>Home | Utilities Management System</title>
 
     <link rel="icon" type="image/png" sizes="32x32" href="assets/images/logocityhall.png">
     <link rel="shortcut icon" type="image/x-icon" href="assets/images/logocityhall.png">
@@ -884,7 +884,7 @@
         <div class="nav-container">
             <a href="#" class="logo-entity">
                 <div class="logo-marker">
-                    <img src="logocityhall.png" alt="LGU Logo" class="logo-marker logo-only">
+                    <img src="assets/images/logocityhall.png" alt="LGU Logo" class="logo-only">
                     <i class="fas fa-bolt logo-icon"></i>
                 </div>
                 <div class="logo-text">
@@ -893,6 +893,10 @@
                 </div>
             </a>
             
+            <button class="menu-toggle" id="mobileMenuBtn">
+                <i class="fas fa-bars"></i>
+            </button>
+
             <ul class="nav-links">
                 <li class="nav-link-item"><a href="#hero" class="nav-link">Home</a></li>
                 <li class="nav-link-item"><a href="#modules" class="nav-link">Modules</a></li>
@@ -913,7 +917,7 @@
             <div class="hero-content">
                 <div class="context-badge">
                     <i class="fas fa-university"></i>
-                    <span>Local Government Unit · Digital Governance</span>
+                    <span>Local Government Unit</span>
                 </div>
                 
                 <h1 class="hero-title">
@@ -939,8 +943,8 @@
             
             <div class="hero-visual">
                 <div class="visual-container">
-                    <img src="assets/img/barangay.jpeg" 
-                         alt="LGU Utilities Dashboard Interface" class="img-responsive" 
+                    <img src="assets/images/cityhall.jpeg" 
+                         alt="Integrated Utility Dashboard Interface" class="img-responsive" 
                          style="width: 100%; height: 400px; object-fit: cover;">
                     <div class="visual-overlay"></div>
                 </div>
@@ -1074,59 +1078,70 @@
         </div>
     </section>
 
-    <!-- About the System (Replaces incorrect history) -->
-    <section class="methodology-section" id="about">
-        <div class="section-header">
-            <div class="section-preface">Why uMAN</div>
-            <h2 class="section-title">Built to Bridge the Gaps</h2>
-            <p class="section-description">
-                The LGU Utilities Management System bridges the gap between field operations, resident feedback, and administrative oversight, transforming raw data into actionable insights.
-            </p>
-        </div>
-        
-        <div class="methodology-container">
-            <div class="methodology-stack">
-                <div class="method-card hover-lift">
-                    <div class="method-icon">
-                        <i class="fas fa-database"></i>
-                    </div>
-                    <h3 class="method-title">Unified Data Architecture</h3>
-                    <p class="method-description">
-                        All utility data—assets, incidents, maintenance, energy, and facilities—lives in a single relational database. Aggregated views power real-time dashboards for instant executive insights.
-                    </p>
-                </div>
-
-                <div class="method-card hover-lift">
-                    <div class="method-icon">
-                        <i class="fas fa-robot"></i>
-                    </div>
-                    <h3 class="method-title">AI-Assisted Analytics</h3>
-                    <p class="method-description">
-                        Rule-based summarization and anomaly detection provide natural-language reports, highlight urgent issues, and forecast demand patterns to support proactive municipal planning.
-                    </p>
-                </div>
-
-                <div class="method-card hover-lift">
-                    <div class="method-icon">
-                        <i class="fas fa-sync-alt"></i>
-                    </div>
-                    <h3 class="method-title">Interoperable & Extensible</h3>
-                    <p class="method-description">
-                        Built with RESTful APIs to exchange data with external platforms (maintenance systems, energy efficiency systems). Modular design allows adding new features without disrupting workflows.
-                    </p>
-                </div>
+    <!-- History -->
+<section class="methodology-section" id="methodology">
+    <div class="section-header">
+        <h2 class="section-title">Our History</h2>
+        <p class="section-description">
+            Quezon City, officially established in 1939 with the vision of becoming the nation’s capital, has evolved from a sprawling agricultural landscape into the Philippines' most populous and vibrant urban center. Today, it serves over 3.1 million residents, hosts the seat of national government and major media hubs, and continues to lead the way in digital innovation, sustainable infrastructure, and inclusive public services.
+        </p>
+    </div>
+    
+    <div class="methodology-container">
+        <div class="methodology-stack">
+            
+            <div class="method-card hover-lift" 
+                 style="position: relative; width: 100%; height: 250px; 
+                        background-image: url('assets/images/Manuel_Quezon.jpg'); 
+                        background-size: cover; background-position: center; 
+                        border-radius: 12px; color: white; 
+                        display: flex; flex-direction: column; justify-content: flex-end; 
+                        padding: 1rem; box-shadow: 0 4px 8px rgba(0,0,0,0.3); margin-bottom: 1rem;">
+                <h3 style="margin: 0; font-size: 1.5rem; font-weight: bold; text-shadow: 1px 1px 5px rgba(0,0,0,0.7);">1939: The Foundation</h3>
+                <p style="margin-top: 0.5rem; text-shadow: 1px 1px 4px rgba(0,0,0,0.7);">
+                    President Manuel L. Quezon signed Commonwealth Act No. 502, officially creating Quezon City to serve as the new capital of the Philippines, envisioned as a "showcase of the nation" with wide avenues and open spaces.
+                </p>
             </div>
+
+            <div class="method-card hover-lift" 
+                 style="position: relative; width: 100%; height: 250px; 
+                        background-image: url('assets/images/QC.jpg'); 
+                        background-size: cover; background-position: center; 
+                        border-radius: 12px; color: white; 
+                        display: flex; flex-direction: column; justify-content: flex-end; 
+                        padding: 1rem; box-shadow: 0 4px 8px rgba(0,0,0,0.3); margin-bottom: 1rem;">
+                <h3 style="margin: 0; font-size: 1.5rem; font-weight: bold; text-shadow: 1px 1px 5px rgba(0,0,0,0.7);">1948: The Capital Move</h3>
+                <p style="margin-top: 0.5rem; text-shadow: 1px 1px 4px rgba(0,0,0,0.7);">
+                    Republic Act No. 333 officially declared Quezon City as the capital of the Philippines. This era marked a significant northward expansion, absorbing territories from Caloocan and San Juan to accommodate growing government infrastructure.
+                </p>
+            </div>
+
+            <div class="method-card hover-lift" 
+                 style="position: relative; width: 100%; height: 250px; 
+                        background-image: url('assets/images/The_Heart_of_Quezon_City.jpg'); 
+                        background-size: cover; background-position: center; 
+                        border-radius: 12px; color: white; 
+                        display: flex; flex-direction: column; justify-content: flex-end; 
+                        padding: 1rem; box-shadow: 0 4px 8px rgba(0,0,0,0.3);">
+                <h3 style="margin: 0; font-size: 1.5rem; font-weight: bold; text-shadow: 1px 1px 5px rgba(0,0,0,0.7);">Today: The City of Stars</h3>
+                <p style="margin-top: 0.5rem; text-shadow: 1px 1px 4px rgba(0,0,0,0.7);">
+                    Now the most populous city in the Philippines, Quezon City serves as a premier hub for information technology, entertainment, and governance, continuing to modernize while prioritizing sustainable urban development and social services.
+                </p>
+            </div>
+
         </div>
-    </section>
+    </div>
+</section>
 
     <!-- Contact Section -->
-    <section class="analytics-showcase" id="contacts">
+       <section class="analytics-showcase" id="analytics">
         <div class="analytics-grid">
             <div class="analytics-content">
-                <div class="section-preface" style="color: var(--insight-amber);">Get in Touch</div>
-                <h2 class="section-title">Let's Connect</h2>
+                <div class="section-preface" style="color: var(--insight-amber);">Contact Us</div>
+                <h2 class="section-title">Get in Touch with Us</h2>
                 <p class="section-description">
-                    Have questions or need technical support? Reach out to our team via the channels below. We're here to help you streamline your utility operations.
+                    Reach out with us for inquiries, concerns, or assistance. 
+                You can contact us through phone, email, or visit our location.
                 </p>
                 
                 <div class="ai-insights">
@@ -1138,7 +1153,7 @@
                             <h4 class="insight-title">Phone</h4>
                         </div>
                         <p class="insight-description">
-                            <a href="tel:+639128640498">+63 9 1286 40498</a>
+                           <a href="tel:+639128640498">+63 9 1286 40498</a>
                         </p>
                     </div>
                     
@@ -1150,7 +1165,7 @@
                             <h4 class="insight-title">Email</h4>
                         </div>
                         <p class="insight-description">
-                            <a href="mailto:lgu.uman@gmail.com">lgu.uman@gmail.com</a>
+                           <a href="mailto:lgu.uman@gmail.com">lgu.uman@gmail.com</a>
                         </p>
                     </div>
                     
@@ -1254,177 +1269,7 @@
             </div>
         </div>
 
-        <style>
-            .live-chat-section {
-                position: fixed;
-                bottom: 20px;
-                right: 20px;
-                width: 320px;
-                max-width: 95%;
-                font-family: 'Poppins', sans-serif;
-                z-index: 9999;
-            }
 
-            .live-chat-container {
-                border-radius: 16px;
-                overflow: hidden;
-                box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-                display: flex;
-                flex-direction: column;
-            }
-
-            .chat-header {
-                background: linear-gradient(90deg, #f59e0b, #d97706);
-                color: white;
-                padding: 14px;
-                font-weight: 600;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                font-size: 16px;
-            }
-
-            .chat-body {
-                display: none;
-                flex-direction: column;
-                background-color: #fff7ed;
-                max-height: 400px;
-                border-top: 2px solid #0b70f5;
-            }
-
-            .chat-messages {
-                flex: 1;
-                padding: 12px;
-                overflow-y: auto;
-                font-size: 14px;
-                display: flex;
-                flex-direction: column;
-                gap: 12px;
-            }
-
-            .message {
-                padding: 10px 14px;
-                border-radius: 20px;
-                max-width: 75%;
-                word-wrap: break-word;
-                line-height: 1.4;
-                font-size: 14px;
-                display: flex;
-                align-items: flex-end;
-                gap: 8px;
-            }
-
-            .message.user {
-                background-color: #f59e0b;
-                color: white;
-                align-self: flex-end;
-                border-bottom-right-radius: 4px;
-                border-bottom-left-radius: 20px;
-                justify-content: flex-end;
-            }
-
-            .message.bot {
-                background-color: #ffffff;
-                color: #333;
-                align-self: flex-start;
-                border-bottom-left-radius: 4px;
-                border-bottom-right-radius: 20px;
-                justify-content: flex-start;
-            }
-
-            .message.bot .icon {
-                width: 24px;
-                height: 24px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                flex-shrink: 0;
-                font-size: 18px;
-                color: #f59e0b;
-            }
-
-            .chat-input-area {
-                display: flex;
-                border-top: 2px solid #f59e0b;
-                background-color: #fff7ed;
-            }
-
-            #chat-input {
-                flex: 1;
-                padding: 10px;
-                border: none;
-                outline: none;
-                font-size: 14px;
-            }
-
-            .chat-input-area button {
-                background: #d97706;
-                color: white;
-                border: none;
-                padding: 10px 14px;
-                cursor: pointer;
-                font-weight: 600;
-                transition: 0.2s;
-            }
-
-            .chat-input-area button:hover {
-                background: #b45309;
-            }
-
-            @media(max-width: 480px) {
-                .live-chat-section {
-                    width: 90%;
-                    bottom: 10px;
-                    right: 5%;
-                }
-            }
-        </style>
-
-        <script>
-            const chatBody = document.querySelector('.chat-body');
-            const chatMessages = document.getElementById('chat-messages');
-            const chatInput = document.getElementById('chat-input');
-
-            function toggleChat() {
-                chatBody.style.display = chatBody.style.display === 'flex' ? 'none' : 'flex';
-            }
-
-            function sendMessage() {
-                const msg = chatInput.value.trim();
-                if(msg === "") return;
-
-                appendMessage(msg, 'user');
-                chatInput.value = '';
-
-                setTimeout(() => {
-                    appendMessage('Hello! How may we assist you today?', 'bot');
-                }, 500);
-            }
-
-            function appendMessage(message, sender) {
-                const msgDiv = document.createElement('div');
-                msgDiv.classList.add('message', sender);
-
-                if(sender === 'bot') {
-                    const iconDiv = document.createElement('div');
-                    iconDiv.classList.add('icon');
-                    iconDiv.innerHTML = '<i class="fas fa-robot"></i>';
-                    msgDiv.appendChild(iconDiv);
-                }
-
-                const textDiv = document.createElement('div');
-                textDiv.textContent = message;
-                msgDiv.appendChild(textDiv);
-
-                chatMessages.appendChild(msgDiv);
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-            }
-
-            function handleKeyPress(event) {
-                if(event.key === 'Enter') sendMessage();
-            }
-        </script>
 
         <div class="footer-bottom">
             <div class="footer-copyright">
@@ -1433,32 +1278,25 @@
         </div>
     </footer>
 
-    <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.0.0-beta.83/dist/shoelace.js" type="module"></script>
-    <script src="https://cdn.jsdelivr.net/npm/luminous-lightbox@2.3.5/dist/Luminous.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
-    <script src="https://kit.fontawesome.com/your-fontawesome-kit.js" crossorigin="anonymous"></script>
-    
-    <script>
-        // Show landing page
+  <script>
         function showLandingPage() {
-            document.getElementById('landing-page').style.display = 'block';
-            document.getElementById('login-form').style.display = 'none';
-            document.getElementById('signup-form').style.display = 'none';
+            document.getElementById('landing-page')?.style.setProperty('display', 'block');
+            document.getElementById('login-form')?.style.setProperty('display', 'none');
+            document.getElementById('signup-form')?.style.setProperty('display', 'none');
             window.scrollTo(0, 0);
         }
         
         function showLoginForm() {
-            document.getElementById('landing-page').style.display = 'none';
-            document.getElementById('login-form').style.display = 'block';
-            document.getElementById('signup-form').style.display = 'none';
+            document.getElementById('landing-page')?.style.setProperty('display', 'none');
+            document.getElementById('login-form')?.style.setProperty('display', 'block');
+            document.getElementById('signup-form')?.style.setProperty('display', 'none');
             window.scrollTo(0, 0);
         }
         
         function showSignupForm() {
-            document.getElementById('landing-page').style.display = 'none';
-            document.getElementById('login-form').style.display = 'none';
-            document.getElementById('signup-form').style.display = 'block';
+            document.getElementById('landing-page')?.style.setProperty('display', 'none');
+            document.getElementById('login-form')?.style.setProperty('display', 'none');
+            document.getElementById('signup-form')?.style.setProperty('display', 'block');
             window.scrollTo(0, 0);
         }
         
@@ -1514,7 +1352,7 @@
             }
         }
         
-        document.getElementById('signupForm').addEventListener('submit', function(e) {
+        document.getElementById('signupForm')?.addEventListener('submit', function(e) {
             const password = document.getElementById('signupPassword').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
             
@@ -1562,12 +1400,55 @@
         setTimeout(function() {
             const alerts = document.querySelectorAll('.alert');
             alerts.forEach(function(alert) {
-                const bsAlert = new bootstrap.Alert(alert);
-                bsAlert.close();
+                if(window.bootstrap) {
+                   const bsAlert = new bootstrap.Alert(alert);
+                   bsAlert.close();
+                } else {
+                   alert.style.display = 'none';
+                }
             });
         }, 5000);
+
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const navLinksList = document.getElementById('navLinksList');
+        const mobileActionsGroup = document.querySelector('.mobile-nav-actions');
+
+        mobileMenuBtn.addEventListener('click', () => {
+            navLinksList.classList.toggle('active');
+            const icon = mobileMenuBtn.querySelector('i');
+            
+            if(navLinksList.classList.contains('active')) {
+                icon.className = 'fas fa-times';
+                if(window.innerWidth <= 992) {
+                    mobileActionsGroup.style.display = 'flex';
+                }
+            } else {
+                icon.className = 'fas fa-bars';
+                mobileActionsGroup.style.display = 'none';
+            }
+        });
+
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', () => {
+                navLinksList.classList.remove('active');
+                mobileMenuBtn.querySelector('i').className = 'fas fa-bars';
+                mobileActionsGroup.style.display = 'none';
+            });
+        });
+
+        window.addEventListener('resize', () => {
+            if(window.innerWidth > 992) {
+                navLinksList.classList.remove('active');
+                mobileMenuBtn.querySelector('i').className = 'fas fa-bars';
+                mobileActionsGroup.style.display = 'none';
+            }
+        });
         
-        showLandingPage();
+        if(document.getElementById('landing-page')){
+            showLandingPage();
+        } else {
+            window.scrollTo(0,0);
+        }
     </script>
 </body>
 </html>
