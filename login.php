@@ -1,4 +1,8 @@
 <?php
+
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 // login.php - REMOVED session_start() from here
 require_once 'includes/auth.php';
 
