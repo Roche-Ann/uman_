@@ -115,6 +115,52 @@ function loginUser($email, $password) {
     }
 }
 
+// =============================================
+// ✅ ADD THIS FUNCTION – registerUser()
+// =============================================
+/**
+ * Register a new user account
+ * 
+ * @param string $full_name
+ * @param string $email
+ * @param string $password
+ * @return array ['success' => bool, 'message' => string]
+ */
+function registerUser($full_name, $email, $password) {
+    global $pdo;
+    
+    // Check if email already exists
+    $stmt = $pdo->prepare("SELECT id FROM users WHERE email = :email LIMIT 1");
+    $stmt->execute([':email' => $email]);
+    if ($stmt->fetch()) {
+        return ['success' => false, 'message' => 'Email address is already registered.'];
+    }
+    
+    // Hash the password
+    $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+    
+    // Insert new user (default role: citizen)
+    $stmt = $pdo->prepare("
+        INSERT INTO users (full_name, email, password, user_type, created_at)
+        VALUES (:full_name, :email, :password, 'citizen', NOW())
+    ");
+    
+    try {
+        $stmt->execute([
+            ':full_name' => $full_name,
+            ':email'     => $email,
+            ':password'  => $hashedPassword,
+        ]);
+        return ['success' => true, 'message' => 'Registration successful.'];
+    } catch (PDOException $e) {
+        error_log("Registration error: " . $e->getMessage());
+        return ['success' => false, 'message' => 'Registration failed. Please try again.'];
+    }
+}
+// =============================================
+// END OF registerUser() FUNCTION
+// =============================================
+
 function logoutUser() {
     session_unset();
     session_destroy();
