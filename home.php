@@ -721,8 +721,8 @@
             margin: 0 auto;
             padding: 0 2rem;
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 3rem;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 2rem;
             margin-bottom: 3rem;
         }
         
@@ -752,7 +752,7 @@
         
         .footer-logo-text {
             font-family: var(--font-heading);
-            font-size: 1.5rem;
+            font-size: 1.25rem;
             font-weight: 700;
             color: white;
         }
@@ -821,6 +821,12 @@
             }
         }
         
+        @media (max-width: 992px) {
+            .footer-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
         @media (max-width: 768px) {
             .nav-container {
                 padding: 0 1rem;
@@ -855,6 +861,11 @@
             .cta-button {
                 width: 100%;
                 justify-content: center;
+            }
+            
+            .footer-grid {
+                grid-template-columns: 1fr;
+                gap: 2rem;
             }
         }
         
@@ -1206,6 +1217,7 @@
     <!-- Footer -->
     <footer class="civic-footer">
         <div class="footer-grid">
+            <!-- Column 1: Brand -->
             <div class="footer-brand">
                 <div class="footer-logo">
                     <div class="footer-logo-icon">
@@ -1218,6 +1230,7 @@
                 </p>
             </div>
             
+            <!-- Column 2: Quick Links -->
             <div>
                 <h4 class="footer-heading">Quick Links</h4>
                 <ul class="footer-links">
@@ -1228,6 +1241,7 @@
                 </ul>
             </div>
             
+            <!-- Column 3: Core Services -->
             <div>
                 <h4 class="footer-heading">Core Services</h4>
                 <ul class="footer-links">
@@ -1238,6 +1252,7 @@
                 </ul>
             </div>
             
+            <!-- Column 4: Contact -->
             <div>
                 <h4 class="footer-heading">Contact</h4>
                 <ul class="footer-links">
@@ -1251,9 +1266,8 @@
                     </li>
                 </ul>
             </div>
-        </div>
 
-            <!-- Legal & Compliance Section  -->
+            <!-- Column 5: Legal & Compliance -->
             <div>
                 <h4 class="footer-heading">Legal & Compliance</h4>
                 <ul class="footer-links">
@@ -1263,14 +1277,6 @@
                 </ul>
             </div>
         </div>
-        <div class="footer-bottom">
-            <div class="footer-copyright">
-                © 2026 Utilities Management System  All Rights Reserved
-            </div>
-        </div>
-
-
-
         <div class="footer-bottom">
             <div class="footer-copyright">
                 &copy; 2026 LGU · All Rights Reserved
