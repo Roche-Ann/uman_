@@ -22,7 +22,7 @@ $mailer = new Mailer($transport);
 
 $email = (new Email())
     ->from(getenv('MAILER_FROM') ?: 'no-reply@localhost')
-    ->to('your-email@gmail.com')
+    ->to('roche.mapait@gmail.com')
     ->subject('Test Email from LGU Portal')
     ->text('If you see this, Mailtrap is working!');
 
