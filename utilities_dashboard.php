@@ -55,6 +55,12 @@ try {
     $pendingProjects = $pdo->query("SELECT COUNT(*) FROM development_projects WHERE readiness_status != 'Ready'")->fetchColumn();
 } catch (Throwable $e) {}
 
+// ⭐ FIX: Get successful sync count
+$successfulSyncs = 0;
+try {
+    $successfulSyncs = $pdo->query("SELECT COUNT(*) FROM energy_sync_logs WHERE status = 'Successful'")->fetchColumn();
+} catch (Throwable $e) {}
+
 // 2. Fetch Notifications System Feed (Combined Notifications)
 $allNotifications = [];
 try {
@@ -72,7 +78,7 @@ try {
     // Fallback if some table has no notifications seeded
 }
 
-// 3. AI Command Center Summarizer (Descriptive statistics summarization only)
+// 3. AI Command Center Summarizer
 function generateAICentralSummary($assets, $incidents, $maintenance, $energy, $facilities, $totalCoverageAreas) {
     $summary = "<strong>LGU Central AI Assistant Coordination Report (" . date('F Y') . ")</strong><br><br>";
     
