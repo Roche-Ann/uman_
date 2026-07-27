@@ -51,6 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             if ($userId) {
                 // 2. Generate OTP and Expiry
                 $otp = str_pad((string)mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
+                echo "<!-- DEBUG: OTP = $otp -->";
                 $otpHash = password_hash($otp, PASSWORD_DEFAULT);
                 $expiresAt = (new DateTime('+10 minutes', new DateTimeZone('UTC')))->format('Y-m-d H:i:s');
 
