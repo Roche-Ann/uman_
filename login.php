@@ -125,7 +125,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 unset($_SESSION['user_id']);
 
                 // 6. Redirect to OTP verification page
-                header('Location: verify-otp.php');
+                header('Location: utilities_dasboard.php');
                 exit();
             } else {
                 $error = "System Error: Could not retrieve User ID for OTP.";
