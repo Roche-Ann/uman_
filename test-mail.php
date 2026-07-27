@@ -5,20 +5,30 @@ use Symfony\Component\Mailer\Mailer;
 use Symfony\Component\Mailer\Transport;
 use Symfony\Component\Mime\Email;
 
-// Use the DSN from your .env
-$dsn = 'smtp://roche.mapait%40gmail.com:lsjlcptanerlvcii@smtp.gmail.com:587?encryption=tls';
+// Load .env
+$envPath = __DIR__ . '/.env';
+if (is_readable($envPath)) {
+    $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        if (str_starts_with(trim($line), '#') || !str_contains($line, '=')) continue;
+        [$k, $v] = explode('=', $line, 2);
+        putenv(trim($k) . '=' . trim($v));
+    }
+}
+
+$dsn = getenv('MAILER_DSN');
 $transport = Transport::fromDsn($dsn);
 $mailer = new Mailer($transport);
 
 $email = (new Email())
-    ->from('roche.mapait@gmail.com')
-    ->to('roche.mapait@gmail.com') // Send to yourself
+    ->from(getenv('MAILER_FROM') ?: 'no-reply@localhost')
+    ->to('your-email@gmail.com')
     ->subject('Test Email from LGU Portal')
-    ->text('If you see this, your SMTP is working!');
+    ->text('If you see this, Mailtrap is working!');
 
 try {
     $mailer->send($email);
-    echo "✅ Email sent successfully! Check your inbox.";
+    echo "✅ Email sent! Check your Mailtrap inbox.";
 } catch (Exception $e) {
     echo "❌ Error: " . $e->getMessage();
 }
