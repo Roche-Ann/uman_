@@ -38,13 +38,7 @@ try {
     // Fallback
 }
 
-// Fetch latest facility warnings
-$facilityWarnings = [];
-try {
-    $facilityWarnings = $pdo->query("SELECT * FROM public_facilities WHERE utility_status != 'Fully Ready' LIMIT 3")->fetchAll();
-} catch (Exception $e) {
-    // Fallback
-}
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -377,7 +371,7 @@ try {
         </div>
 
         <!-- Main Layout Split -->
-        <div class="dashboard-layout">
+        <div class="dashboard-layout" style="grid-template-columns: 1fr;">
             
             <!-- Left: Latest Utility Advisories -->
             <div class="box">
@@ -401,28 +395,7 @@ try {
                 <?php endif; ?>
             </div>
 
-            <!-- Right: Public Facility Advisories -->
-            <div class="box">
-                <h3><i class="fas fa-warehouse"></i> Public Venues Alerts</h3>
-                <?php if (empty($facilityWarnings)): ?>
-                    <p style="color:#64748b; font-size:13px;">All public facilities and venues report full utility readiness.</p>
-                <?php else: ?>
-                    <?php foreach ($facilityWarnings as $fac): 
-                        $badgeClass = strtolower(str_replace(' ', '', $fac['utility_status']));
-                    ?>
-                        <div class="item-card" style="display:flex; justify-content:space-between; align-items:center;">
-                            <div>
-                                <h4 style="color:#2c3e50; font-size:13px; font-weight:600;"><?php echo htmlspecialchars($fac['name']); ?></h4>
-                                <div style="font-size:11px; color:#64748b; margin-top:2px;"><i class="fas fa-map-marker-alt"></i> <?php echo htmlspecialchars($fac['location']); ?></div>
-                            </div>
-                            <span class="badge badge-<?php echo $badgeClass; ?>"><?php echo htmlspecialchars($fac['utility_status']); ?></span>
-                        </div>
-                    <?php endforeach; ?>
-                    <div style="text-align:right; margin-top:10px;">
-                        <a href="citizen_facilities.php" style="font-size:12px; font-weight:600; color:#3762c8; text-decoration:none;">View Venue Statuses <i class="fas fa-arrow-right"></i></a>
-                    </div>
-                <?php endif; ?>
-            </div>
+
 
         </div>
 

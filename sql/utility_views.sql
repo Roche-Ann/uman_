@@ -37,11 +37,4 @@ SELECT
   COUNT(id) as total_records
 FROM energy_consumption_records;
 
--- 5. Create aggregated facility view
-CREATE OR REPLACE VIEW `aggregated_facility_view` AS
-SELECT 
-  COUNT(id) as total_facilities,
-  SUM(CASE WHEN utility_status = 'Fully Ready' THEN 1 ELSE 0 END) as ready_facilities,
-  SUM(CASE WHEN utility_status = 'Partially Ready' THEN 1 ELSE 0 END) as partial_facilities,
-  SUM(CASE WHEN utility_status = 'Not Ready' THEN 1 ELSE 0 END) as notready_facilities
-FROM public_facilities;
+

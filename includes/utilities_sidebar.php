@@ -739,12 +739,7 @@ function sidebarActive(string $page, string $current): string {
                     <span class="link-label">Energy Management</span>
                 </a>
             </li>
-            <li>
-                <a href="facility_dashboard.php" class="nav-link<?php echo (strpos($currentPage, 'facility_') === 0) ? ' active' : ''; ?>">
-                    <i class="fas fa-warehouse"></i>
-                    <span class="link-label">Public Facilities</span>
-                </a>
-            </li>
+
             <li>
                 <a href="external_asset_requests.php" class="nav-link<?php echo sidebarActive('external_asset_requests.php', $currentPage); ?>">
                     <i class="fas fa-exchange-alt"></i>
@@ -770,12 +765,7 @@ function sidebarActive(string $page, string $current): string {
                     <span class="link-label">LGU Advisories</span>
                 </a>
             </li>
-            <li>
-                <a href="citizen_facilities.php" class="nav-link<?php echo sidebarActive('citizen_facilities.php', $currentPage); ?>">
-                    <i class="fas fa-warehouse"></i>
-                    <span class="link-label">Public Venues</span>
-                </a>
-            </li>
+
             <li>
                 <a href="citizen_notifications.php" class="nav-link<?php echo sidebarActive('citizen_notifications.php', $currentPage); ?>">
                     <i class="fas fa-bell"></i>

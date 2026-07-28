@@ -16,7 +16,7 @@ $assets = ['total_assets' => 0, 'operational_assets' => 0, 'damaged_assets' => 0
 $incidents = ['total_incidents' => 0, 'submitted_incidents' => 0, 'review_incidents' => 0, 'forwarded_incidents' => 0, 'resolved_incidents' => 0];
 $maintenance = ['total_requests' => 0, 'pending_requests' => 0, 'progress_requests' => 0, 'completed_requests' => 0, 'emergency_requests' => 0];
 $energy = ['total_consumption' => 0, 'total_cost' => 0, 'total_records' => 0];
-$facilities = ['total_facilities' => 0, 'ready_facilities' => 0, 'partial_facilities' => 0, 'notready_facilities' => 0];
+
 
 try {
     $assets = $pdo->query("SELECT * FROM aggregated_assets_view")->fetch() ?: $assets;
@@ -34,9 +34,7 @@ try {
     $energy = $pdo->query("SELECT * FROM aggregated_energy_view")->fetch() ?: $energy;
 } catch (Throwable $e) {}
 
-try {
-    $facilities = $pdo->query("SELECT * FROM aggregated_facility_view")->fetch() ?: $facilities;
-} catch (Throwable $e) {}
+
 
 // Retrieve planning stats
 $totalCoverageAreas = 0;
@@ -79,7 +77,7 @@ try {
 }
 
 // 3. AI Command Center Summarizer
-function generateAICentralSummary($assets, $incidents, $maintenance, $energy, $facilities, $totalCoverageAreas) {
+function generateAICentralSummary($assets, $incidents, $maintenance, $energy, $totalCoverageAreas) {
     $summary = "<strong>LGU Central AI Assistant Coordination Report (" . date('F Y') . ")</strong><br><br>";
     
     $summary .= "🏢 <strong>System-Wide Load Insights:</strong><br>";
@@ -87,7 +85,6 @@ function generateAICentralSummary($assets, $incidents, $maintenance, $energy, $f
     $summary .= "• Incidents: " . ($incidents['total_incidents'] ?? 0) . " resident reports tracked. " . ($incidents['submitted_incidents'] ?? 0) . " are awaiting initial review.<br>";
     $summary .= "• Maintenance: " . ($maintenance['total_requests'] ?? 0) . " total coordination requests. " . ($maintenance['emergency_requests'] ?? 0) . " emergency dispatches have been flagged.<br>";
     $summary .= "• Energy: Total raw recorded consumption stands at " . number_format($energy['total_consumption'] ?? 0, 1) . " kWh.<br>";
-    $summary .= "• Public Facilities: " . ($facilities['total_facilities'] ?? 0) . " venues monitored. " . ($facilities['ready_facilities'] ?? 0) . " are verified as Fully Ready.<br>";
     
     $summary .= "<br>⚠️ <strong>Coordination Advisories:</strong><br>";
     if (($incidents['submitted_incidents'] ?? 0) > 0 || ($maintenance['emergency_requests'] ?? 0) > 0) {
@@ -99,7 +96,7 @@ function generateAICentralSummary($assets, $incidents, $maintenance, $energy, $f
     return $summary;
 }
 
-$aiSummaryText = generateAICentralSummary($assets, $incidents, $maintenance, $energy, $facilities, $totalCoverageAreas);
+$aiSummaryText = generateAICentralSummary($assets, $incidents, $maintenance, $energy, $totalCoverageAreas);
 
 // Chart Arrays
 $assetLabels = json_encode(['Operational', 'Damaged', 'Needs Inspection']);
@@ -107,9 +104,6 @@ $assetData = json_encode([$assets['operational_assets'] ?? 0, $assets['damaged_a
 
 $incidentLabels = json_encode(['Submitted', 'Under Review', 'Forwarded', 'Resolved']);
 $incidentData = json_encode([$incidents['submitted_incidents'] ?? 0, $incidents['review_incidents'] ?? 0, $incidents['forwarded_incidents'] ?? 0, $incidents['resolved_incidents'] ?? 0]);
-
-$facilityLabels = json_encode(['Fully Ready', 'Partially Ready', 'Not Ready']);
-$facilityData = json_encode([$facilities['ready_facilities'] ?? 0, $facilities['partial_facilities'] ?? 0, $facilities['notready_facilities'] ?? 0]);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -489,12 +483,7 @@ $facilityData = json_encode([$facilities['ready_facilities'] ?? 0, $facilities['
                     <p>Energy Consumption</p>
                 </div>
             </div>
-            <div class="stat-card facilities">
-                <div class="stat-info">
-                    <h3><?php echo number_format($facilities['ready_facilities'] ?? 0); ?> / <?php echo number_format($facilities['total_facilities'] ?? 0); ?></h3>
-                    <p>Facilities Ready</p>
-                </div>
-            </div>
+
         </div>
 
         <!-- AI Digest Row -->
@@ -530,7 +519,7 @@ $facilityData = json_encode([$facilities['ready_facilities'] ?? 0, $facilities['
         <div class="tab-buttons">
             <button class="tab-btn active" onclick="switchTab(event, 'assets-pane')"><i class="fas fa-warehouse"></i> Asset Analytics</button>
             <button class="tab-btn" onclick="switchTab(event, 'incidents-pane')"><i class="fas fa-bullhorn"></i> Incidents & Maintenance</button>
-            <button class="tab-btn" onclick="switchTab(event, 'planning-pane')"><i class="fas fa-map-marked-alt"></i> Planning & Facilities</button>
+            <button class="tab-btn" onclick="switchTab(event, 'planning-pane')"><i class="fas fa-map-marked-alt"></i> Utility Planning</button>
             <button class="tab-btn" onclick="switchTab(event, 'energy-pane')"><i class="fas fa-bolt"></i> Energy Sync</button>
         </div>
 
@@ -568,18 +557,13 @@ $facilityData = json_encode([$facilities['ready_facilities'] ?? 0, $facilities['
             </div>
         </div>
 
-        <!-- 3. Planning & Facilities Pane -->
+        <!-- 3. Planning Pane -->
         <div id="planning-pane" class="tab-pane">
-            <div class="dashboard-layout">
+            <div class="dashboard-layout" style="grid-template-columns: 1fr;">
                 <div class="box">
-                    <h3><i class="fas fa-chart-pie"></i> Facility Utility Readiness Levels</h3>
-                    <div style="position:relative; height:280px; width:100%; display:flex; justify-content:center; align-items:center;">
-                        <canvas id="facilityChart"></canvas>
-                    </div>
-                </div>
-                <div class="box" style="display:flex; flex-direction:column; justify-content:center;">
-                    <h4 style="color:#2c3e50; font-size:15px; margin-bottom:10px;">Utility Expansion Planning:</h4>
-                    <p style="font-size:13px; color:#64748b; line-height:1.6;">Zoning plans show <strong><?php echo $totalCoverageAreas; ?></strong> coverage zones monitored. There are currently <strong><?php echo $activeExpansions; ?></strong> active service expansion requests under review with the Urban Planning System.</p>
+                    <h3><i class="fas fa-map-marked-alt"></i> Utility Expansion Planning</h3>
+                    <p style="font-size:14px; color:#2c3e50; margin-bottom:15px;">Zoning plans show <strong><?php echo $totalCoverageAreas; ?></strong> coverage zones monitored.</p>
+                    <p style="font-size:13px; color:#64748b; line-height:1.6;">There are currently <strong><?php echo $activeExpansions; ?></strong> active service expansion requests under review with the Urban Planning System.</p>
                 </div>
             </div>
         </div>
@@ -645,19 +629,7 @@ $facilityData = json_encode([$facilities['ready_facilities'] ?? 0, $facilities['
         }
     });
 
-    // Chart 3: Facility Readiness Status
-    const facilityCtx = document.getElementById('facilityChart').getContext('2d');
-    new Chart(facilityCtx, {
-        type: 'doughnut',
-        data: {
-            labels: <?php echo $facilityLabels; ?>,
-            datasets: [{
-                data: <?php echo $facilityData; ?>,
-                backgroundColor: ['#2ecc71', '#f1c40f', '#e74c3c']
-            }]
-        },
-        options: { responsive: true, maintainAspectRatio: false }
-    });
+
 </script>
 
 <?php if (isset($_SESSION['show_welcome_modal']) && $_SESSION['show_welcome_modal'] === true): ?>
