@@ -1,0 +1,25 @@
+# Deny web access to sensitive files (LiteSpeed / Apache)
+<FilesMatch "^(\.env|\.env\..*|composer\.(json|lock)|composer\.phar)$">
+  Require all denied
+</FilesMatch>
+
+# Legacy Apache
+<IfModule mod_authz_core.c>
+  <Files ".env">
+    Require all denied
+  </Files>
+</IfModule>
+<IfModule !mod_authz_core.c>
+  <Files ".env">
+    Order allow,deny
+    Deny from all
+  </Files>
+</IfModule>
+
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  # Block direct access to includes and vendor
+  RewriteRule ^(includes|vendor|sql|artifacts)/ - [F,L]
+</IfModule>
