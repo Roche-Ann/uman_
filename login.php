@@ -6,12 +6,22 @@ ini_set('display_errors', 1);
 // login.php - REMOVED session_start() from here
 require_once 'includes/auth.php';
 
+// Add the Symfony Mailer classes at the top
+use Symfony\Component\Mailer\Mailer;
+use Symfony\Component\Mailer\Transport;
+use Symfony\Component\Mime\Email;
+
+// Ensure composer autoload is included for the Mailer (adjust path if needed)
+if (file_exists(__DIR__ . '/vendor/autoload.php')) {
+    require_once __DIR__ . '/vendor/autoload.php';
+}
+
 // Redirect if already logged in
 if (isLoggedIn()) {
     if (isEmployee()) {
-        header('Location: assets_dashboard.php');
+        header('Location: employee.php');
     } else {
-        header('Location: citizen.php');
+        header('Location: utilities_dashboard.php');
     }
     exit();
 }
@@ -30,34 +40,99 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         
         if ($result['success']) {
             // ==========================================
-            // 🚀 DIRECT LOGIN – SKIP OTP (TEMPORARY)
+            // START OTP INTEGRATION
             // ==========================================
             
-            $userId = $result['user_id'] ?? null;
+            // 1. Get the User ID and Name. 
+            $userId = $result['user_id'] ?? $_SESSION['user_id'] ?? null;
             $fullName = $result['full_name'] ?? 'User';
-            $userType = $result['user_type'] ?? 'citizen';
-            $email = $result['email'] ?? $email;
+            $userType = $result['user_type'];
 
             if ($userId) {
-                // Set session directly
-                $_SESSION['user_id'] = $userId;
-                $_SESSION['user_type'] = $userType;
-                $_SESSION['user_name'] = $fullName;
-                $_SESSION['full_name'] = $fullName;
-                $_SESSION['user_email'] = $email;
-                $_SESSION['logged_in'] = true;
-                $_SESSION['show_welcome_modal'] = true;
+                // 2. Generate OTP and Expiry
+                $otp = str_pad((string)mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
+                $otpHash = password_hash($otp, PASSWORD_DEFAULT);
+                $expiresAt = (new DateTime('+10 minutes', new DateTimeZone('UTC')))->format('Y-m-d H:i:s');
 
-                // Redirect based on role
-                if ($userType === 'employee') {
-                    header('Location: assets_dashboard.php');
-                } else {
-                    header('Location: citizen.php');
+                // 3. Database Operations
+                global $pdo; 
+                
+                // Invalidate old OTPs
+                $stmt = $pdo->prepare('UPDATE otps SET used = 1 WHERE user_id = :uid AND used = 0');
+                $stmt->execute([':uid' => $userId]);
+
+                // Store new OTP
+                $stmt = $pdo->prepare('INSERT INTO otps (user_id, otp_hash, expires_at, used) VALUES (:uid, :hash, :exp, 0)');
+                $stmt->execute([
+                    ':uid' => $userId,
+                    ':hash' => $otpHash,
+                    ':exp' => $expiresAt,
+                ]);
+
+                // 4. Send the Email using Symfony Mailer
+                $envPath = __DIR__ . '/.env';
+                if (is_readable($envPath)) {
+                    $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+                    foreach ($lines as $line) {
+                        if (str_starts_with(trim($line), '#') || !str_contains($line, '=')) continue;
+                        [$k, $v] = explode('=', $line, 2);
+                        putenv(trim($k) . '=' . trim($v));
+                    }
                 }
+
+                $dsnRaw = getenv('MAILER_DSN') ?: 'smtp://localhost';
+                $transport = null;
+                try {
+                    $transport = Transport::fromDsn($dsnRaw);
+                } catch (Throwable $e) {
+                    error_log('OTP mail DSN error: ' . $e->getMessage());
+                }
+
+                if ($transport) {
+                    $mailer = new Mailer($transport);
+                    $from = getenv('MAILER_FROM') ?: 'no-reply@localhost';
+                    
+                    $subject = 'Your Login Verification Code';
+                    $html = "
+                        <p>Hello {$fullName},</p>
+                        <p>Your login verification code is: <strong style='font-size: 24px; letter-spacing: 4px;'>{$otp}</strong></p>
+                        <p>This code will expire in 10 minutes.</p>
+                        <p>If you didn't attempt to log in, please ignore this email.</p>
+                    ";
+
+                    $mail = (new Email())
+                        ->from($from)
+                        ->to($email)
+                        ->subject($subject)
+                        ->html($html);
+
+                    try {
+                        $mailer->send($mail);
+                    } catch (Throwable $e) {
+                        error_log('OTP mail error: ' . $e->getMessage());
+                    }
+                }
+
+                // 5. Setup Pending Session
+                $_SESSION['pending_login'] = [
+                    'id'    => $userId,
+                    'name'  => $fullName,
+                    'email' => $email,
+                    'role'  => $userType,
+                ];
+
+                unset($_SESSION['logged_in']);
+                unset($_SESSION['user_id']);
+
+                // 6. Redirect to OTP verification page
+                header('Location: verify-otp.php');
                 exit();
             } else {
-                $error = "System Error: Could not retrieve User ID.";
+                $error = "System Error: Could not retrieve User ID for OTP.";
             }
+            // ==========================================
+            // END OTP INTEGRATION
+            // ==========================================
         } else {
             $error = $result['message'];
             if (isset($result['attempts_left']) && $result['attempts_left'] > 0) {
@@ -83,7 +158,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
     <style>
-        /* ---------- DESIGN TOKENS ---------- */
+        /* ---------- DESIGN TOKENS (from the new UI) ---------- */
         :root {
             --civic-sapphire: #0B3D91;
             --utility-teal: #00A896;
