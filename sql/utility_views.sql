@@ -26,7 +26,7 @@ SELECT
   SUM(CASE WHEN status = 'Created' THEN 1 ELSE 0 END) as pending_requests,
   SUM(CASE WHEN status = 'In Progress' THEN 1 ELSE 0 END) as progress_requests,
   SUM(CASE WHEN status IN ('Completed', 'Closed') THEN 1 ELSE 0 END) as completed_requests,
-  SUM(CASE WHEN COALESCE(urgency, '') = 'Emergency' THEN 1 ELSE 0 END) as emergency_requests
+  SUM(CASE WHEN COALESCE(priority, '') = 'Emergency' THEN 1 ELSE 0 END) as emergency_requests
 FROM maintenance_requests;
 
 -- 4. Create aggregated energy view
