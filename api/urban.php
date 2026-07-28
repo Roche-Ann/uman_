@@ -1,19 +1,18 @@
 <?php
 /**
- * Urban Planning Integration API
+ * Urban Planning Inspection Request API
  * 
- * GET  /api/planning.php?key=...&type=coverage|expansions|projects
- * POST /api/planning.php?key=... (JSON body)
- *
- * External systems can fetch and submit urban planning data.
+ * POST /api/inspection.php?key=...
+ * 
+ * External urban planning systems submit inspection requests.
+ * This API evaluates utility conditions and returns approval/rejection with details.
  */
 declare(strict_types=1);
 
 require_once __DIR__ . '/integration_config.php';
 
-// Only allow GET and POST
-$method = $_SERVER['REQUEST_METHOD'];
-if (!in_array($method, ['GET', 'POST'], true)) {
+// Only allow POST
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     echo json_encode(['success' => false, 'error' => 'Method not allowed']);
     exit;
@@ -25,231 +24,242 @@ uman_require_api_key($UMAN_INTEGRATION_API_KEY);
 try {
     $pdo = uman_integration_pdo();
 
-    // ============================================================
-    // GET: Retrieve planning data
-    // ============================================================
-    if ($method === 'GET') {
-        $type = trim($_GET['type'] ?? '');
-        $limit = (int)($_GET['limit'] ?? 100);
-        $offset = (int)($_GET['offset'] ?? 0);
-        $filter = trim($_GET['filter'] ?? '');
-
-        $response = ['success' => true, 'data' => []];
-
-        switch ($type) {
-            case 'coverage':
-                // Fetch utility coverage records
-                $sql = "SELECT * FROM utility_coverage_records";
-                $params = [];
-                if ($filter) {
-                    $sql .= " WHERE area_name LIKE ? OR coverage_type LIKE ?";
-                    $params = ['%' . $filter . '%', '%' . $filter . '%'];
-                }
-                $sql .= " ORDER BY area_name ASC LIMIT ? OFFSET ?";
-                $params[] = $limit;
-                $params[] = $offset;
-                $stmt = $pdo->prepare($sql);
-                $stmt->execute($params);
-                $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                $response['data'] = $rows;
-                $response['count'] = count($rows);
-                break;
-
-            case 'expansions':
-                // Fetch expansion requests
-                $sql = "SELECT * FROM utility_expansion_requests";
-                $params = [];
-                if ($filter) {
-                    $sql .= " WHERE area_location LIKE ? OR utility_type LIKE ? OR status LIKE ?";
-                    $params = ['%' . $filter . '%', '%' . $filter . '%', '%' . $filter . '%'];
-                }
-                $sql .= " ORDER BY created_at DESC LIMIT ? OFFSET ?";
-                $params[] = $limit;
-                $params[] = $offset;
-                $stmt = $pdo->prepare($sql);
-                $stmt->execute($params);
-                $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                $response['data'] = $rows;
-                $response['count'] = count($rows);
-                break;
-
-            case 'projects':
-                // Fetch development projects
-                $sql = "SELECT * FROM development_projects";
-                $params = [];
-                if ($filter) {
-                    $sql .= " WHERE project_name LIKE ? OR location LIKE ? OR development_type LIKE ?";
-                    $params = ['%' . $filter . '%', '%' . $filter . '%', '%' . $filter . '%'];
-                }
-                $sql .= " ORDER BY created_at DESC LIMIT ? OFFSET ?";
-                $params[] = $limit;
-                $params[] = $offset;
-                $stmt = $pdo->prepare($sql);
-                $stmt->execute($params);
-                $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                $response['data'] = $rows;
-                $response['count'] = count($rows);
-                break;
-
-            default:
-                // If no type, return summary
-                $coverageCount = $pdo->query("SELECT COUNT(*) FROM utility_coverage_records")->fetchColumn();
-                $expansionsCount = $pdo->query("SELECT COUNT(*) FROM utility_expansion_requests")->fetchColumn();
-                $projectsCount = $pdo->query("SELECT COUNT(*) FROM development_projects")->fetchColumn();
-                $response['summary'] = [
-                    'coverage_areas' => (int)$coverageCount,
-                    'expansion_requests' => (int)$expansionsCount,
-                    'development_projects' => (int)$projectsCount,
-                ];
-                $response['message'] = 'Specify ?type=coverage, expansions, or projects to retrieve data.';
-                break;
-        }
-
-        echo json_encode($response, JSON_UNESCAPED_UNICODE);
+    // Parse JSON input
+    $raw = file_get_contents('php://input');
+    $input = json_decode($raw ?: '{}', true);
+    if (!is_array($input) || empty($input)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Invalid JSON payload']);
         exit;
     }
 
-    // ============================================================
-    // POST: Receive urban planning data (create/update)
-    // ============================================================
-    if ($method === 'POST') {
-        $raw = file_get_contents('php://input');
-        $json = json_decode($raw ?: '{}', true);
-        if (!is_array($json)) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Invalid JSON payload']);
-            exit;
+    // Validate required fields
+    $required = ['request_id', 'location', 'utility_type'];
+    $missing = [];
+    foreach ($required as $field) {
+        if (empty($input[$field])) {
+            $missing[] = $field;
         }
-
-        $action = $json['action'] ?? '';
-        $data = $json['data'] ?? [];
-
-        if (empty($action) || empty($data)) {
-            http_response_code(422);
-            echo json_encode(['success' => false, 'error' => 'Missing action or data']);
-            exit;
-        }
-
-        $result = [];
-
-        switch ($action) {
-            // ---------- Create Development Project ----------
-            case 'create_project':
-                $required = ['project_name', 'location', 'development_type', 'utility_requirements'];
-                foreach ($required as $field) {
-                    if (empty($data[$field])) {
-                        http_response_code(422);
-                        echo json_encode(['success' => false, 'error' => "Missing required field: $field"]);
-                        exit;
-                    }
-                }
-
-                $stmt = $pdo->prepare("
-                    INSERT INTO development_projects 
-                        (project_name, location, latitude, longitude, development_type, expected_timeline, 
-                         utility_requirements, status, readiness_status, planning_notes)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ");
-                $stmt->execute([
-                    $data['project_name'],
-                    $data['location'],
-                    $data['latitude'] ?? null,
-                    $data['longitude'] ?? null,
-                    $data['development_type'],
-                    $data['expected_timeline'] ?? null,
-                    $data['utility_requirements'],
-                    $data['status'] ?? 'Approved Construction',
-                    $data['readiness_status'] ?? 'Ready',
-                    $data['planning_notes'] ?? null,
-                ]);
-                $newId = (int)$pdo->lastInsertId();
-
-                // Log coordination
-                $pdo->prepare("
-                    INSERT INTO planning_coordination_logs (direction, log_type, details)
-                    VALUES ('Inbound', 'Project Import', ?)
-                ")->execute(["Imported development project '{$data['project_name']}' from Urban Planning System."]);
-
-                $result = ['success' => true, 'message' => 'Project created', 'id' => $newId];
-                break;
-
-            // ---------- Create Expansion Request ----------
-            case 'create_expansion':
-                $required = ['area_location', 'utility_type', 'reason'];
-                foreach ($required as $field) {
-                    if (empty($data[$field])) {
-                        http_response_code(422);
-                        echo json_encode(['success' => false, 'error' => "Missing required field: $field"]);
-                        exit;
-                    }
-                }
-
-                // Generate request ID
-                $prefix = 'PLN-EXP-' . date('Ym') . '-';
-                $countStmt = $pdo->prepare("SELECT COUNT(*) FROM utility_expansion_requests WHERE request_id LIKE ?");
-                $countStmt->execute([$prefix . '%']);
-                $seq = (int)$countStmt->fetchColumn() + 1;
-                $requestId = $prefix . str_pad($seq, 4, '0', STR_PAD_LEFT);
-
-                $stmt = $pdo->prepare("
-                    INSERT INTO utility_expansion_requests 
-                        (request_id, area_location, utility_type, reason, priority, estimated_scope, status)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                ");
-                $stmt->execute([
-                    $requestId,
-                    $data['area_location'],
-                    $data['utility_type'],
-                    $data['reason'],
-                    $data['priority'] ?? 'Medium',
-                    $data['estimated_scope'] ?? null,
-                    $data['status'] ?? 'Pending',
-                ]);
-                $newId = (int)$pdo->lastInsertId();
-
-                // Log
-                $pdo->prepare("
-                    INSERT INTO planning_coordination_logs (direction, log_type, details)
-                    VALUES ('Inbound', 'Expansion Request', ?)
-                ")->execute(["Received expansion request for '{$data['area_location']}' from Urban Planning System."]);
-
-                $result = ['success' => true, 'message' => 'Expansion request created', 'request_id' => $requestId, 'id' => $newId];
-                break;
-
-            // ---------- Update Project Readiness ----------
-            case 'update_project_readiness':
-                if (empty($data['project_id']) || empty($data['readiness_status'])) {
-                    http_response_code(422);
-                    echo json_encode(['success' => false, 'error' => 'Missing project_id or readiness_status']);
-                    exit;
-                }
-                $stmt = $pdo->prepare("UPDATE development_projects SET readiness_status = ?, planning_notes = ? WHERE id = ?");
-                $stmt->execute([
-                    $data['readiness_status'],
-                    $data['planning_notes'] ?? null,
-                    (int)$data['project_id']
-                ]);
-                $rowsAffected = $stmt->rowCount();
-                if ($rowsAffected === 0) {
-                    http_response_code(404);
-                    echo json_encode(['success' => false, 'error' => 'Project not found or no change']);
-                    exit;
-                }
-                $result = ['success' => true, 'message' => 'Project readiness updated'];
-                break;
-
-            default:
-                http_response_code(400);
-                echo json_encode(['success' => false, 'error' => "Unknown action: $action"]);
-                exit;
-        }
-
-        echo json_encode($result, JSON_UNESCAPED_UNICODE);
+    }
+    if (!empty($missing)) {
+        http_response_code(422);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Missing required fields: ' . implode(', ', $missing)
+        ]);
         exit;
     }
+
+    $requestId = trim($input['request_id']);
+    $location = trim($input['location']);
+    $utilityType = trim($input['utility_type']);
+    $projectId = isset($input['project_id']) ? (int)$input['project_id'] : null;
+    $requestedDate = $input['requested_date'] ?? date('Y-m-d');
+    $details = trim($input['details'] ?? '');
+
+    // ================================================================
+    // 1. Check utility coverage for the location
+    // ================================================================
+    $coverageStatus = 'Not Covered';
+    $coverageDetails = [];
+    $coverageQuery = $pdo->prepare("
+        SELECT coverage_type, coverage_status, remarks
+        FROM utility_coverage_records
+        WHERE coverage_type = :type
+        ORDER BY radius_meters ASC
+        LIMIT 1
+    ");
+    $coverageQuery->execute([':type' => $utilityType]);
+    $coverage = $coverageQuery->fetch(PDO::FETCH_ASSOC);
+    if ($coverage) {
+        $coverageStatus = $coverage['coverage_status'];
+        $coverageDetails[] = "Coverage status: {$coverage['coverage_status']}";
+        if (!empty($coverage['remarks'])) {
+            $coverageDetails[] = "Remarks: {$coverage['remarks']}";
+        }
+    } else {
+        // Fallback: check for any coverage for location by area name (if we have coordinates)
+        // For simplicity, we'll just note no specific coverage
+        $coverageDetails[] = "No specific coverage record for '$utilityType' at this location.";
+    }
+
+    // ================================================================
+    // 2. Check relevant assets in the area
+    // ================================================================
+    $assetStatus = [];
+    $assetQuery = $pdo->prepare("
+        SELECT asset_id, name, condition_status, location, description
+        FROM utility_assets
+        WHERE location LIKE :location
+           OR asset_type_id IN (
+               SELECT id FROM asset_types WHERE name LIKE :type
+           )
+        ORDER BY condition_status ASC
+        LIMIT 10
+    ");
+    $assetQuery->execute([
+        ':location' => '%' . $location . '%',
+        ':type' => '%' . $utilityType . '%'
+    ]);
+    $assets = $assetQuery->fetchAll(PDO::FETCH_ASSOC);
+
+    $operationalAssets = 0;
+    $damagedAssets = 0;
+    $totalAssets = count($assets);
+    foreach ($assets as $asset) {
+        if ($asset['condition_status'] === 'Operational') {
+            $operationalAssets++;
+        } elseif ($asset['condition_status'] === 'Damaged') {
+            $damagedAssets++;
+        }
+    }
+
+    if ($totalAssets > 0) {
+        $assetStatus[] = "Found $totalAssets assets; $operationalAssets operational, $damagedAssets damaged.";
+    } else {
+        $assetStatus[] = "No existing assets found for this utility type at the location.";
+    }
+
+    // ================================================================
+    // 3. Check capacity status
+    // ================================================================
+    $capacityStatus = [];
+    $capacityQuery = $pdo->prepare("
+        SELECT location_zone, max_capacity, current_load, status
+        FROM utility_capacity_records
+        WHERE capacity_type LIKE :type
+           OR location_zone LIKE :location
+        ORDER BY status DESC
+        LIMIT 5
+    ");
+    $capacityQuery->execute([
+        ':type' => '%' . $utilityType . '%',
+        ':location' => '%' . $location . '%'
+    ]);
+    $capacities = $capacityQuery->fetchAll(PDO::FETCH_ASSOC);
+
+    if (!empty($capacities)) {
+        foreach ($capacities as $cap) {
+            $capacityStatus[] = "Zone: {$cap['location_zone']} - Status: {$cap['status']} (Load: {$cap['current_load']}/{$cap['max_capacity']})";
+        }
+    } else {
+        $capacityStatus[] = "No capacity records found for this area or utility type.";
+    }
+
+    // ================================================================
+    // 4. Check active incidents / maintenance affecting area
+    // ================================================================
+    $incidentStatus = [];
+    $incidentQuery = $pdo->prepare("
+        SELECT incident_type, description, status
+        FROM utility_incidents
+        WHERE location LIKE :location
+          AND status NOT IN ('Resolved', 'Closed')
+        ORDER BY created_at DESC
+        LIMIT 5
+    ");
+    $incidentQuery->execute([':location' => '%' . $location . '%']);
+    $incidents = $incidentQuery->fetchAll(PDO::FETCH_ASSOC);
+
+    if (!empty($incidents)) {
+        $incidentStatus[] = "Active incidents found in the area:";
+        foreach ($incidents as $inc) {
+            $incidentStatus[] = " - {$inc['incident_type']} ({$inc['status']})";
+        }
+    } else {
+        $incidentStatus[] = "No active incidents reported in this area.";
+    }
+
+    // ================================================================
+    // 5. Decision logic
+    // ================================================================
+    $decision = 'Approved';
+    $issues = [];
+
+    // Check coverage
+    if ($coverageStatus === 'Not Covered') {
+        $decision = 'Rejected';
+        $issues[] = 'Area not covered by this utility type.';
+    } elseif ($coverageStatus === 'Partially Covered') {
+        $decision = 'Conditional';
+        $issues[] = 'Partial coverage – additional infrastructure may be needed.';
+    }
+
+    // Check damaged assets
+    if ($damagedAssets > 0) {
+        if ($decision === 'Approved') {
+            $decision = 'Conditional';
+        }
+        $issues[] = "$damagedAssets damaged assets found – repair required before inspection.";
+    }
+
+    // Check capacity overload
+    $overloaded = false;
+    foreach ($capacities as $cap) {
+        if ($cap['status'] === 'Overloaded') {
+            $overloaded = true;
+            $issues[] = "Capacity overloaded in zone {$cap['location_zone']}.";
+        }
+    }
+    if ($overloaded && $decision === 'Approved') {
+        $decision = 'Conditional';
+    }
+
+    // Emergency issues
+    if (!empty($incidents) && $decision === 'Approved') {
+        $decision = 'Conditional';
+        $issues[] = 'Active incidents in area – inspection may be delayed.';
+    }
+
+    // If still approved, may have minor suggestions
+    if ($decision === 'Approved') {
+        if ($coverageStatus === 'Fully Covered' && $operationalAssets > 0 && !$overloaded) {
+            // All good
+            $issues[] = 'All utility conditions are satisfactory.';
+        } else {
+            $issues[] = 'General approval, but check minor notes.';
+        }
+    }
+
+    // ================================================================
+    // 6. Prepare detailed result
+    // ================================================================
+    $detailedResult = [
+        'coverage' => $coverageStatus,
+        'assets' => $assetStatus,
+        'capacities' => $capacityStatus,
+        'incidents' => $incidentStatus,
+        'decision_summary' => $issues,
+    ];
+
+    // ================================================================
+    // 7. Log the request and response
+    // ================================================================
+    $logStmt = $pdo->prepare("
+        INSERT INTO planning_coordination_logs (direction, log_type, details)
+        VALUES ('Inbound', 'Inspection Request', ?)
+    ");
+    $logStmt->execute([
+        "Inspection request $requestId: Decision $decision. Issues: " . implode(' | ', $issues)
+    ]);
+
+    // ================================================================
+    // 8. Return response
+    // ================================================================
+    $response = [
+        'success' => true,
+        'request_id' => $requestId,
+        'decision' => $decision,
+        'message' => $decision === 'Approved' ? 'Inspection approved.' : 'Inspection not fully cleared.',
+        'detailed_result' => $detailedResult,
+        'issues' => $issues,
+    ];
+
+    echo json_encode($response, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+    exit;
 
 } catch (Throwable $e) {
-    error_log('Urban Planning API error: ' . $e->getMessage());
+    error_log('Inspection API error: ' . $e->getMessage());
     http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Server error processing request']);
+    echo json_encode(['success' => false, 'error' => 'Server error processing inspection request']);
 }
