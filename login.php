@@ -19,6 +19,11 @@ if (isLoggedIn()) {
 
 $error = '';
 $warning = '';
+$success = '';
+
+if (isset($_GET['registered']) && $_GET['registered'] == '1') {
+    $success = 'Account created successfully. Please log in to continue.';
+}
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $email = filter_var($_POST['email'] ?? '', FILTER_SANITIZE_EMAIL);
@@ -40,6 +45,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $userType = $result['user_type'];
 
             if ($userId) {
+                ensureAuthSchema();
+
                 // 2. Generate OTP and Expiry
                 $otp = str_pad((string)mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
                 $otpHash = password_hash($otp, PASSWORD_DEFAULT);
@@ -502,6 +509,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             font-weight: 500;
         }
 
+        .success-message {
+            background: rgba(42, 157, 143, 0.12);
+            border-left: 4px solid var(--progress-emerald);
+            color: #1b6b60;
+            padding: 0.75rem 1rem;
+            border-radius: var(--radius-soft);
+            margin-bottom: 1.5rem;
+            font-weight: 500;
+        }
+
         .attempt-warning {
             background: rgba(255, 158, 0, 0.1);
             border-left: 4px solid var(--insight-amber);
@@ -751,6 +768,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             <form method="POST" action="">
                 <?php if ($error): ?>
                     <div class="error-message"><?php echo htmlspecialchars($error); ?></div>
+                <?php endif; ?>
+
+                <?php if ($success): ?>
+                    <div class="success-message"><?php echo htmlspecialchars($success); ?></div>
                 <?php endif; ?>
 
                 <?php if ($warning): ?>

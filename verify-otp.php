@@ -5,6 +5,7 @@ require_once __DIR__ . '/includes/mailer.php';
 
 // Assuming your auth.php provides a global $pdo or equivalent database connection variable.
 global $pdo;
+ensureAuthSchema();
 
 // Handle cancel/back to login - clear pending session
 if (isset($_GET['cancel']) || isset($_GET['back'])) {
