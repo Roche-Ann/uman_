@@ -10,9 +10,9 @@ require_once __DIR__ . '/includes/mailer.php';
 // Redirect if already logged in
 if (isLoggedIn()) {
     if (isEmployee()) {
-        header('Location: employee.php');
-    } else {
         header('Location: utilities_dashboard.php');
+    } else {
+        header('Location: citizen.php');
     }
     exit();
 }

@@ -56,9 +56,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['otp'])) {
             
             // Redirect based on user_type (role)
             if ($pendingUser['role'] === 'employee') {
-                header('Location: employee.php');
-            } else {
                 header('Location: utilities_dashboard.php');
+            } else {
+                header('Location: citizen.php');
             }
             exit();
         }
