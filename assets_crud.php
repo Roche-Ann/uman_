@@ -339,6 +339,8 @@ $assetTypes = $pdo->query("SELECT * FROM asset_types ORDER BY name ASC")->fetchA
     <link rel="icon" type="image/png" href="assets/images/logocityhall.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
         /* Review changes modal and comparison table CSS */
         .review-table {
             width: 100%;
@@ -434,7 +436,7 @@ $assetTypes = $pdo->query("SELECT * FROM asset_types ORDER BY name ASC")->fetchA
             color: #b91c1c;
         }
 
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
 
         * {
             margin: 0;

@@ -998,7 +998,7 @@ CREATE TABLE `uploaded_documents` (
 --
 
 CREATE TABLE `users` (
-  `id` int(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `id` int(11) NOT NULL,
   `email` varchar(100) NOT NULL,
   `password` varchar(255) NOT NULL,
   `full_name` varchar(100) NOT NULL,
@@ -1028,7 +1028,7 @@ INSERT INTO `users` (`id`, `email`, `password`, `full_name`, `user_type`, `creat
 --
 
 CREATE TABLE `utility_assets` (
-  `id` int(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `id` int(11) NOT NULL,
   `asset_id` varchar(50) NOT NULL,
   `name` varchar(100) NOT NULL,
   `asset_type_id` int(11) NOT NULL,
