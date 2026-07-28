@@ -36,23 +36,6 @@ try {
 
 
 
-// Retrieve planning stats
-$totalCoverageAreas = 0;
-$activeExpansions = 0;
-$pendingProjects = 0;
-
-try {
-    $totalCoverageAreas = $pdo->query("SELECT COUNT(*) FROM utility_coverage_records")->fetchColumn();
-} catch (Throwable $e) {}
-
-try {
-    $activeExpansions = $pdo->query("SELECT COUNT(*) FROM utility_expansion_requests WHERE status IN ('Pending', 'Under Review')")->fetchColumn();
-} catch (Throwable $e) {}
-
-try {
-    $pendingProjects = $pdo->query("SELECT COUNT(*) FROM development_projects WHERE readiness_status != 'Ready'")->fetchColumn();
-} catch (Throwable $e) {}
-
 // ⭐ FIX: Get successful sync count
 $successfulSyncs = 0;
 try {
@@ -64,10 +47,7 @@ $allNotifications = [];
 try {
     $incNotifs = $pdo->query("SELECT message, created_at, 'Incident' as type FROM incident_notifications ORDER BY created_at DESC LIMIT 5")->fetchAll();
     $mntNotifs = $pdo->query("SELECT message, created_at, 'Maintenance' as type FROM maintenance_notifications ORDER BY created_at DESC LIMIT 5")->fetchAll();
-    $plnNotifs = $pdo->query("SELECT message, created_at, 'Planning' as type FROM planning_notifications ORDER BY created_at DESC LIMIT 5")->fetchAll();
-    $engNotifs = $pdo->query("SELECT message, created_at, 'Energy' as type FROM energy_notifications ORDER BY created_at DESC LIMIT 5")->fetchAll();
-    
-    $allNotifications = array_merge($incNotifs, $mntNotifs, $plnNotifs, $engNotifs);
+    $allNotifications = array_merge($incNotifs, $mntNotifs, $engNotifs);
     usort($allNotifications, function($a, $b) {
         return strtotime($b['created_at']) - strtotime($a['created_at']);
     });
@@ -519,7 +499,7 @@ $incidentData = json_encode([$incidents['submitted_incidents'] ?? 0, $incidents[
         <div class="tab-buttons">
             <button class="tab-btn active" onclick="switchTab(event, 'assets-pane')"><i class="fas fa-warehouse"></i> Asset Analytics</button>
             <button class="tab-btn" onclick="switchTab(event, 'incidents-pane')"><i class="fas fa-bullhorn"></i> Incidents & Maintenance</button>
-            <button class="tab-btn" onclick="switchTab(event, 'planning-pane')"><i class="fas fa-map-marked-alt"></i> Utility Planning</button>
+
             <button class="tab-btn" onclick="switchTab(event, 'energy-pane')"><i class="fas fa-bolt"></i> Energy Sync</button>
         </div>
 
@@ -557,16 +537,6 @@ $incidentData = json_encode([$incidents['submitted_incidents'] ?? 0, $incidents[
             </div>
         </div>
 
-        <!-- 3. Planning Pane -->
-        <div id="planning-pane" class="tab-pane">
-            <div class="dashboard-layout" style="grid-template-columns: 1fr;">
-                <div class="box">
-                    <h3><i class="fas fa-map-marked-alt"></i> Utility Expansion Planning</h3>
-                    <p style="font-size:14px; color:#2c3e50; margin-bottom:15px;">Zoning plans show <strong><?php echo $totalCoverageAreas; ?></strong> coverage zones monitored.</p>
-                    <p style="font-size:13px; color:#64748b; line-height:1.6;">There are currently <strong><?php echo $activeExpansions; ?></strong> active service expansion requests under review with the Urban Planning System.</p>
-                </div>
-            </div>
-        </div>
 
         <!-- 4. Energy Sync Pane -->
         <div id="energy-pane" class="tab-pane">

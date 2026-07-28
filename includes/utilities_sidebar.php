@@ -727,12 +727,7 @@ function sidebarActive(string $page, string $current): string {
                     <span class="link-label">Maintenance Coordination</span>
                 </a>
             </li>
-            <li>
-                <a href="planning_dashboard.php" class="nav-link<?php echo (strpos($currentPage, 'planning_') === 0) ? ' active' : ''; ?>">
-                    <i class="fas fa-map-marked-alt"></i>
-                    <span class="link-label">Utility Planning</span>
-                </a>
-            </li>
+
             <li>
                 <a href="energy_dashboard.php" class="nav-link<?php echo (strpos($currentPage, 'energy_') === 0) ? ' active' : ''; ?>">
                     <i class="fas fa-bolt"></i>
