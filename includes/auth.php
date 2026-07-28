@@ -15,6 +15,12 @@ if (!isset($GLOBALS['_ENV_LOADED'])) {
             [$k, $v] = explode('=', $line, 2);
             $k = trim($k);
             $v = trim($v);
+            if (
+                (str_starts_with($v, '"') && str_ends_with($v, '"')) ||
+                (str_starts_with($v, "'") && str_ends_with($v, "'"))
+            ) {
+                $v = substr($v, 1, -1);
+            }
             if ($k === '') continue;
             putenv("$k=$v");
             $_ENV[$k] = $v;
@@ -115,51 +121,89 @@ function loginUser($email, $password) {
     }
 }
 
-// =============================================
-// ✅ ADD THIS FUNCTION – registerUser()
-// =============================================
 /**
- * Register a new user account
- * 
- * @param string $full_name
- * @param string $email
- * @param string $password
- * @return array ['success' => bool, 'message' => string]
+ * Ensure auth-related tables exist (safe no-op if already present).
+ */
+function ensureAuthSchema(): void
+{
+    global $pdo;
+    static $done = false;
+    if ($done || !($pdo instanceof PDO)) {
+        return;
+    }
+
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS otps (
+            id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            otp_hash VARCHAR(255) NOT NULL,
+            expires_at DATETIME NOT NULL,
+            used TINYINT(1) NOT NULL DEFAULT 0,
+            created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_otps_user (user_id),
+            INDEX idx_otps_expires (expires_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
+
+    $done = true;
+}
+
+/**
+ * Register a new citizen account.
+ *
+ * @return array{success: bool, message: string, user_id?: int}
  */
 function registerUser($full_name, $email, $password) {
     global $pdo;
-    
+
+    ensureAuthSchema();
+
+    $full_name = trim((string)$full_name);
+    $email = strtolower(trim((string)$email));
+
+    if ($full_name === '' || $email === '' || $password === '') {
+        return ['success' => false, 'message' => 'All fields are required.'];
+    }
+
     // Check if email already exists
-    $stmt = $pdo->prepare("SELECT id FROM users WHERE email = :email LIMIT 1");
+    $stmt = $pdo->prepare('SELECT id FROM users WHERE email = :email LIMIT 1');
     $stmt->execute([':email' => $email]);
     if ($stmt->fetch()) {
         return ['success' => false, 'message' => 'Email address is already registered.'];
     }
-    
-    // Hash the password
+
     $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-    
-    // Insert new user (default role: citizen)
+
+    // Match the working SSO insert columns. Production `users` has
+    // is_active / login_attempts and does NOT have created_at.
     $stmt = $pdo->prepare("
-        INSERT INTO users (full_name, email, password, user_type, created_at)
-        VALUES (:full_name, :email, :password, 'citizen', NOW())
+        INSERT INTO users (full_name, email, password, user_type, is_active, login_attempts)
+        VALUES (:full_name, :email, :password, 'citizen', 1, 0)
     ");
-    
+
     try {
         $stmt->execute([
             ':full_name' => $full_name,
             ':email'     => $email,
             ':password'  => $hashedPassword,
         ]);
-        return ['success' => true, 'message' => 'Registration successful.'];
+
+        return [
+            'success' => true,
+            'message' => 'Registration successful.',
+            'user_id' => (int)$pdo->lastInsertId(),
+        ];
     } catch (PDOException $e) {
-        error_log("Registration error: " . $e->getMessage());
+        error_log('Registration error: ' . $e->getMessage());
+
+        // Duplicate email race
+        if ((int)$e->getCode() === 23000 || str_contains($e->getMessage(), 'Duplicate')) {
+            return ['success' => false, 'message' => 'Email address is already registered.'];
+        }
+
         return ['success' => false, 'message' => 'Registration failed. Please try again.'];
     }
 }
-// =============================================
-// END OF registerUser() FUNCTION
-// =============================================
 
 function logoutUser() {
     session_unset();

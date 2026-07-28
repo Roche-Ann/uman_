@@ -1,11 +1,7 @@
 <?php
 // forgot.php 
 require_once 'includes/auth.php';          // provides $pdo and session handling
-require_once __DIR__ . '/vendor/autoload.php';
-
-use Symfony\Component\Mailer\Mailer;
-use Symfony\Component\Mailer\Transport;
-use Symfony\Component\Mime\Email;
+require_once __DIR__ . '/includes/mailer.php';
 
 // Ensure password_resets table exists (if not already)
 $pdo->exec("
@@ -72,30 +68,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ";
         $text = "Hello {$user['full_name']},\n\nWe received a request to reset your password. This link expires in 30 minutes.\n\nReset your password: {$resetLink}\n\nIf you didn't request this, you can ignore this email.";
 
-        // Send email
-        $dsnRaw = getenv('MAILER_DSN') ?: 'smtp://localhost';
-        $transport = null;
-        try {
-            $transport = Transport::fromDsn($dsnRaw);
-        } catch (Throwable $e) {
-            error_log('Password reset mail DSN error: ' . $e->getMessage());
-        }
-
-        if ($transport) {
-            $mailer = new Mailer($transport);
-            $from = getenv('MAILER_FROM') ?: 'no-reply@localhost';
-            $mail = (new Email())
-                ->from($from)
-                ->to($user['email'])
-                ->subject($subject)
-                ->text($text)
-                ->html($html);
-
-            try {
-                $mailer->send($mail);
-            } catch (Throwable $e) {
-                error_log('Password reset mail error: ' . $e->getMessage());
-            }
+        // Send email via configured SMTP (Gmail)
+        $mailResult = sendAppMail($user['email'], $subject, $html, $text);
+        if (!$mailResult['success']) {
+            error_log('Password reset mail error: ' . ($mailResult['error'] ?? 'unknown'));
         }
     }
 

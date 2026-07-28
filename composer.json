@@ -1,5 +1,6 @@
 {
     "require": {
-        "tecnickcom/tcpdf": "^6.10"
+        "tecnickcom/tcpdf": "^6.10",
+        "symfony/mailer": "^7.4"
     }
 }

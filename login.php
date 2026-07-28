@@ -5,16 +5,7 @@ ini_set('display_errors', 1);
 
 // login.php - REMOVED session_start() from here
 require_once 'includes/auth.php';
-
-// Add the Symfony Mailer classes at the top
-use Symfony\Component\Mailer\Mailer;
-use Symfony\Component\Mailer\Transport;
-use Symfony\Component\Mime\Email;
-
-// Ensure composer autoload is included for the Mailer (adjust path if needed)
-if (file_exists(__DIR__ . '/vendor/autoload.php')) {
-    require_once __DIR__ . '/vendor/autoload.php';
-}
+require_once __DIR__ . '/includes/mailer.php';
 
 // Redirect if already logged in
 if (isLoggedIn()) {
@@ -28,6 +19,11 @@ if (isLoggedIn()) {
 
 $error = '';
 $warning = '';
+$success = '';
+
+if (isset($_GET['registered']) && $_GET['registered'] == '1') {
+    $success = 'Account created successfully. Please log in to continue.';
+}
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $email = filter_var($_POST['email'] ?? '', FILTER_SANITIZE_EMAIL);
@@ -49,6 +45,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $userType = $result['user_type'];
 
             if ($userId) {
+                ensureAuthSchema();
+
                 // 2. Generate OTP and Expiry
                 $otp = str_pad((string)mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
                 $otpHash = password_hash($otp, PASSWORD_DEFAULT);
@@ -69,64 +67,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     ':exp' => $expiresAt,
                 ]);
 
-                // 4. Send the Email using Symfony Mailer
-                $envPath = __DIR__ . '/.env';
-                if (is_readable($envPath)) {
-                    $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-                    foreach ($lines as $line) {
-                        if (str_starts_with(trim($line), '#') || !str_contains($line, '=')) continue;
-                        [$k, $v] = explode('=', $line, 2);
-                        putenv(trim($k) . '=' . trim($v));
-                    }
+                // 4. Send the OTP email via Gmail SMTP
+                $mailResult = sendOtpEmail($email, $fullName, $otp, 10);
+                if (!$mailResult['success']) {
+                    error_log('OTP mail error: ' . ($mailResult['error'] ?? 'unknown'));
+                    $error = 'We could not send your verification code. Please try again in a moment.';
+                } else {
+                    // 5. Setup Pending Session
+                    $_SESSION['pending_login'] = [
+                        'id'    => $userId,
+                        'name'  => $fullName,
+                        'email' => $email,
+                        'role'  => $userType,
+                    ];
+
+                    unset($_SESSION['logged_in']);
+                    unset($_SESSION['user_id']);
+
+                    // 6. Redirect to OTP verification page
+                    header('Location: verify-otp.php');
+                    exit();
                 }
-
-                $dsnRaw = getenv('MAILER_DSN') ?: 'smtp://localhost';
-                $transport = null;
-                try {
-                    $transport = Transport::fromDsn($dsnRaw);
-                } catch (Throwable $e) {
-                    error_log('OTP mail DSN error: ' . $e->getMessage());
-                }
-
-                if ($transport) {
-                    $mailer = new Mailer($transport);
-                    $from = getenv('MAILER_FROM') ?: 'no-reply@localhost';
-                    
-                    $subject = 'Your Login Verification Code';
-                    $html = "
-                        <p>Hello {$fullName},</p>
-                        <p>Your login verification code is: <strong style='font-size: 24px; letter-spacing: 4px;'>{$otp}</strong></p>
-                        <p>This code will expire in 10 minutes.</p>
-                        <p>If you didn't attempt to log in, please ignore this email.</p>
-                    ";
-
-                    $mail = (new Email())
-                        ->from($from)
-                        ->to($email)
-                        ->subject($subject)
-                        ->html($html);
-
-                    try {
-                        $mailer->send($mail);
-                    } catch (Throwable $e) {
-                        error_log('OTP mail error: ' . $e->getMessage());
-                    }
-                }
-
-                // 5. Setup Pending Session
-                $_SESSION['pending_login'] = [
-                    'id'    => $userId,
-                    'name'  => $fullName,
-                    'email' => $email,
-                    'role'  => $userType,
-                ];
-
-                unset($_SESSION['logged_in']);
-                unset($_SESSION['user_id']);
-
-                // 6. Redirect to OTP verification page
-                header('Location: verify-otp.php');
-                exit();
             } else {
                 $error = "System Error: Could not retrieve User ID for OTP.";
             }
@@ -548,6 +509,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             font-weight: 500;
         }
 
+        .success-message {
+            background: rgba(42, 157, 143, 0.12);
+            border-left: 4px solid var(--progress-emerald);
+            color: #1b6b60;
+            padding: 0.75rem 1rem;
+            border-radius: var(--radius-soft);
+            margin-bottom: 1.5rem;
+            font-weight: 500;
+        }
+
         .attempt-warning {
             background: rgba(255, 158, 0, 0.1);
             border-left: 4px solid var(--insight-amber);
@@ -797,6 +768,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             <form method="POST" action="">
                 <?php if ($error): ?>
                     <div class="error-message"><?php echo htmlspecialchars($error); ?></div>
+                <?php endif; ?>
+
+                <?php if ($success): ?>
+                    <div class="success-message"><?php echo htmlspecialchars($success); ?></div>
                 <?php endif; ?>
 
                 <?php if ($warning): ?>
