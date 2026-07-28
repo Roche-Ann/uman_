@@ -296,23 +296,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->execute([$asset_id, $name, $asset_type_id, $quantity, $location, $latitude, $longitude, $date_installed, $condition_status, $description, $responsible_office]);
                 $id = $pdo->lastInsertId();
 
-                // Handle Image Upload if any
-                $imagePath = handleImageUpload($_FILES['image'] ?? null);
-                if ($imagePath) {
-                    $pdo->prepare("INSERT INTO asset_images (utility_asset_id, image_path) VALUES (?, ?)")->execute([$id, $imagePath]);
-                }
+                // Handle Image Upload if any (non-critical)
+                try {
+                    $imagePath = handleImageUpload($_FILES['image'] ?? null);
+                    if ($imagePath) {
+                        $pdo->prepare("INSERT INTO asset_images (utility_asset_id, image_path) VALUES (?, ?)")->execute([$id, $imagePath]);
+                    }
+                } catch (Throwable $ignored) {}
 
-                // Log Status Log
-                $pdo->prepare("
-                    INSERT INTO asset_status_logs (utility_asset_id, old_status, new_status, changed_by, notes) 
-                    VALUES (?, NULL, ?, ?, 'Asset registered in system.')
-                ")->execute([$id, $condition_status, $userId]);
+                // Log Status (non-critical)
+                try {
+                    $pdo->prepare("
+                        INSERT INTO asset_status_logs (utility_asset_id, old_status, new_status, changed_by, notes) 
+                        VALUES (?, NULL, ?, ?, 'Asset registered in system.')
+                    ")->execute([$id, $condition_status, $userId]);
+                } catch (Throwable $ignored) {}
 
-                // Create alert notification
-                $pdo->prepare("
-                    INSERT INTO asset_notifications (type, message) 
-                    VALUES ('asset_created', ?)
-                ")->execute(["New asset registered: {$asset_id} ({$name}) in {$location}."]);
+                // Create alert notification (non-critical)
+                try {
+                    $pdo->prepare("
+                        INSERT INTO asset_notifications (type, message) 
+                        VALUES ('asset_created', ?)
+                    ")->execute(["New asset registered: {$asset_id} ({$name}) in {$location}."]);
+                } catch (Throwable $ignored) {}
 
                 $_SESSION['flash_success'] = "Asset {$asset_id} successfully created!";
                 header('Location: ' . $_SERVER['PHP_SELF']);
