@@ -387,34 +387,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ");
                     $stmt->execute([$name, $asset_type_id, $quantity, $location, $latitude, $longitude, $date_installed, $condition_status, $description, $responsible_office, $id]);
 
-                    // Check and log status changes
+                    // Log status change (non-critical)
                     if ($oldAsset['condition_status'] !== $condition_status) {
-                        $pdo->prepare("
-                            INSERT INTO asset_status_logs (utility_asset_id, old_status, new_status, changed_by, notes) 
-                            VALUES (?, ?, ?, ?, ?)
-                        ")->execute([$id, $oldAsset['condition_status'], $condition_status, $userId, $status_notes ?: 'Status modified by administrator.']);
+                        try {
+                            $pdo->prepare("
+                                INSERT INTO asset_status_logs (utility_asset_id, old_status, new_status, changed_by, notes) 
+                                VALUES (?, ?, ?, ?, ?)
+                            ")->execute([$id, $oldAsset['condition_status'], $condition_status, $userId, $status_notes ?: 'Status modified by administrator.']);
+                        } catch (Throwable $ignored) {}
 
-                        // Trigger notifications
-                        $notifType = ($condition_status === 'Damaged') ? 'reported_damaged' : 'status_changed';
-                        $pdo->prepare("
-                            INSERT INTO asset_notifications (type, message) 
-                            VALUES (?, ?)
-                        ")->execute([$notifType, "Asset {$asset_id} status changed from {$oldAsset['condition_status']} to {$condition_status}."]);
+                        // Trigger notification (non-critical)
+                        try {
+                            $notifType = ($condition_status === 'Damaged') ? 'reported_damaged' : 'status_changed';
+                            $pdo->prepare("
+                                INSERT INTO asset_notifications (type, message) 
+                                VALUES (?, ?)
+                            ")->execute([$notifType, "Asset {$asset_id} status changed from {$oldAsset['condition_status']} to {$condition_status}."]);
+                        } catch (Throwable $ignored) {}
                     }
 
-                    // Check and log location changes
+                    // Log location change (non-critical)
                     if ($oldAsset['location'] !== $location) {
-                        $pdo->prepare("
-                            INSERT INTO asset_locations (utility_asset_id, old_location, new_location, old_latitude, new_latitude, old_longitude, new_longitude, changed_by) 
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                        ")->execute([$id, $oldAsset['location'], $location, $oldAsset['latitude'], $latitude, $oldAsset['longitude'], $longitude, $userId]);
+                        try {
+                            $pdo->prepare("
+                                INSERT INTO asset_locations (utility_asset_id, old_location, new_location, old_latitude, new_latitude, old_longitude, new_longitude, changed_by) 
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                            ")->execute([$id, $oldAsset['location'], $location, $oldAsset['latitude'], $latitude, $oldAsset['longitude'], $longitude, $userId]);
+                        } catch (Throwable $ignored) {}
                     }
 
-                    // Handle Image Upload if any
-                    $imagePath = handleImageUpload($_FILES['image'] ?? null);
-                    if ($imagePath) {
-                        $pdo->prepare("INSERT INTO asset_images (utility_asset_id, image_path) VALUES (?, ?)")->execute([$id, $imagePath]);
-                    }
+                    // Handle Image Upload (non-critical)
+                    try {
+                        $imagePath = handleImageUpload($_FILES['image'] ?? null);
+                        if ($imagePath) {
+                            $pdo->prepare("INSERT INTO asset_images (utility_asset_id, image_path) VALUES (?, ?)")->execute([$id, $imagePath]);
+                        }
+                    } catch (Throwable $ignored) {}
 
                     $_SESSION['flash_success'] = "Asset {$asset_id} updated successfully!";
                     header('Location: ' . $_SERVER['PHP_SELF']);
