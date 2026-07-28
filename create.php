@@ -4,7 +4,7 @@ require_once 'includes/auth.php';
 
 // Redirect if already logged in
 if (isLoggedIn()) {
-    header('Location: ' . ($_SESSION['user_type'] == 'employee' ? 'employee.php' : 'citizen.php'));
+    header('Location: ' . ($_SESSION['user_type'] == 'employee' ? 'utilities_dashboard.php' : 'citizen.php'));
     exit();
 }
 
