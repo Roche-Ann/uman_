@@ -1,12 +1,9 @@
 <?php
 /**
- * Shared Symfony Mailer helpers for OTP and transactional email.
+ * Shared mail helpers for OTP and transactional email.
+ * Uses Symfony Mailer when vendor/ is installed; otherwise pure PHP SMTP
+ * (needed on shared hosting where `composer install` was never run).
  */
-
-use Symfony\Component\Mailer\Mailer;
-use Symfony\Component\Mailer\Transport;
-use Symfony\Component\Mime\Address;
-use Symfony\Component\Mime\Email;
 
 if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
     require_once __DIR__ . '/../vendor/autoload.php';
@@ -38,7 +35,6 @@ function loadAppEnv(): void
         $k = trim($k);
         $v = trim($v);
 
-        // Strip surrounding single/double quotes from values.
         if (
             (str_starts_with($v, '"') && str_ends_with($v, '"')) ||
             (str_starts_with($v, "'") && str_ends_with($v, "'"))
@@ -59,6 +55,30 @@ function loadAppEnv(): void
 }
 
 /**
+ * Parse smtp://user:pass@host:port into connection parts.
+ *
+ * @return array{host:string,port:int,user:string,pass:string}|null
+ */
+function parseSmtpDsn(string $dsn): ?array
+{
+    $parts = parse_url($dsn);
+    if (!$parts || empty($parts['host'])) {
+        return null;
+    }
+
+    $user = isset($parts['user']) ? rawurldecode($parts['user']) : '';
+    $pass = isset($parts['pass']) ? rawurldecode($parts['pass']) : '';
+    $pass = preg_replace('/\s+/', '', $pass);
+
+    return [
+        'host' => $parts['host'],
+        'port' => (int)($parts['port'] ?? 587),
+        'user' => $user,
+        'pass' => $pass,
+    ];
+}
+
+/**
  * Resolve MAILER_DSN, building a Gmail SMTP DSN from MAIL_* vars when needed.
  */
 function resolveMailerDsn(): ?string
@@ -74,18 +94,19 @@ function resolveMailerDsn(): ?string
     $port = trim((string)(getenv('MAIL_PORT') ?: '587'));
     $user = trim((string)(getenv('MAIL_USERNAME') ?: ''));
     $pass = trim((string)(getenv('MAIL_PASSWORD') ?: ''));
-
-    // Gmail app passwords are often pasted with spaces — strip them.
     $pass = preg_replace('/\s+/', '', $pass);
 
     if ($user === '' || $pass === '') {
         return $dsn !== '' ? $dsn : null;
     }
 
-    $userEnc = rawurlencode($user);
-    $passEnc = rawurlencode($pass);
-
-    return sprintf('smtp://%s:%s@%s:%s', $userEnc, $passEnc, $host, $port);
+    return sprintf(
+        'smtp://%s:%s@%s:%s',
+        rawurlencode($user),
+        rawurlencode($pass),
+        $host,
+        $port
+    );
 }
 
 /**
@@ -105,6 +126,146 @@ function resolveMailerFrom(): string
 }
 
 /**
+ * Read one SMTP response (may be multi-line).
+ */
+function smtpRead($socket): string
+{
+    $data = '';
+    while (!feof($socket)) {
+        $line = fgets($socket, 515);
+        if ($line === false) {
+            break;
+        }
+        $data .= $line;
+        if (isset($line[3]) && $line[3] === ' ') {
+            break;
+        }
+    }
+    return $data;
+}
+
+/**
+ * Send one SMTP command and optionally assert a response code prefix.
+ */
+function smtpCommand($socket, string $command, ?string $expectPrefix = null): string
+{
+    fwrite($socket, $command . "\r\n");
+    $response = smtpRead($socket);
+    if ($expectPrefix !== null && !str_starts_with(trim($response), $expectPrefix)) {
+        throw new RuntimeException('SMTP unexpected response for "' . $command . '": ' . trim($response));
+    }
+    return $response;
+}
+
+/**
+ * Send email using raw SMTP (STARTTLS on port 587 / implicit TLS on 465).
+ *
+ * @return array{success: bool, error: ?string}
+ */
+function sendAppMailSmtpNative(string $to, string $subject, string $html, ?string $text, array $smtp, string $from, string $fromName): array
+{
+    $host = $smtp['host'];
+    $port = $smtp['port'];
+    $user = $smtp['user'];
+    $pass = $smtp['pass'];
+
+    if ($user === '' || $pass === '') {
+        return ['success' => false, 'error' => 'SMTP username/password missing in .env'];
+    }
+
+    $remote = ($port === 465 ? 'ssl://' : '') . $host . ':' . $port;
+    $socket = @stream_socket_client(
+        $remote,
+        $errno,
+        $errstr,
+        30,
+        STREAM_CLIENT_CONNECT,
+        stream_context_create([
+            'ssl' => [
+                'verify_peer' => true,
+                'verify_peer_name' => true,
+                'allow_self_signed' => false,
+            ],
+        ])
+    );
+
+    if (!$socket) {
+        return ['success' => false, 'error' => "SMTP connect failed: {$errstr} ({$errno})"];
+    }
+
+    stream_set_timeout($socket, 30);
+
+    try {
+        $greeting = smtpRead($socket);
+        if (!str_starts_with(trim($greeting), '220')) {
+            throw new RuntimeException('Bad SMTP greeting: ' . trim($greeting));
+        }
+
+        $ehloHost = 'localhost';
+        smtpCommand($socket, 'EHLO ' . $ehloHost, '250');
+
+        if ($port !== 465) {
+            smtpCommand($socket, 'STARTTLS', '220');
+            $crypto = stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
+            if ($crypto !== true) {
+                throw new RuntimeException('STARTTLS negotiation failed');
+            }
+            smtpCommand($socket, 'EHLO ' . $ehloHost, '250');
+        }
+
+        smtpCommand($socket, 'AUTH LOGIN', '334');
+        smtpCommand($socket, base64_encode($user), '334');
+        smtpCommand($socket, base64_encode($pass), '235');
+
+        smtpCommand($socket, 'MAIL FROM:<' . $from . '>', '250');
+        smtpCommand($socket, 'RCPT TO:<' . $to . '>', '250');
+        smtpCommand($socket, 'DATA', '354');
+
+        $boundary = 'b_' . bin2hex(random_bytes(8));
+        $textBody = $text !== null && $text !== ''
+            ? $text
+            : trim(html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+
+        $headers = [
+            'Date: ' . date('r'),
+            'From: ' . sprintf('"%s" <%s>', addcslashes($fromName, '"\\'), $from),
+            'To: <' . $to . '>',
+            'Subject: ' . $subject,
+            'MIME-Version: 1.0',
+            'Content-Type: multipart/alternative; boundary="' . $boundary . '"',
+        ];
+
+        $body = implode("\r\n", $headers) . "\r\n\r\n";
+        $body .= '--' . $boundary . "\r\n";
+        $body .= "Content-Type: text/plain; charset=UTF-8\r\n";
+        $body .= "Content-Transfer-Encoding: 8bit\r\n\r\n";
+        $body .= $textBody . "\r\n";
+        $body .= '--' . $boundary . "\r\n";
+        $body .= "Content-Type: text/html; charset=UTF-8\r\n";
+        $body .= "Content-Transfer-Encoding: 8bit\r\n\r\n";
+        $body .= $html . "\r\n";
+        $body .= '--' . $boundary . "--\r\n";
+
+        // SMTP data ends with <CRLF>.<CRLF>; escape lines starting with '.'
+        $body = preg_replace('/^\./m', '..', $body);
+        fwrite($socket, $body . "\r\n.\r\n");
+        $dataResp = smtpRead($socket);
+        if (!str_starts_with(trim($dataResp), '250')) {
+            throw new RuntimeException('SMTP DATA failed: ' . trim($dataResp));
+        }
+
+        smtpCommand($socket, 'QUIT');
+        fclose($socket);
+
+        return ['success' => true, 'error' => null];
+    } catch (Throwable $e) {
+        fclose($socket);
+        error_log('Native SMTP error: ' . $e->getMessage());
+        return ['success' => false, 'error' => $e->getMessage()];
+    }
+}
+
+/**
  * Send an HTML (and optional text) email.
  *
  * @return array{success: bool, error: ?string}
@@ -112,13 +273,6 @@ function resolveMailerFrom(): string
 function sendAppMail(string $to, string $subject, string $html, ?string $text = null): array
 {
     loadAppEnv();
-
-    if (!class_exists(Transport::class)) {
-        return [
-            'success' => false,
-            'error' => 'Mailer package is not installed. Run: composer require symfony/mailer',
-        ];
-    }
 
     $dsn = resolveMailerDsn();
     if ($dsn === null || $dsn === '') {
@@ -128,29 +282,37 @@ function sendAppMail(string $to, string $subject, string $html, ?string $text = 
         ];
     }
 
-    try {
-        $transport = Transport::fromDsn($dsn);
-        $mailer = new Mailer($transport);
-        $from = resolveMailerFrom();
-        $appName = trim((string)(getenv('APP_NAME') ?: 'LGU Utilities Management'));
+    $from = resolveMailerFrom();
+    $appName = trim((string)(getenv('APP_NAME') ?: 'LGU Utilities Management'));
+    $smtp = parseSmtpDsn($dsn);
 
-        $email = (new Email())
-            ->from(new Address($from, $appName))
-            ->to($to)
-            ->subject($subject)
-            ->html($html);
+    // Prefer Symfony when available
+    if (class_exists(\Symfony\Component\Mailer\Transport::class) && $smtp) {
+        try {
+            $transport = \Symfony\Component\Mailer\Transport::fromDsn($dsn);
+            $mailer = new \Symfony\Component\Mailer\Mailer($transport);
+            $email = (new \Symfony\Component\Mime\Email())
+                ->from(new \Symfony\Component\Mime\Address($from, $appName))
+                ->to($to)
+                ->subject($subject)
+                ->html($html);
 
-        if ($text !== null && $text !== '') {
-            $email->text($text);
+            if ($text !== null && $text !== '') {
+                $email->text($text);
+            }
+
+            $mailer->send($email);
+            return ['success' => true, 'error' => null];
+        } catch (Throwable $e) {
+            error_log('Symfony mail failed, trying native SMTP: ' . $e->getMessage());
         }
-
-        $mailer->send($email);
-
-        return ['success' => true, 'error' => null];
-    } catch (Throwable $e) {
-        error_log('Mail send error: ' . $e->getMessage());
-        return ['success' => false, 'error' => $e->getMessage()];
     }
+
+    if (!$smtp) {
+        return ['success' => false, 'error' => 'Invalid MAILER_DSN'];
+    }
+
+    return sendAppMailSmtpNative($to, $subject, $html, $text, $smtp, $from, $appName);
 }
 
 /**
@@ -169,23 +331,15 @@ function buildOtpEmailHtml(string $recipientName, string $otp, int $expiresMinut
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Your Verification Code</title>
-        <style>
-            body, table, td, p, a { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        </style>
     </head>
     <body style="margin:0; padding:0; background-color:#f4f4f4;">
-        <table width="100%" cellpadding="0" cellspacing="0" border="0" align="center" bgcolor="#f4f4f4" style="background-color:#f4f4f4;">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" align="center" bgcolor="#f4f4f4">
             <tr>
                 <td align="center" style="padding:20px 15px;">
-                    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:500px; background:#ffffff; border-radius:20px; box-shadow:0 8px 32px rgba(11,61,145,0.08);">
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:500px; background:#ffffff; border-radius:20px;">
                         <tr>
-                            <td align="center" style="padding:30px 30px 20px;">
-                                <img src="https://uman.infragovservices.com/assets/images/logocityhall.png" alt="LGU Logo" width="80" height="80" style="display:block; width:80px; height:80px; border-radius:50%; object-fit:cover;">
-                            </td>
-                        </tr>
-                        <tr>
-                            <td align="center" style="padding:0 30px 10px;">
-                                <h1 style="font-family: 'Urbanist', 'Segoe UI', sans-serif; font-size:28px; font-weight:700; margin:0; color:#0B3D91;">Verify Your Email</h1>
+                            <td align="center" style="padding:30px 30px 10px;">
+                                <h1 style="font-size:28px; font-weight:700; margin:0; color:#0B3D91;">Verify Your Email</h1>
                             </td>
                         </tr>
                         <tr>
@@ -200,35 +354,12 @@ function buildOtpEmailHtml(string $recipientName, string $otp, int $expiresMinut
                         </tr>
                         <tr>
                             <td align="center" style="padding:0 30px 20px;">
-                                <table cellpadding="0" cellspacing="0" border="0" style="background:#f0f5ff; border-radius:12px; padding:15px 25px; display:inline-block;">
-                                    <tr>
-                                        <td>
-                                            <span style="font-family: 'Fira Code', monospace; font-size:36px; font-weight:700; letter-spacing:8px; color:#0B3D91;">{$code}</span>
-                                        </td>
-                                    </tr>
-                                </table>
+                                <span style="font-family: monospace; font-size:36px; font-weight:700; letter-spacing:8px; color:#0B3D91;">{$code}</span>
                             </td>
                         </tr>
                         <tr>
-                            <td align="center" style="padding:0 30px 20px;">
+                            <td align="center" style="padding:0 30px 30px;">
                                 <p style="font-size:14px; color:#6c757d; margin:0;">This code will expire in <strong>{$mins} minutes</strong>.</p>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td align="center" style="padding:0 30px;">
-                                <hr style="border:0; height:1px; background:#e0e0e2; width:100%;">
-                            </td>
-                        </tr>
-                        <tr>
-                            <td align="center" style="padding:20px 30px 30px;">
-                                <p style="font-size:13px; color:#6c757d; margin:0;">If you did not attempt to log in, please ignore this email or contact support.</p>
-                            </td>
-                        </tr>
-                    </table>
-                    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:500px; margin-top:20px;">
-                        <tr>
-                            <td align="center" style="padding:0 15px;">
-                                <p style="font-size:12px; color:#6c757d;">© 2026 LGU Utilities Management System · All Rights Reserved</p>
                             </td>
                         </tr>
                     </table>
