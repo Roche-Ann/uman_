@@ -15,6 +15,12 @@ if (!isset($GLOBALS['_ENV_LOADED'])) {
             [$k, $v] = explode('=', $line, 2);
             $k = trim($k);
             $v = trim($v);
+            if (
+                (str_starts_with($v, '"') && str_ends_with($v, '"')) ||
+                (str_starts_with($v, "'") && str_ends_with($v, "'"))
+            ) {
+                $v = substr($v, 1, -1);
+            }
             if ($k === '') continue;
             putenv("$k=$v");
             $_ENV[$k] = $v;
