@@ -5,6 +5,21 @@ require_once 'includes/db.php';
 
 // Self-healing database repair for missing PRIMARY KEY or AUTO_INCREMENT on assets tables
 function ensureAssetsSchema($pdo) {
+    $repairTable = function($pdo, $tableName) {
+        try {
+            $col = $pdo->query("SHOW COLUMNS FROM `$tableName` LIKE 'id'")->fetch(PDO::FETCH_ASSOC);
+            if ($col && stripos((string)($col['Extra'] ?? ''), 'auto_increment') === false) {
+                $pdo->exec("SET FOREIGN_KEY_CHECKS = 0");
+                $pdo->exec("SET SESSION sql_mode = REPLACE(@@sql_mode, 'NO_AUTO_VALUE_ON_ZERO', '')");
+                try {
+                    $pdo->exec("ALTER TABLE `$tableName` ADD PRIMARY KEY (id)");
+                } catch (Throwable $ignored) {}
+                $pdo->exec("ALTER TABLE `$tableName` MODIFY id INT NOT NULL AUTO_INCREMENT");
+                $pdo->exec("SET FOREIGN_KEY_CHECKS = 1");
+            }
+        } catch (Throwable $e) {}
+    };
+
     $needsTypeRepair = false;
     try {
         $col = $pdo->query("SHOW COLUMNS FROM asset_types LIKE 'id'")->fetch(PDO::FETCH_ASSOC);
@@ -24,6 +39,12 @@ function ensureAssetsSchema($pdo) {
     } catch (Throwable $e) {
         $needsAssetRepair = true;
     }
+
+    // Repair secondary tables if they are missing auto_increment
+    $repairTable($pdo, 'asset_status_logs');
+    $repairTable($pdo, 'asset_notifications');
+    $repairTable($pdo, 'asset_images');
+    $repairTable($pdo, 'asset_locations');
 
     if (!$needsTypeRepair && !$needsAssetRepair) {
         return; // Schema is already correct
