@@ -471,19 +471,13 @@ $search = trim($_GET['search'] ?? '');
 $type_filter = !empty($_GET['type_id']) ? intval($_GET['type_id']) : null;
 $status_filter = !empty($_GET['status']) ? trim($_GET['status']) : null;
 
-// Pagination configuration
-$limit = 10;
-$page = !empty($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
-$offset = ($page - 1) * $limit;
-
-// Build query conditions
+// Build asset WHERE conditions
 $conditions = [];
 $params = [];
 
 if (!empty($search)) {
-    $conditions[] = "(a.name LIKE ? OR a.asset_id LIKE ? OR a.location LIKE ?)";
+    $conditions[] = "(a.name LIKE ? OR a.asset_id LIKE ?)";
     $searchWildcard = '%' . $search . '%';
-    $params[] = $searchWildcard;
     $params[] = $searchWildcard;
     $params[] = $searchWildcard;
 }
@@ -500,33 +494,55 @@ if ($status_filter) {
 
 $whereClause = !empty($conditions) ? 'WHERE ' . implode(' AND ', $conditions) : '';
 
-// Retrieve count for pagination
-$countQuery = "SELECT COUNT(*) FROM utility_assets a $whereClause";
-$countStmt = $pdo->prepare($countQuery);
-$countStmt->execute($params);
-$totalRecords = $countStmt->fetchColumn();
-$totalPages = ceil($totalRecords / $limit);
-
-// Retrieve Assets List
-$query = "
-    SELECT a.*, t.name as type_name, img.image_path
-    FROM utility_assets a 
-    LEFT JOIN asset_types t ON a.asset_type_id = t.id 
-    LEFT JOIN (
-        SELECT utility_asset_id, MAX(image_path) as image_path 
-        FROM asset_images 
-        GROUP BY utility_asset_id
-    ) img ON a.id = img.utility_asset_id
+// Fetch all matching assets (no pagination at row level yet)
+$allAssetsQuery = "
+    SELECT a.*, t.name as type_name, t.id as type_id_val
+    FROM utility_assets a
+    LEFT JOIN asset_types t ON a.asset_type_id = t.id
     $whereClause
-    ORDER BY a.asset_id ASC
-    LIMIT $limit OFFSET $offset
+    ORDER BY COALESCE(t.name, 'Unknown') ASC, a.asset_id ASC
 ";
-$stmt = $pdo->prepare($query);
-$stmt->execute($params);
-$assetsList = $stmt->fetchAll();
+$allStmt = $pdo->prepare($allAssetsQuery);
+$allStmt->execute($params);
+$allAssets = $allStmt->fetchAll();
+
+// Group assets by category
+$groupedAssets = [];
+foreach ($allAssets as $asset) {
+    $catKey = $asset['type_id_val'] ?? 0;
+    $catName = $asset['type_name'] ?? 'Unknown';
+    if (!isset($groupedAssets[$catKey])) {
+        $groupedAssets[$catKey] = [
+            'category_name' => $catName,
+            'category_id'   => $catKey,
+            'total_qty'     => 0,
+            'statuses'      => [],
+            'assets'        => [],
+        ];
+    }
+    $groupedAssets[$catKey]['total_qty'] += intval($asset['quantity']);
+    $groupedAssets[$catKey]['statuses'][] = $asset['condition_status'];
+    $groupedAssets[$catKey]['assets'][] = $asset;
+}
+
+// Pagination based on categories
+$limit = 10;
+$page = !empty($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+$offset = ($page - 1) * $limit;
+$totalCategories = count($groupedAssets);
+$totalPages = ceil($totalCategories / $limit);
+$pagedGroups = array_slice($groupedAssets, $offset, $limit, true);
 
 // Retrieve all asset types for form selectors
 $assetTypes = $pdo->query("SELECT * FROM asset_types ORDER BY name ASC")->fetchAll();
+
+// Determine which categories to auto-expand (when search is active)
+$autoExpandCats = [];
+if (!empty($search) || $status_filter) {
+    foreach ($pagedGroups as $catId => $group) {
+        $autoExpandCats[] = $catId;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -1001,6 +1017,98 @@ $assetTypes = $pdo->query("SELECT * FROM asset_types ORDER BY name ASC")->fetchA
                 gap: 0;
             }
         }
+
+        /* =========== ACCORDION TABLE STYLES =========== */
+        .group-header-row {
+            cursor: pointer;
+            background: #f8faff;
+            border-left: 4px solid transparent;
+            transition: background 0.15s, border-color 0.15s;
+        }
+        .group-header-row:hover {
+            background: #eef2ff;
+            border-left-color: #6366f1;
+        }
+        .group-header-row.expanded {
+            background: #eef2ff;
+            border-left-color: #6366f1;
+        }
+        .accordion-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #e0e7ff;
+            color: #6366f1;
+            font-size: 10px;
+            transition: transform 0.25s ease;
+        }
+        .group-header-row.expanded .accordion-icon {
+            transform: rotate(90deg);
+        }
+        .category-label {
+            font-size: 14px;
+            color: #1e293b;
+            letter-spacing: 0.01em;
+        }
+        .asset-count-badge {
+            display: inline-block;
+            background: #6366f1;
+            color: #fff;
+            border-radius: 20px;
+            padding: 2px 10px;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+        /* Child row container */
+        .group-child-row {
+            display: none;
+        }
+        .group-child-row.open {
+            display: table-row;
+        }
+        /* Child table inside expanded row */
+        .child-table-wrapper {
+            padding: 0 0 8px 40px;
+            background: #f9fafb;
+            border-top: 1px solid #e2e8f0;
+            border-bottom: 2px solid #e0e7ff;
+        }
+        .child-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .child-table thead tr {
+            background: #f1f5f9;
+        }
+        .child-table thead th {
+            padding: 9px 12px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #64748b;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .child-table tbody tr {
+            border-bottom: 1px solid #f1f5f9;
+            transition: background 0.1s;
+        }
+        .child-table tbody tr:hover {
+            background: #f0f4ff;
+        }
+        .child-table td {
+            padding: 9px 12px;
+            font-size: 13px;
+            color: #334155;
+        }
+        .child-asset-row.search-highlight {
+            background: #fefce8 !important;
+            border-left: 3px solid #eab308;
+        }
     </style>
 </head>
 <body>
@@ -1087,40 +1195,94 @@ $assetTypes = $pdo->query("SELECT * FROM asset_types ORDER BY name ASC")->fetchA
         <!-- Data Table Section -->
         <div class="table-section">
             <div class="table-container">
-                <table>
+                <table id="assets-accordion-table">
                     <thead>
                         <tr>
-                            <th>Asset ID</th>
-                            <th>Name</th>
+                            <th style="width:36px;"></th>
                             <th>Category</th>
-                            <th>Qty</th>
-                            <th>Installed</th>
-                            <th>Status</th>
-                            <th>Location</th>
-                            <th style="text-align: right;">Actions</th>
+                            <th>Total Assets</th>
+                            <th>Total Qty</th>
+                            <th>Status Summary</th>
+                            <th style="text-align:right;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if (empty($assetsList)): ?>
-                            <tr><td colspan="8" style="text-align: center; padding: 30px; color: #64748b;">No assets found matching filters.</td></tr>
+                        <?php if (empty($pagedGroups)): ?>
+                            <tr><td colspan="6" style="text-align:center; padding:30px; color:#64748b;">No assets found matching filters.</td></tr>
                         <?php else: ?>
-                            <?php foreach ($assetsList as $asset): ?>
-                            <tr>
-                                <td><strong><?php echo htmlspecialchars($asset['asset_id']); ?></strong></td>
-                                <td><?php echo htmlspecialchars($asset['name']); ?></td>
-                                <td><?php echo htmlspecialchars($asset['type_name']); ?></td>
-                                <td><?php echo htmlspecialchars($asset['quantity']); ?></td>
-                                <td><?php echo date('M d, Y', strtotime($asset['date_installed'])); ?></td>
+                            <?php foreach ($pagedGroups as $catId => $group): ?>
+                            <?php
+                                $isExpanded = in_array($catId, $autoExpandCats);
+                                $statusCounts = array_count_values($group['statuses']);
+                                $dominantStatus = array_search(max($statusCounts), $statusCounts);
+                                $badgeClass = strtolower(str_replace([' ','_'], '', $dominantStatus));
+                                $totalAssets = count($group['assets']);
+                            ?>
+                            <!-- Category Header Row -->
+                            <tr class="group-header-row <?php echo $isExpanded ? 'expanded' : ''; ?>" 
+                                data-cat-id="<?php echo $catId; ?>"
+                                onclick="toggleGroup(<?php echo $catId; ?>)">
                                 <td>
-                                    <span class="badge badge-<?php echo strtolower(str_replace(' ', '', $asset['condition_status'])); ?>">
-                                        <?php echo htmlspecialchars($asset['condition_status']); ?>
+                                    <span class="accordion-icon">
+                                        <i class="fas fa-chevron-right"></i>
                                     </span>
                                 </td>
-                                <td><?php echo htmlspecialchars($asset['location']); ?></td>
-                                <td style="text-align: right;">
-                                    <button class="btn-icon btn-icon-view" onclick='viewAsset(<?php echo json_encode($asset); ?>)' title="View Details"><i class="fas fa-eye"></i></button>
-                                    <button class="btn-icon btn-icon-edit" onclick='editAsset(<?php echo json_encode($asset); ?>)' title="Edit Asset"><i class="fas fa-edit"></i></button>
-                                    <button class="btn-icon btn-icon-delete" onclick="confirmDelete(<?php echo $asset['id']; ?>, '<?php echo htmlspecialchars($asset['asset_id']); ?>')" title="Delete"><i class="fas fa-trash-alt"></i></button>
+                                <td>
+                                    <strong class="category-label">
+                                        <i class="fas fa-layer-group" style="color:#6366f1; margin-right:6px;"></i>
+                                        <?php echo htmlspecialchars($group['category_name']); ?>
+                                    </strong>
+                                </td>
+                                <td>
+                                    <span class="asset-count-badge"><?php echo $totalAssets; ?> Asset<?php echo $totalAssets !== 1 ? 's' : ''; ?></span>
+                                </td>
+                                <td><strong><?php echo $group['total_qty']; ?></strong></td>
+                                <td>
+                                    <?php foreach ($statusCounts as $status => $count): ?>
+                                    <span class="badge badge-<?php echo strtolower(str_replace([' ','_'],'', $status)); ?>" style="margin-right:3px; font-size:10px;">
+                                        <?php echo htmlspecialchars($status); ?> (<?php echo $count; ?>)
+                                    </span>
+                                    <?php endforeach; ?>
+                                </td>
+                                <td style="text-align:right; color:#94a3b8; font-size:12px;">
+                                    <span style="pointer-events:none;">Click to expand</span>
+                                </td>
+                            </tr>
+                            <!-- Expanded Child Rows -->
+                            <tr class="group-child-row <?php echo $isExpanded ? 'open' : ''; ?>" data-parent-cat="<?php echo $catId; ?>">
+                                <td colspan="6" style="padding:0;">
+                                    <div class="child-table-wrapper">
+                                        <table class="child-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Asset ID</th>
+                                                    <th>Name</th>
+                                                    <th>Qty</th>
+                                                    <th>Status</th>
+                                                    <th style="text-align:right;">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php foreach ($group['assets'] as $asset): ?>
+                                                <tr class="child-asset-row <?php echo (!empty($search) && (stripos($asset['name'], $search) !== false || stripos($asset['asset_id'], $search) !== false)) ? 'search-highlight' : ''; ?>">
+                                                    <td><strong><?php echo htmlspecialchars($asset['asset_id']); ?></strong></td>
+                                                    <td><?php echo htmlspecialchars($asset['name']); ?></td>
+                                                    <td><?php echo intval($asset['quantity']); ?></td>
+                                                    <td>
+                                                        <span class="badge badge-<?php echo strtolower(str_replace([' ','_'],'', $asset['condition_status'])); ?>">
+                                                            <?php echo htmlspecialchars($asset['condition_status']); ?>
+                                                        </span>
+                                                    </td>
+                                                    <td style="text-align:right;">
+                                                        <button class="btn-icon btn-icon-view" onclick='viewAsset(<?php echo json_encode($asset); ?>)' title="View Details"><i class="fas fa-eye"></i></button>
+                                                        <button class="btn-icon btn-icon-edit" onclick='editAsset(<?php echo json_encode($asset); ?>)' title="Edit Asset"><i class="fas fa-edit"></i></button>
+                                                        <button class="btn-icon btn-icon-delete" onclick="confirmDelete(<?php echo $asset['id']; ?>, '<?php echo htmlspecialchars($asset['asset_id']); ?>')" title="Delete"><i class="fas fa-trash-alt"></i></button>
+                                                    </td>
+                                                </tr>
+                                                <?php endforeach; ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </td>
                             </tr>
                             <?php endforeach; ?>
@@ -1133,7 +1295,7 @@ $assetTypes = $pdo->query("SELECT * FROM asset_types ORDER BY name ASC")->fetchA
             <?php if ($totalPages > 1): ?>
             <div class="pagination-container">
                 <div class="pagination-info">
-                    Showing <?php echo $offset + 1; ?> to <?php echo min($totalRecords, $offset + $limit); ?> of <?php echo $totalRecords; ?> assets
+                    Showing categories <?php echo $offset + 1; ?> to <?php echo min($totalCategories, $offset + $limit); ?> of <?php echo $totalCategories; ?>
                 </div>
                 <div class="pagination-links">
                     <?php for ($i = 1; $i <= $totalPages; $i++): ?>
@@ -1686,6 +1848,22 @@ $assetTypes = $pdo->query("SELECT * FROM asset_types ORDER BY name ASC")->fetchA
         document.getElementById('delete-id').value = id;
         document.getElementById('delete-asset-id-text').textContent = assetId;
         document.getElementById('deleteModal').classList.add('open');
+    }
+
+    function toggleGroup(catId) {
+        const headerRow = document.querySelector('.group-header-row[data-cat-id="' + catId + '"]');
+        const childRow  = document.querySelector('.group-child-row[data-parent-cat="' + catId + '"]');
+        if (!headerRow || !childRow) return;
+
+        const isOpen = childRow.classList.contains('open');
+
+        if (isOpen) {
+            childRow.classList.remove('open');
+            headerRow.classList.remove('expanded');
+        } else {
+            childRow.classList.add('open');
+            headerRow.classList.add('expanded');
+        }
     }
 </script>
 
