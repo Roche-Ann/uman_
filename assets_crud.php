@@ -178,8 +178,9 @@ if (!isLoggedIn()) {
 $userType = $_SESSION['user_type'] ?? '';
 $userId = $_SESSION['user_id'] ?? 1;
 
-$error = '';
-$success = '';
+$error = $_SESSION['flash_error'] ?? '';
+$success = $_SESSION['flash_success'] ?? '';
+unset($_SESSION['flash_error'], $_SESSION['flash_success']);
 
 // Handle CRUD Operations
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -257,14 +258,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $asset_type_id = intval($pdo->lastInsertId());
                 }
             } catch (PDOException $e) {
-                $error = "Failed to create category: " . $e->getMessage();
+                $_SESSION['flash_error'] = "Failed to create category: " . $e->getMessage();
+                header('Location: ' . $_SERVER['PHP_SELF']);
+                exit();
             }
         } else {
             $asset_type_id = intval($asset_type_id);
         }
 
         if (empty($name) || empty($location) || $asset_type_id <= 0) {
-            $error = 'Please fill in all required fields (Name, Type, Location).';
+            $_SESSION['flash_error'] = 'Please fill in all required fields (Name, Type, Location).';
+            header('Location: ' . $_SERVER['PHP_SELF']);
+            exit();
         } else {
             try {
                 // Fetch the category name to generate the unique prefix
@@ -309,9 +314,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     VALUES ('asset_created', ?)
                 ")->execute(["New asset registered: {$asset_id} ({$name}) in {$location}."]);
 
-                $success = "Asset {$asset_id} successfully created!";
+                $_SESSION['flash_success'] = "Asset {$asset_id} successfully created!";
+                header('Location: ' . $_SERVER['PHP_SELF']);
+                exit();
             } catch (PDOException $e) {
-                $error = "Failed to create asset: " . $e->getMessage();
+                $_SESSION['flash_error'] = "Failed to create asset: " . $e->getMessage();
+                header('Location: ' . $_SERVER['PHP_SELF']);
+                exit();
             }
         }
     } elseif ($action === 'update') {
@@ -340,14 +349,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $asset_type_id = intval($pdo->lastInsertId());
                 }
             } catch (PDOException $e) {
-                $error = "Failed to create category: " . $e->getMessage();
+                $_SESSION['flash_error'] = "Failed to create category: " . $e->getMessage();
+                header('Location: ' . $_SERVER['PHP_SELF']);
+                exit();
             }
         } else {
             $asset_type_id = intval($asset_type_id);
         }
 
         if ($id <= 0 || empty($name) || empty($location) || $asset_type_id <= 0) {
-            $error = 'Please fill in all required fields (Name, Type, Location).';
+            $_SESSION['flash_error'] = 'Please fill in all required fields (Name, Type, Location).';
+            header('Location: ' . $_SERVER['PHP_SELF']);
+            exit();
         } else {
             try {
                 // Get current status & location to log changes
@@ -397,10 +410,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $pdo->prepare("INSERT INTO asset_images (utility_asset_id, image_path) VALUES (?, ?)")->execute([$id, $imagePath]);
                     }
 
-                    $success = "Asset {$asset_id} updated successfully!";
+                    $_SESSION['flash_success'] = "Asset {$asset_id} updated successfully!";
+                    header('Location: ' . $_SERVER['PHP_SELF']);
+                    exit();
                 }
             } catch (PDOException $e) {
-                $error = "Failed to update asset: " . $e->getMessage();
+                $_SESSION['flash_error'] = "Failed to update asset: " . $e->getMessage();
+                header('Location: ' . $_SERVER['PHP_SELF']);
+                exit();
             }
         }
     } elseif ($action === 'delete') {
@@ -413,10 +430,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 if ($asset) {
                     $pdo->prepare("DELETE FROM utility_assets WHERE id = ?")->execute([$id]);
-                    $success = "Asset {$asset['asset_id']} ({$asset['name']}) has been successfully deleted.";
+                    $_SESSION['flash_success'] = "Asset {$asset['asset_id']} ({$asset['name']}) has been successfully deleted.";
+                    header('Location: ' . $_SERVER['PHP_SELF']);
+                    exit();
                 }
             } catch (PDOException $e) {
-                $error = "Failed to delete asset: " . $e->getMessage();
+                $_SESSION['flash_error'] = "Failed to delete asset: " . $e->getMessage();
+                header('Location: ' . $_SERVER['PHP_SELF']);
+                exit();
             }
         }
     } elseif ($action === 'delete_category') {
@@ -425,9 +446,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
                 $stmt = $pdo->prepare("DELETE FROM asset_types WHERE id = ?");
                 $stmt->execute([$category_id]);
-                $success = "Category successfully deleted.";
+                $_SESSION['flash_success'] = "Category successfully deleted.";
+                header('Location: ' . $_SERVER['PHP_SELF']);
+                exit();
             } catch (PDOException $e) {
-                $error = "Cannot delete category: it is currently assigned to one or more utility assets.";
+                $_SESSION['flash_error'] = "Cannot delete category: it is currently assigned to one or more utility assets.";
+                header('Location: ' . $_SERVER['PHP_SELF']);
+                exit();
             }
         }
     }
@@ -480,7 +505,7 @@ $totalPages = ceil($totalRecords / $limit);
 $query = "
     SELECT a.*, t.name as type_name, img.image_path
     FROM utility_assets a 
-    JOIN asset_types t ON a.asset_type_id = t.id 
+    LEFT JOIN asset_types t ON a.asset_type_id = t.id 
     LEFT JOIN (
         SELECT utility_asset_id, MAX(image_path) as image_path 
         FROM asset_images 
@@ -993,10 +1018,10 @@ $assetTypes = $pdo->query("SELECT * FROM asset_types ORDER BY name ASC")->fetchA
 
         <!-- Alert messages -->
         <?php if ($error): ?>
-            <div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> <?php echo htmlspecialchars($error); ?></div>
+            <div class="alert alert-error" id="flash-error"><i class="fas fa-exclamation-circle"></i> <?php echo htmlspecialchars($error); ?></div>
         <?php endif; ?>
         <?php if ($success): ?>
-            <div class="alert alert-success"><i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($success); ?></div>
+            <div class="alert alert-success" id="flash-success"><i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($success); ?></div>
         <?php endif; ?>
 
         <!-- Filters Form -->
