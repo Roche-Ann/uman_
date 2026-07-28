@@ -84,4 +84,6 @@ foreach ($consumers as $consumer) {
 }
 
 $database->closeConnection();
+
 ?>
+
