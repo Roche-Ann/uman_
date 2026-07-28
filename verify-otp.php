@@ -1,17 +1,11 @@
 <?php
 // Ensure auth.php is loaded so we have database connection and session handling
 require_once 'includes/auth.php';
-
-use Symfony\Component\Mailer\Mailer;
-use Symfony\Component\Mailer\Transport;
-use Symfony\Component\Mime\Email;
-
-if (file_exists(__DIR__ . '/vendor/autoload.php')) {
-    require_once __DIR__ . '/vendor/autoload.php';
-}
+require_once __DIR__ . '/includes/mailer.php';
 
 // Assuming your auth.php provides a global $pdo or equivalent database connection variable.
 global $pdo;
+ensureAuthSchema();
 
 // Handle cancel/back to login - clear pending session
 if (isset($_GET['cancel']) || isset($_GET['back'])) {
@@ -91,121 +85,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['resend'])) {
         ':exp' => $expiresAt,
     ]);
 
-    // Send OTP via email
-    $subject = 'Your Login Verification Code';
-    // Professional email template
-    $html = '
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Your Verification Code</title>
-        <style>
-            body, table, td, p, a { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        </style>
-    </head>
-    <body style="margin:0; padding:0; background-color:#f4f4f4;">
-        <table width="100%" cellpadding="0" cellspacing="0" border="0" align="center" bgcolor="#f4f4f4" style="background-color:#f4f4f4;">
-            <tr>
-                <td align="center" style="padding:20px 15px;">
-                    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:500px; background:#ffffff; border-radius:20px; box-shadow:0 8px 32px rgba(11,61,145,0.08);">
-                        <tr>
-                            <td align="center" style="padding:30px 30px 20px;">
-                                <img src="https://uman.infragovservices.com/assets/images/logocityhall.png" alt="LGU Logo" width="80" height="80" style="display:block; width:80px; height:80px; border-radius:50%; object-fit:cover;">
-                            </td>
-                        </tr>
-                        <tr>
-                            <td align="center" style="padding:0 30px 10px;">
-                                <h1 style="font-family: \'Urbanist\', \'Segoe UI\', sans-serif; font-size:28px; font-weight:700; margin:0; background:linear-gradient(135deg, #0B3D91, #00A896); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">Verify Your Email</h1>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td align="center" style="padding:0 30px 10px;">
-                                <p style="font-size:16px; color:#2F4858; margin:0;">Hello <strong>' . htmlspecialchars($pendingUser['name']) . '</strong>,</p>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td align="center" style="padding:0 30px 20px;">
-                                <p style="font-size:16px; color:#2F4858; margin:0;">Your login verification code is:</p>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td align="center" style="padding:0 30px 20px;">
-                                <table cellpadding="0" cellspacing="0" border="0" style="background:#f0f5ff; border-radius:12px; padding:15px 25px; display:inline-block;">
-                                    <tr>
-                                        <td>
-                                            <span style="font-family: \'Fira Code\', monospace; font-size:36px; font-weight:700; letter-spacing:8px; color:#0B3D91;">' . $otp . '</span>
-                                        </td>
-                                    </tr>
-                                </table>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td align="center" style="padding:0 30px 20px;">
-                                <p style="font-size:14px; color:#6c757d; margin:0;">This code will expire in <strong>10 minutes</strong>.</p>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td align="center" style="padding:0 30px;">
-                                <hr style="border:0; height:1px; background:#e0e0e2; width:100%;">
-                            </td>
-                        </tr>
-                        <tr>
-                            <td align="center" style="padding:20px 30px 30px;">
-                                <p style="font-size:13px; color:#6c757d; margin:0;">If you did not attempt to log in, please ignore this email or contact support.</p>
-                            </td>
-                        </tr>
-                    </table>
-                    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:500px; margin-top:20px;">
-                    <td align="center" style="padding:0 15px;">
-                    <p style="font-size:12px; color:#6c757d;">© 2026 LGU Utilities Management System · All Rights Reserved</p>
-                    
-                    </table>
-                </td>
-            </tr>
-        </table>
-    </body>
-    </html>
-    ';
-
-    // Load .env logic if you use it for mailing
-    $envPath = __DIR__ . '/.env';
-    if (is_readable($envPath)) {
-        $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-        foreach ($lines as $line) {
-            if (str_starts_with(trim($line), '#') || !str_contains($line, '=')) continue;
-            [$k, $v] = explode('=', $line, 2);
-            putenv(trim($k) . '=' . trim($v));
-        }
-    }
-
-    $dsnRaw = getenv('MAILER_DSN') ?: 'smtp://localhost';
-    $transport = null;
-    try {
-        $transport = Transport::fromDsn($dsnRaw);
-    } catch (Throwable $e) {
-        error_log('OTP mail DSN error: ' . $e->getMessage());
-    }
-
-    if ($transport) {
-        $mailer = new Mailer($transport);
-        $from = getenv('MAILER_FROM') ?: 'no-reply@localhost';
-        $mail = (new Email())
-            ->from($from)
-            ->to($pendingUser['email'])
-            ->subject($subject)
-            ->html($html);
-
-        try {
-            $mailer->send($mail);
-            $resendMessage = 'A new verification code has been sent to your email.';
-        } catch (Throwable $e) {
-            error_log('OTP mail error: ' . $e->getMessage());
-            $error = 'Failed to send email. Please try again later.';
-        }
+    // Send OTP via Gmail SMTP
+    $mailResult = sendOtpEmail($pendingUser['email'], $pendingUser['name'], $otp, 10);
+    if ($mailResult['success']) {
+        $resendMessage = 'A new verification code has been sent to your email.';
     } else {
-        $error = 'Email service is not configured. Please contact support.';
+        error_log('OTP resend mail error: ' . ($mailResult['error'] ?? 'unknown'));
+        $error = 'Failed to send email. Please try again later.';
     }
 }
 

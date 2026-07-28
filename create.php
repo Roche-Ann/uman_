@@ -34,12 +34,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $result = registerUser($full_name, $email, $password);
         
         if ($result['success']) {
-            $success = 'Registration successful! Redirecting...';
-            echo "<script>
-                setTimeout(function() {
-                    window.location.href = 'citizen.php';
-                }, 1500);
-            </script>";
+            // Account created — send them to login (OTP is required there).
+            header('Location: login.php?registered=1');
+            exit();
         } else {
             $error = $result['message'];
         }
