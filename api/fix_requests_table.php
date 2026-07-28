@@ -168,7 +168,7 @@ try {
 ?>
 
     <div style="text-align: center;">
-        <button class="button" onclick="window.location.href='../service_requests.php'">← Back to Service Requests</button>
+        <button class="button" onclick="window.location.href='../utilities_dashboard.php'">← Back to Dashboard</button>
     </div>
 </div>
 </body>
