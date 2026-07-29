@@ -44,20 +44,36 @@ try {
 
 // 2. Fetch Notifications System Feed (Combined Notifications)
 $allNotifications = [];
+$incNotifs = [];
+$mntNotifs = [];
+$engNotifs = [];
+
 try {
-    $incNotifs = $pdo->query("SELECT message, created_at, 'Incident' as type FROM incident_notifications ORDER BY created_at DESC LIMIT 5")->fetchAll();
-    $mntNotifs = $pdo->query("SELECT message, created_at, 'Maintenance' as type FROM maintenance_notifications ORDER BY created_at DESC LIMIT 5")->fetchAll();
-    $allNotifications = array_merge($incNotifs, $mntNotifs, $engNotifs);
-    usort($allNotifications, function($a, $b) {
-        return strtotime($b['created_at']) - strtotime($a['created_at']);
-    });
-    $allNotifications = array_slice($allNotifications, 0, 8);
-} catch (Exception $e) {
-    // Fallback if some table has no notifications seeded
+    $incNotifs = $pdo->query("SELECT message, created_at, 'Incident' as type FROM incident_notifications ORDER BY created_at DESC LIMIT 5")->fetchAll() ?: [];
+} catch (Throwable $e) {
+    $incNotifs = [];
 }
 
+try {
+    $mntNotifs = $pdo->query("SELECT message, created_at, 'Maintenance' as type FROM maintenance_notifications ORDER BY created_at DESC LIMIT 5")->fetchAll() ?: [];
+} catch (Throwable $e) {
+    $mntNotifs = [];
+}
+
+try {
+    $engNotifs = $pdo->query("SELECT message, created_at, 'Energy' as type FROM energy_notifications ORDER BY created_at DESC LIMIT 5")->fetchAll() ?: [];
+} catch (Throwable $e) {
+    $engNotifs = [];
+}
+
+$allNotifications = array_merge($incNotifs, $mntNotifs, $engNotifs);
+usort($allNotifications, function ($a, $b) {
+    return strtotime($b['created_at']) - strtotime($a['created_at']);
+});
+$allNotifications = array_slice($allNotifications, 0, 8);
+
 // 3. AI Command Center Summarizer
-function generateAICentralSummary($assets, $incidents, $maintenance, $energy, $totalCoverageAreas) {
+function generateAICentralSummary($assets, $incidents, $maintenance, $energy) {
     $summary = "<strong>LGU Central AI Assistant Coordination Report (" . date('F Y') . ")</strong><br><br>";
     
     $summary .= "🏢 <strong>System-Wide Load Insights:</strong><br>";
@@ -76,7 +92,7 @@ function generateAICentralSummary($assets, $incidents, $maintenance, $energy, $t
     return $summary;
 }
 
-$aiSummaryText = generateAICentralSummary($assets, $incidents, $maintenance, $energy, $totalCoverageAreas);
+$aiSummaryText = generateAICentralSummary($assets, $incidents, $maintenance, $energy);
 
 // Chart Arrays
 $assetLabels = json_encode(['Operational', 'Damaged', 'Needs Inspection']);
@@ -453,8 +469,8 @@ $incidentData = json_encode([$incidents['submitted_incidents'] ?? 0, $incidents[
             </div>
             <div class="stat-card planning">
                 <div class="stat-info">
-                    <h3><?php echo number_format($totalCoverageAreas); ?></h3>
-                    <p>Coverage Zones</p>
+                    <h3><?php echo number_format($energy['total_records'] ?? 0); ?></h3>
+                    <p>Energy Records</p>
                 </div>
             </div>
             <div class="stat-card energy">
