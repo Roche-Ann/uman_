@@ -569,8 +569,8 @@ $assets = $pdo->query("
         <!-- Dashboard Header -->
         <div class="dashboard-header">
             <div>
-                <h1><i class="fas fa-exchange-alt"></i> CPRF Asset Requests</h1>
-                <p class="subtitle">Equipment/utility asset requests from the Community Public Reservation Facilities System.</p>
+                <h1><i class="fas fa-exchange-alt"></i> Asset Requests</h1>
+                <p class="subtitle">Equipment/Utility Asset Requests </p>
             </div>
         </div>
 

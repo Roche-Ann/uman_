@@ -63,15 +63,11 @@ try {
 
 // 2. Fetch Notifications System Feed (Combined Notifications)
 $allNotifications = [];
-$incNotifs = [];
-$mntNotifs = [];
-$plnNotifs = [];
-$engNotifs = [];
 try {
-    $incNotifs = $pdo->query("SELECT message, created_at, 'Incident' as type FROM incident_notifications ORDER BY created_at DESC LIMIT 5")->fetchAll() ?: [];
-    $mntNotifs = $pdo->query("SELECT message, created_at, 'Maintenance' as type FROM maintenance_notifications ORDER BY created_at DESC LIMIT 5")->fetchAll() ?: [];
-    $plnNotifs = $pdo->query("SELECT message, created_at, 'Planning' as type FROM planning_notifications ORDER BY created_at DESC LIMIT 5")->fetchAll() ?: [];
-    $engNotifs = $pdo->query("SELECT message, created_at, 'Energy' as type FROM energy_notifications ORDER BY created_at DESC LIMIT 5")->fetchAll() ?: [];
+    $incNotifs = $pdo->query("SELECT message, created_at, 'Incident' as type FROM incident_notifications ORDER BY created_at DESC LIMIT 5")->fetchAll();
+    $mntNotifs = $pdo->query("SELECT message, created_at, 'Maintenance' as type FROM maintenance_notifications ORDER BY created_at DESC LIMIT 5")->fetchAll();
+    $plnNotifs = $pdo->query("SELECT message, created_at, 'Planning' as type FROM planning_notifications ORDER BY created_at DESC LIMIT 5")->fetchAll();
+    $engNotifs = $pdo->query("SELECT message, created_at, 'Energy' as type FROM energy_notifications ORDER BY created_at DESC LIMIT 5")->fetchAll();
     
     $allNotifications = array_merge($incNotifs, $mntNotifs, $plnNotifs, $engNotifs);
     usort($allNotifications, function($a, $b) {
