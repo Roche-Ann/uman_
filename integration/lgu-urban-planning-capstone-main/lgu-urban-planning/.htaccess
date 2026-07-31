@@ -1,0 +1,21 @@
+# Security: Prevent directory listing
+Options -Indexes
+
+# Protect sensitive files
+<FilesMatch "\.(sql|log|ini|conf)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# PHP Settings
+<IfModule mod_php7.c>
+    php_value upload_max_filesize 10M
+    php_value post_max_size 10M
+    php_value max_execution_time 300
+    php_value max_input_time 300
+</IfModule>
+
+# Error Pages
+ErrorDocument 404 /lgu-urban-planning/access-denied.php
+ErrorDocument 403 /lgu-urban-planning/access-denied.php
+

@@ -1,0 +1,6 @@
+# Allow clean URLs: /api/v1/inspection-requests → /api/v1/inspection-requests.php
+Options -Indexes
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME}.php -f
+RewriteRule ^(.+)$ $1.php [L,QSA]
