@@ -1,6 +1,6 @@
 <?php
 // includes/utilities_sidebar.php
-require_once 'auth.php';
+require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/db.php';
 
 if (!isLoggedIn()) {
@@ -727,24 +727,14 @@ function sidebarActive(string $page, string $current): string {
                     <span class="link-label">Maintenance Coordination</span>
                 </a>
             </li>
-            <li>
-                <a href="planning_dashboard.php" class="nav-link<?php echo (strpos($currentPage, 'planning_') === 0) ? ' active' : ''; ?>">
-                    <i class="fas fa-map-marked-alt"></i>
-                    <span class="link-label">Utility Planning</span>
-                </a>
-            </li>
+
             <li>
                 <a href="energy_dashboard.php" class="nav-link<?php echo (strpos($currentPage, 'energy_') === 0) ? ' active' : ''; ?>">
                     <i class="fas fa-bolt"></i>
                     <span class="link-label">Energy Management</span>
                 </a>
             </li>
-            <li>
-                <a href="facility_dashboard.php" class="nav-link<?php echo (strpos($currentPage, 'facility_') === 0) ? ' active' : ''; ?>">
-                    <i class="fas fa-warehouse"></i>
-                    <span class="link-label">Public Facilities</span>
-                </a>
-            </li>
+
             <li>
                 <a href="external_asset_requests.php" class="nav-link<?php echo sidebarActive('external_asset_requests.php', $currentPage); ?>">
                     <i class="fas fa-exchange-alt"></i>
@@ -770,12 +760,7 @@ function sidebarActive(string $page, string $current): string {
                     <span class="link-label">LGU Advisories</span>
                 </a>
             </li>
-            <li>
-                <a href="citizen_facilities.php" class="nav-link<?php echo sidebarActive('citizen_facilities.php', $currentPage); ?>">
-                    <i class="fas fa-warehouse"></i>
-                    <span class="link-label">Public Venues</span>
-                </a>
-            </li>
+
             <li>
                 <a href="citizen_notifications.php" class="nav-link<?php echo sidebarActive('citizen_notifications.php', $currentPage); ?>">
                     <i class="fas fa-bell"></i>

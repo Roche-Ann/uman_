@@ -1,0 +1,6 @@
+# Local secrets — never commit real credentials.
+.env
+lgu-urban-planning/ipms-integration/.env
+
+# Poller run log — local runtime output, not source.
+lgu-urban-planning/ipms-integration/poller.log
