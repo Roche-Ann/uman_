@@ -738,7 +738,7 @@ function sidebarActive(string $page, string $current): string {
             <li>
                 <a href="external_asset_requests.php" class="nav-link<?php echo sidebarActive('external_asset_requests.php', $currentPage); ?>">
                     <i class="fas fa-exchange-alt"></i>
-                    <span class="link-label">CPRF Asset Requests</span>
+                    <span class="link-label">CPRF Integration Hub</span>
                 </a>
             </li>
             <?php else: ?>
