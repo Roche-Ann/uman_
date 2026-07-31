@@ -5,7 +5,12 @@
 
 declare(strict_types=1);
 
-header('Content-Type: application/json; charset=utf-8');
+// JSON header only for /api/* endpoints. HTML pages (e.g. external_asset_requests.php)
+// must define UMAN_HTML_PAGE before including this file — otherwise browsers render
+// the hub as raw source instead of HTML.
+if (!defined('UMAN_HTML_PAGE')) {
+    header('Content-Type: application/json; charset=utf-8');
+}
 
 // Load DB connection at file scope so $pdo is global
 require_once dirname(__DIR__) . '/includes/db.php';

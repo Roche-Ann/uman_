@@ -10,6 +10,7 @@
  */
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
+define('UMAN_HTML_PAGE', true);
 require_once __DIR__ . '/api/integration_config.php';
 
 if (!isLoggedIn() || !isEmployee()) {
