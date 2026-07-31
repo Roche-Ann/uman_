@@ -1,3 +1,8 @@
+# Force PHP execution for PHP files
+<FilesMatch "\.php$">
+    SetHandler application/x-httpd-php
+</FilesMatch>
+
 # Deny web access to sensitive files (LiteSpeed / Apache)
 <FilesMatch "^(\.env|\.env\..*|composer\.(json|lock)|composer\.phar)$">
   Require all denied
