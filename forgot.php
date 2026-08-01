@@ -18,6 +18,13 @@ $pdo->exec("
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ");
 
+// Fix the table in case it already exists without AUTO_INCREMENT on id
+try {
+    $pdo->exec("ALTER TABLE password_resets MODIFY id INT NOT NULL AUTO_INCREMENT");
+} catch (Exception $e) {
+    // Column is already correct or table was just created — safe to ignore
+}
+
 // Build reset link
 function buildResetLink(int $userId, string $token): string
 {
