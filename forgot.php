@@ -18,6 +18,23 @@ $pdo->exec("
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ");
 
+// Fix existing table if 'id' column is missing AUTO_INCREMENT (avoids "Field 'id' doesn't have a default value" error)
+try {
+    $colInfo = $pdo->query("
+        SELECT EXTRA FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'password_resets'
+          AND COLUMN_NAME = 'id'
+    ")->fetch(PDO::FETCH_ASSOC);
+
+    if ($colInfo && stripos($colInfo['EXTRA'], 'auto_increment') === false) {
+        // Drop foreign key first if it exists, then re-add after altering
+        $pdo->exec("ALTER TABLE password_resets MODIFY COLUMN id INT NOT NULL AUTO_INCREMENT");
+    }
+} catch (PDOException $e) {
+    error_log('password_resets schema fix error: ' . $e->getMessage());
+}
+
 // Build reset link
 function buildResetLink(int $userId, string $token): string
 {
