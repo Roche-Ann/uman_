@@ -4,19 +4,47 @@ require_once 'includes/auth.php';          // provides $pdo and session handling
 require_once __DIR__ . '/includes/mailer.php';
 
 // Ensure password_resets table exists (if not already)
-$pdo->exec("
-    CREATE TABLE IF NOT EXISTS password_resets (
-        id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-        user_id INT NOT NULL,
-        token_hash VARCHAR(64) NOT NULL,
-        expires_at DATETIME NOT NULL,
-        used TINYINT(1) NOT NULL DEFAULT 0,
-        created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-        INDEX idx_pr_user (user_id),
-        INDEX idx_pr_expires (expires_at),
-        CONSTRAINT fk_pr_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-");
+// Fix: ensure the password_resets table has the correct schema (AUTO_INCREMENT id).
+// If the table exists but was created without AUTO_INCREMENT, alter it.
+try {
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS password_resets (
+            id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            token_hash VARCHAR(64) NOT NULL,
+            expires_at DATETIME NOT NULL,
+            used TINYINT(1) NOT NULL DEFAULT 0,
+            created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_pr_user (user_id),
+            INDEX idx_pr_expires (expires_at),
+            CONSTRAINT fk_pr_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    ");
+
+    // Check if the 'id' column has AUTO_INCREMENT; if not, fix it.
+    $colCheck = $pdo->query("SHOW COLUMNS FROM password_resets LIKE 'id'")->fetch(PDO::FETCH_ASSOC);
+    if ($colCheck && stripos($colCheck['Extra'] ?? '', 'auto_increment') === false) {
+        // Drop foreign key constraints first, then recreate the table cleanly
+        $pdo->exec("SET FOREIGN_KEY_CHECKS = 0");
+        $pdo->exec("DROP TABLE IF EXISTS password_resets");
+        $pdo->exec("SET FOREIGN_KEY_CHECKS = 1");
+        $pdo->exec("
+            CREATE TABLE password_resets (
+                id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                token_hash VARCHAR(64) NOT NULL,
+                expires_at DATETIME NOT NULL,
+                used TINYINT(1) NOT NULL DEFAULT 0,
+                created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_pr_user (user_id),
+                INDEX idx_pr_expires (expires_at),
+                CONSTRAINT fk_pr_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        ");
+    }
+} catch (PDOException $e) {
+    error_log('password_resets table setup error: ' . $e->getMessage());
+}
 
 // Build reset link
 function buildResetLink(int $userId, string $token): string
