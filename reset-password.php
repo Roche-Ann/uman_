@@ -1,11 +1,6 @@
 <?php
 // Removed session_start() as it's handled in includes/auth.php
 require_once 'includes/auth.php';
-require_once __DIR__ . '/vendor/autoload.php';
-
-use Symfony\Component\Mailer\Mailer;
-use Symfony\Component\Mailer\Transport;
-use Symfony\Component\Mime\Email;
 
 // DB connection is handled by auth.php above
 
