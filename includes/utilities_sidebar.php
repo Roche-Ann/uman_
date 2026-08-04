@@ -677,6 +677,366 @@ function sidebarActive(string $page, string $current): string {
         border-color: #475569 !important;
         color: #cbd5e1 !important;
     }
+
+    /* ── Stat cards (CPRF Hub & other pages) ── */
+    .dark-theme .stat-card {
+        background: #1e293b !important;
+        border-color: #334155 !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
+    }
+    .dark-theme .stat-card h3 {
+        color: #f8fafc !important;
+    }
+    .dark-theme .stat-card p {
+        color: #94a3b8 !important;
+    }
+
+    /* ── Page header / subtitle text ── */
+    .dark-theme .dashboard-header h1,
+    .dark-theme .dashboard-header h2 {
+        color: #f8fafc !important;
+    }
+    .dark-theme .subtitle,
+    .dark-theme .dashboard-header .subtitle {
+        color: #94a3b8 !important;
+    }
+
+    /* ── Filter bar (CPRF & CRUD) ── */
+    .dark-theme .filter-bar label {
+        color: #cbd5e1 !important;
+    }
+    .dark-theme .filter-bar select {
+        background: #1e293b !important;
+        border-color: #475569 !important;
+        color: #f8fafc !important;
+    }
+
+    /* ── Buttons default (white background) ── */
+    .dark-theme .btn:not(.btn-primary):not(.btn-danger):not(.btn-success):not(.btn-warning) {
+        background: #1e293b !important;
+        border-color: #475569 !important;
+        color: #cbd5e1 !important;
+    }
+    .dark-theme .btn-outline {
+        background: transparent !important;
+        border-color: #475569 !important;
+        color: #94a3b8 !important;
+    }
+    .dark-theme .btn-outline:hover {
+        background: #334155 !important;
+        color: #f8fafc !important;
+    }
+
+    /* ── Pagination ── */
+    .dark-theme .page-link {
+        background: #1e293b !important;
+        border-color: #475569 !important;
+        color: #94a3b8 !important;
+    }
+    .dark-theme .page-link:hover {
+        background: #334155 !important;
+        color: #f8fafc !important;
+        border-color: #3762c8 !important;
+    }
+    .dark-theme .page-link.active {
+        background: #3762c8 !important;
+        color: #fff !important;
+        border-color: #3762c8 !important;
+    }
+    .dark-theme .pagination-info {
+        color: #94a3b8 !important;
+    }
+
+    /* ── Hub-level tabs (CPRF Integration Hub) ── */
+    .dark-theme .hub-tabs {
+        border-bottom-color: #334155 !important;
+    }
+    .dark-theme .hub-tab {
+        color: #94a3b8 !important;
+    }
+    .dark-theme .hub-tab:hover {
+        background: #1e293b !important;
+        color: #f8fafc !important;
+    }
+    .dark-theme .hub-tab.active {
+        background: #1e293b !important;
+        border-color: #334155 !important;
+        border-bottom-color: #1e293b !important;
+        color: #34d399 !important;
+    }
+    .dark-theme .hub-tab .count-chip {
+        background: #312e81 !important;
+        color: #a5b4fc !important;
+    }
+
+    /* ── Asset request table ── */
+    .dark-theme .req-table th {
+        background: #151f32 !important;
+        color: #94a3b8 !important;
+        border-bottom-color: #334155 !important;
+    }
+    .dark-theme .req-table td {
+        color: #cbd5e1 !important;
+        border-bottom-color: #334155 !important;
+    }
+    .dark-theme .req-table td strong {
+        color: #f8fafc !important;
+    }
+    .dark-theme .req-table td small {
+        color: #64748b !important;
+    }
+    .dark-theme .req-table td em {
+        color: #64748b !important;
+    }
+    .dark-theme .req-table tr:hover td {
+        background: rgba(255,255,255,0.04) !important;
+    }
+
+    /* ── Action forms (CPRF approve/reject forms) ── */
+    .dark-theme .action-form {
+        background: #151f32 !important;
+        border-color: #334155 !important;
+    }
+    .dark-theme .action-form textarea {
+        background: #1e293b !important;
+        border-color: #475569 !important;
+        color: #f8fafc !important;
+    }
+    .dark-theme .action-form select {
+        background: #1e293b !important;
+        border-color: #475569 !important;
+        color: #f8fafc !important;
+    }
+
+    /* ── Facility list panel (CPRF Assignments tab) ── */
+    .dark-theme .facility-list {
+        background: #1e293b !important;
+        border-color: #334155 !important;
+    }
+    .dark-theme .facility-list .search {
+        background: #1e293b !important;
+        border-bottom-color: #334155 !important;
+    }
+    .dark-theme .facility-list input[type=search],
+    .dark-theme .panel-toolbar input[type=search] {
+        background: #151f32 !important;
+        border-color: #475569 !important;
+        color: #f8fafc !important;
+    }
+    .dark-theme .facility-list input[type=search]::placeholder,
+    .dark-theme .panel-toolbar input[type=search]::placeholder {
+        color: #64748b !important;
+    }
+    .dark-theme .facility-item {
+        background: #151f32 !important;
+        border-color: #334155 !important;
+        color: #cbd5e1 !important;
+    }
+    .dark-theme .facility-item:hover {
+        background: #0f3d2e !important;
+        border-color: #10b981 !important;
+    }
+    .dark-theme .facility-item.active {
+        background: #14532d !important;
+        border-color: #059669 !important;
+    }
+    .dark-theme .facility-item .name {
+        color: #f8fafc !important;
+    }
+    .dark-theme .facility-item .meta {
+        color: #64748b !important;
+    }
+
+    /* ── Sub-tabs inside Facility Assignments ── */
+    .dark-theme .tabs {
+        border-bottom-color: #334155 !important;
+    }
+    .dark-theme .tab {
+        color: #94a3b8 !important;
+    }
+    .dark-theme .tab:hover {
+        background: #1e293b !important;
+        color: #f8fafc !important;
+    }
+    .dark-theme .tab.active {
+        background: #1e293b !important;
+        border-color: #334155 !important;
+        border-bottom-color: #1e293b !important;
+        color: #34d399 !important;
+    }
+    .dark-theme .tab .count-chip {
+        background: #0c4a6e !important;
+        color: #7dd3fc !important;
+    }
+
+    /* ── Generic table with .table class (Facility Assignments tab) ── */
+    .dark-theme .table {
+        background: #1e293b !important;
+        border-color: #334155 !important;
+    }
+    .dark-theme .table th {
+        background: #151f32 !important;
+        color: #94a3b8 !important;
+        border-bottom-color: #334155 !important;
+    }
+    .dark-theme .table td {
+        color: #cbd5e1 !important;
+        border-bottom-color: #334155 !important;
+    }
+    .dark-theme .table tr:hover td {
+        background: rgba(255,255,255,0.04) !important;
+    }
+    .dark-theme .code {
+        color: #93c5fd !important;
+    }
+    .dark-theme .muted {
+        color: #64748b !important;
+    }
+
+    /* ── Event cards (activity log) ── */
+    .dark-theme .event-card {
+        background: #1e293b !important;
+        border-color: #334155 !important;
+    }
+    .dark-theme .event-card .ref {
+        color: #f8fafc !important;
+    }
+
+    /* ── Flash messages in dark theme ── */
+    .dark-theme .flash.success {
+        background: #064e3b !important;
+        color: #6ee7b7 !important;
+        border-color: #065f46 !important;
+    }
+    .dark-theme .flash.error {
+        background: #450a0a !important;
+        color: #fca5a5 !important;
+        border-color: #7f1d1d !important;
+    }
+    .dark-theme .flash.warning {
+        background: #451a03 !important;
+        color: #fcd34d !important;
+        border-color: #78350f !important;
+    }
+
+    /* ── Accordion table rows (Assets CRUD) ── */
+    .dark-theme .group-header-row {
+        background: #1a2540 !important;
+    }
+    .dark-theme .group-header-row:hover,
+    .dark-theme .group-header-row.expanded {
+        background: #1e2d52 !important;
+        border-left-color: #818cf8 !important;
+    }
+    .dark-theme .category-label {
+        color: #f8fafc !important;
+    }
+    .dark-theme .accordion-icon {
+        background: #312e81 !important;
+        color: #a5b4fc !important;
+    }
+    .dark-theme .child-table-wrapper {
+        background: #151f32 !important;
+        border-top-color: #334155 !important;
+        border-bottom-color: #312e81 !important;
+    }
+    .dark-theme .child-table thead tr {
+        background: #1a2540 !important;
+    }
+    .dark-theme .child-table thead th {
+        color: #94a3b8 !important;
+        border-bottom-color: #334155 !important;
+    }
+    .dark-theme .child-table tbody tr {
+        border-bottom-color: #334155 !important;
+    }
+    .dark-theme .child-table tbody tr:hover {
+        background: #1e2d52 !important;
+    }
+    .dark-theme .child-table td {
+        color: #cbd5e1 !important;
+    }
+    .dark-theme .child-asset-row.search-highlight {
+        background: #3b2f00 !important;
+        border-left-color: #ca8a04 !important;
+    }
+
+    /* ── Form control inputs in pages (CRUD filter bar) ── */
+    .dark-theme .form-control {
+        background: #1e293b !important;
+        border-color: #475569 !important;
+        color: #f8fafc !important;
+    }
+    .dark-theme .form-control::placeholder {
+        color: #64748b !important;
+    }
+    .dark-theme .form-control:focus {
+        border-color: #3762c8 !important;
+        box-shadow: 0 0 0 3px rgba(55, 98, 200, 0.25) !important;
+    }
+
+    /* ── Form grid in CPRF tab 2 ── */
+    .dark-theme .form-grid label {
+        color: #94a3b8 !important;
+    }
+    .dark-theme .form-grid input,
+    .dark-theme .form-grid select,
+    .dark-theme .form-grid textarea {
+        background: #1e293b !important;
+        border-color: #475569 !important;
+        color: #f8fafc !important;
+    }
+
+    /* ── Icon action buttons (view/edit/delete) ── */
+    .dark-theme .btn-icon-view {
+        background: #0c3554 !important;
+        color: #38bdf8 !important;
+    }
+    .dark-theme .btn-icon-view:hover {
+        background: #0e4a75 !important;
+    }
+    .dark-theme .btn-icon-edit {
+        background: #3b2800 !important;
+        color: #fbbf24 !important;
+    }
+    .dark-theme .btn-icon-edit:hover {
+        background: #4d3400 !important;
+    }
+    .dark-theme .btn-icon-delete {
+        background: #450a0a !important;
+        color: #f87171 !important;
+    }
+    .dark-theme .btn-icon-delete:hover {
+        background: #5c0f0f !important;
+    }
+
+    /* ── No-action text ── */
+    .dark-theme .no-action {
+        color: #475569 !important;
+    }
+
+    /* ── Empty state ── */
+    .dark-theme .empty-state {
+        color: #64748b !important;
+    }
+
+    /* ── Alert messages (CRUD page) ── */
+    .dark-theme .alert-success {
+        background: #064e3b !important;
+        color: #6ee7b7 !important;
+        border-color: #065f46 !important;
+    }
+    .dark-theme .alert-error {
+        background: #450a0a !important;
+        color: #fca5a5 !important;
+        border-color: #7f1d1d !important;
+    }
+
+    /* ── body overlay in dark mode ── */
+    .dark-theme body::before {
+        background: rgba(5, 10, 22, 0.75) !important;
+    }
+
 </style>
 
 <!-- ===== SIDEBAR HTML ===== -->
