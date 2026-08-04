@@ -684,12 +684,25 @@ function sidebarActive(string $page, string $current): string {
         border-color: #334155 !important;
         box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
     }
+    .dark-theme .stat-card .stat-info h3 {
+        color: #f8fafc !important;
+    }
     .dark-theme .stat-card h3 {
         color: #f8fafc !important;
     }
     .dark-theme .stat-card p {
         color: #94a3b8 !important;
     }
+    /* Preserve the colored left-border accent — just intensify it slightly */
+    .dark-theme .stat-card                    { border-left-color: #3762c8 !important; }
+    .dark-theme .stat-card.operational        { border-left-color: #27ae60 !important; }
+    .dark-theme .stat-card.needs-inspection   { border-left-color: #f39c12 !important; }
+    .dark-theme .stat-card.damaged            { border-left-color: #e74c3c !important; }
+    .dark-theme .stat-card.maintenance        { border-left-color: #9b59b6 !important; }
+    /* stat-footer labels keep their colors in dark mode */
+    .dark-theme .stat-card .stat-footer .stat-icon,
+    .dark-theme .stat-card .stat-footer .stat-label { opacity: 0.9; }
+
 
     /* ── Page header / subtitle text ── */
     .dark-theme .dashboard-header h1,

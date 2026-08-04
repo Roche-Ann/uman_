@@ -236,63 +236,78 @@ $unreadNotifications = $pdo->query("SELECT COUNT(*) FROM asset_notifications WHE
         /* Stats Cards */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 18px;
             margin-bottom: 35px;
         }
 
         .stat-card {
-            border-radius: 14px;
-            padding: 24px;
-            color: white;
-            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.12);
+            border-radius: 12px;
+            padding: 22px 20px 18px;
+            background: #ffffff;
+            border: 1px solid #e9edf5;
+            border-left: 5px solid #3762c8;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
             display: flex;
-            align-items: center;
-            justify-content: space-between;
-            transition: transform 0.3s, box-shadow 0.3s;
-            background: linear-gradient(135deg, #4b7bec, #3867d6);
+            flex-direction: column;
+            gap: 6px;
+            transition: transform 0.25s, box-shadow 0.25s;
         }
 
         .stat-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.18);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.11);
         }
 
-        .stat-card.operational {
-            background: linear-gradient(135deg, #2ecc71, #27ae60);
-        }
-
-        .stat-card.needs-inspection {
-            background: linear-gradient(135deg, #f1c40f, #f39c12);
-        }
-
-        .stat-card.damaged {
-            background: linear-gradient(135deg, #e74c3c, #c0392b);
-        }
-
-        .stat-card.maintenance {
-            background: linear-gradient(135deg, #9b59b6, #8e44ad);
-        }
+        .stat-card.operational  { border-left-color: #27ae60; }
+        .stat-card.needs-inspection { border-left-color: #f39c12; }
+        .stat-card.damaged      { border-left-color: #e74c3c; }
+        .stat-card.maintenance  { border-left-color: #9b59b6; }
 
         .stat-info h3 {
-            font-size: 28px;
+            font-size: 34px;
             font-weight: 700;
-            line-height: 1.2;
+            line-height: 1;
+            color: #1e293b;
         }
 
-        .stat-info p {
-            font-size: 13px;
-            opacity: 0.9;
-            font-weight: 500;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+        .stat-footer {
+            display: flex;
+            align-items: center;
+            gap: 6px;
             margin-top: 4px;
         }
 
-        .stat-icon {
-            font-size: 32px;
-            opacity: 0.75;
+        .stat-footer .stat-icon {
+            font-size: 13px;
         }
+
+        .stat-footer .stat-label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+        }
+
+        /* Default (total) — blue */
+        .stat-card .stat-footer .stat-icon,
+        .stat-card .stat-footer .stat-label { color: #3762c8; }
+
+        /* Operational — green */
+        .stat-card.operational .stat-footer .stat-icon,
+        .stat-card.operational .stat-footer .stat-label { color: #27ae60; }
+
+        /* Needs Inspection — amber */
+        .stat-card.needs-inspection .stat-footer .stat-icon,
+        .stat-card.needs-inspection .stat-footer .stat-label { color: #f39c12; }
+
+        /* Damaged — red */
+        .stat-card.damaged .stat-footer .stat-icon,
+        .stat-card.damaged .stat-footer .stat-label { color: #e74c3c; }
+
+        /* Maintenance — purple */
+        .stat-card.maintenance .stat-footer .stat-icon,
+        .stat-card.maintenance .stat-footer .stat-label { color: #9b59b6; }
 
         /* Charts Section */
         .dashboard-layout {
@@ -500,39 +515,39 @@ $unreadNotifications = $pdo->query("SELECT COUNT(*) FROM asset_notifications WHE
         <!-- Stats Overview Cards -->
         <div class="stats-grid">
             <div class="stat-card">
-                <div class="stat-info">
-                    <h3><?php echo number_format($totalAssets); ?></h3>
-                    <p>Total Assets</p>
+                <div class="stat-info"><h3><?php echo number_format($totalAssets); ?></h3></div>
+                <div class="stat-footer">
+                    <i class="fas fa-boxes stat-icon"></i>
+                    <span class="stat-label">Total Assets</span>
                 </div>
-                <div class="stat-icon"><i class="fas fa-boxes"></i></div>
             </div>
             <div class="stat-card operational">
-                <div class="stat-info">
-                    <h3><?php echo number_format($operationalAssets); ?></h3>
-                    <p>Operational</p>
+                <div class="stat-info"><h3><?php echo number_format($operationalAssets); ?></h3></div>
+                <div class="stat-footer">
+                    <i class="fas fa-check-circle stat-icon"></i>
+                    <span class="stat-label">Operational</span>
                 </div>
-                <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
             </div>
             <div class="stat-card needs-inspection">
-                <div class="stat-info">
-                    <h3><?php echo number_format($needsInspection); ?></h3>
-                    <p>Needs Inspection</p>
+                <div class="stat-info"><h3><?php echo number_format($needsInspection); ?></h3></div>
+                <div class="stat-footer">
+                    <i class="fas fa-search stat-icon"></i>
+                    <span class="stat-label">Needs Inspection</span>
                 </div>
-                <div class="stat-icon"><i class="fas fa-search"></i></div>
             </div>
             <div class="stat-card damaged">
-                <div class="stat-info">
-                    <h3><?php echo number_format($damagedAssets); ?></h3>
-                    <p>Damaged</p>
+                <div class="stat-info"><h3><?php echo number_format($damagedAssets); ?></h3></div>
+                <div class="stat-footer">
+                    <i class="fas fa-exclamation-triangle stat-icon"></i>
+                    <span class="stat-label">Damaged</span>
                 </div>
-                <div class="stat-icon"><i class="fas fa-exclamation-triangle"></i></div>
             </div>
             <div class="stat-card maintenance">
-                <div class="stat-info">
-                    <h3><?php echo number_format($underMaintenance); ?></h3>
-                    <p>Under Maintenance</p>
+                <div class="stat-info"><h3><?php echo number_format($underMaintenance); ?></h3></div>
+                <div class="stat-footer">
+                    <i class="fas fa-tools stat-icon"></i>
+                    <span class="stat-label">Under Maintenance</span>
                 </div>
-                <div class="stat-icon"><i class="fas fa-tools"></i></div>
             </div>
         </div>
 
