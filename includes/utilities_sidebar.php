@@ -1114,6 +1114,12 @@ function sidebarActive(string $page, string $current): string {
                     <span class="link-label">CPRF Integration Hub</span>
                 </a>
             </li>
+            <li>
+                <a href="upad_integration.php" class="nav-link<?php echo sidebarActive('upad_integration.php', $currentPage); ?>">
+                    <i class="fas fa-city"></i>
+                    <span class="link-label">Urban Planning Hub</span>
+                </a>
+            </li>
             <?php else: ?>
             <li>
                 <a href="citizen.php" class="nav-link<?php echo sidebarActive('citizen.php', $currentPage); ?>">
