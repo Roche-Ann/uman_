@@ -55,7 +55,21 @@ function uman_require_api_key(string $expectedKey): void
  */
 function uman_require_bearer(string $expectedKey): void
 {
-    $header   = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+    // Apache + mod_php often doesn't surface the Authorization header in
+    // $_SERVER['HTTP_AUTHORIZATION'] (stripped for security unless
+    // CGIPassAuth is set) — fall back to apache_request_headers()/
+    // getallheaders(), which still see it.
+    $header = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
+    if ($header === '') {
+        $all = function_exists('getallheaders') ? getallheaders() : (function_exists('apache_request_headers') ? apache_request_headers() : []);
+        foreach ($all as $name => $value) {
+            if (strcasecmp($name, 'Authorization') === 0) {
+                $header = $value;
+                break;
+            }
+        }
+    }
+
     $provided = '';
     if (preg_match('/^Bearer\s+(.+)$/i', $header, $m)) {
         $provided = trim($m[1]);
