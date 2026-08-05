@@ -144,7 +144,7 @@ $callbackJson = json_encode($callbackPayload, JSON_UNESCAPED_UNICODE);
 // Use stored URL from the original request, fall back to the known UPAD endpoint.
 $callbackUrl = !empty($request['callback_url'])
     ? $request['callback_url']
-    : 'https://upad.infragovservices.com/api/webhooks/uman_inspection_result.php';
+    : UPAD_DEFAULT_CALLBACK_URL;
 
 // ── Sign the payload ──────────────────────────────────────────────────────────
 $signature = hash_hmac('sha256', $callbackJson, UPAD_WEBHOOK_SECRET);

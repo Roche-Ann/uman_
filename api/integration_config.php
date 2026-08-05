@@ -37,6 +37,13 @@ define('UPAD_API_KEY',         trim((string)(getenv('UPAD_API_KEY')         ?: '
 // Must match UMAN_WEBHOOK_SECRET in the UPAD system's utilities_integration.php.
 define('UPAD_WEBHOOK_SECRET',  trim((string)(getenv('UPAD_WEBHOOK_SECRET')  ?: 'UPAD_UMAN_WEBHOOK_SECRET_2026')));
 
+// Fallback callback URL — only used if a stored request has no callback_url
+// of its own (e.g. rows seeded via "Create Test Request"). Real requests from
+// UPAD always send their own callback_url, so this is just a safety net.
+// Points at the real physical file (uman-integration/uman_inspection_result.php
+// on the UPAD side) — NOT a /api/webhooks/ route, which never existed.
+define('UPAD_DEFAULT_CALLBACK_URL', trim((string)(getenv('UPAD_DEFAULT_CALLBACK_URL') ?: 'https://upad.infragovservices.com/uman-integration/uman_inspection_result.php')));
+
 // ── Auth helpers ──────────────────────────────────────────────────────────────
 
 function uman_require_api_key(string $expectedKey): void
@@ -55,7 +62,21 @@ function uman_require_api_key(string $expectedKey): void
  */
 function uman_require_bearer(string $expectedKey): void
 {
-    $header   = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+    // Apache + mod_php often doesn't surface the Authorization header in
+    // $_SERVER['HTTP_AUTHORIZATION'] (stripped for security unless
+    // CGIPassAuth is set) — fall back to apache_request_headers()/
+    // getallheaders(), which still see it.
+    $header = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
+    if ($header === '') {
+        $all = function_exists('getallheaders') ? getallheaders() : (function_exists('apache_request_headers') ? apache_request_headers() : []);
+        foreach ($all as $name => $value) {
+            if (strcasecmp($name, 'Authorization') === 0) {
+                $header = $value;
+                break;
+            }
+        }
+    }
+
     $provided = '';
     if (preg_match('/^Bearer\s+(.+)$/i', $header, $m)) {
         $provided = trim($m[1]);
