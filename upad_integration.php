@@ -70,9 +70,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             ];
 
             $callbackJson = json_encode($callbackPayload, JSON_UNESCAPED_UNICODE);
-            $callbackUrl  = !empty($req['callback_url']) 
-                ? $req['callback_url'] 
-                : 'https://upad.infragovservices.com/api/webhooks/uman_inspection_result.php';
+            $callbackUrl  = !empty($req['callback_url'])
+                ? $req['callback_url']
+                : UPAD_DEFAULT_CALLBACK_URL;
 
             $signature = hash_hmac('sha256', $callbackJson, UPAD_WEBHOOK_SECRET);
 
@@ -86,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     'X-UMAN-Signature: ' . $signature,
                 ],
                 CURLOPT_TIMEOUT        => 10,
-                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYPEER => true,
             ]);
 
             $responseBody = curl_exec($ch);
@@ -136,10 +136,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 '123 Commercial Ave, San Lorenzo', 14.676000, 121.043700,
                 'Grid capacity & transformer load inspection for new commercial hub',
                 'Urban Planning Office',
-                'https://upad.infragovservices.com/api/webhooks/uman_inspection_result.php',
+                ?,
                 'pending', NOW())
     ");
-    $stmt->execute([$refId, $testAppId, "Commercial Complex #$testAppId"]);
+    $stmt->execute([$refId, $testAppId, "Commercial Complex #$testAppId", UPAD_DEFAULT_CALLBACK_URL]);
     $successes[] = "Sample UPAD Inspection Request created ($refId).";
 }
 

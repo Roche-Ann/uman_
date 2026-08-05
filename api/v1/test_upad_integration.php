@@ -60,7 +60,7 @@ $samplePayload = [
     ],
     'description'       => 'Automated test request from verification suite',
     'requested_by'      => 'Urban Planning Office - System Test',
-    'callback_url'      => 'https://upad.infragovservices.com/api/webhooks/uman_inspection_result.php',
+    'callback_url'      => UPAD_DEFAULT_CALLBACK_URL,
     'requested_at'      => date('c'),
 ];
 
