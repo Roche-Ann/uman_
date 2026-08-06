@@ -213,6 +213,20 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
             margin-top: 4px;
         }
 
+        /* Outer page wrapper card (wraps everything like assets_crud) */
+        .page-wrapper {
+            width: 100%;
+            max-width: 1700px;
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border-radius: 18px;
+            padding: 35px 40px;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.22);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: #1e293b;
+        }
+
         /* Stats Grid */
         .stats-grid {
             display: grid;
@@ -221,17 +235,13 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
             margin-bottom: 30px;
         }
         .stat-card {
-            background: rgba(255, 255, 255, 0.88);
-            backdrop-filter: blur(14px);
-            -webkit-backdrop-filter: blur(14px);
+            background: #ffffff;
             border-radius: 14px;
             padding: 20px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.07);
             display: flex;
             align-items: center;
             gap: 15px;
-            border-left: 5px solid #3b82f6;
-            border: 1px solid rgba(255,255,255,0.3);
             border-left: 5px solid #3b82f6;
             transition: background 0.3s ease, box-shadow 0.3s ease;
         }
@@ -256,16 +266,14 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
         .stat-info h3 { font-size: 24px; font-weight: 700; color: #0f172a; }
         .stat-info p { font-size: 12px; color: #64748b; font-weight: 500; }
 
-        /* Card Section */
+        /* Card Section (inside the page-wrapper) */
         .card {
-            background: rgba(255, 255, 255, 0.88);
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
-            border-radius: 16px;
-            padding: 25px;
-            box-shadow: 0 6px 24px rgba(0,0,0,0.2);
-            margin-bottom: 30px;
-            border: 1px solid rgba(255,255,255,0.25);
+            background: #ffffff;
+            border-radius: 14px;
+            padding: 22px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+            margin-bottom: 24px;
+            border: 1px solid rgba(0,0,0,0.06);
             transition: background 0.3s ease, box-shadow 0.3s ease;
         }
         .card-header {
@@ -411,11 +419,19 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
             color: #94a3b8 !important;
         }
 
+        /* Outer wrapper */
+        .dark-theme .page-wrapper {
+            background: rgba(10, 18, 35, 0.92) !important;
+            border-color: rgba(255,255,255,0.08) !important;
+            box-shadow: 0 6px 28px rgba(0,0,0,0.6) !important;
+            color: #f1f5f9 !important;
+        }
+
         /* Stat cards */
         .dark-theme .stat-card {
-            background: rgba(15, 23, 42, 0.90) !important;
-            border-color: rgba(255,255,255,0.08) !important;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.5) !important;
+            background: rgba(30, 41, 59, 0.95) !important;
+            border-color: #334155 !important;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.4) !important;
         }
         .dark-theme .stat-card                { border-left-color: #3b82f6 !important; }
         .dark-theme .stat-card.pending        { border-left-color: #f59e0b !important; }
@@ -428,11 +444,11 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
         .dark-theme .stat-info h3             { color: #f8fafc !important; }
         .dark-theme .stat-info p              { color: #94a3b8 !important; }
 
-        /* Cards */
+        /* Cards (inside the dark page-wrapper) */
         .dark-theme .card {
-            background: rgba(15, 23, 42, 0.90) !important;
-            border-color: rgba(255,255,255,0.08) !important;
-            box-shadow: 0 4px 24px rgba(0,0,0,0.5) !important;
+            background: rgba(15, 23, 42, 0.85) !important;
+            border-color: #334155 !important;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.4) !important;
         }
         .dark-theme .card-header {
             border-bottom-color: #334155 !important;
@@ -536,6 +552,7 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <?php include 'includes/utilities_sidebar.php'; ?>
 
     <main class="main-content">
+        <div class="page-wrapper">
         
         <div class="page-header">
             <div>
@@ -673,6 +690,7 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
             </div>
         </div>
 
+        </div><!-- /.page-wrapper -->
     </main>
 
     <!-- Modal for Sending Webhook Callback -->
