@@ -109,6 +109,8 @@ try {
         }
 
         $facilityId = (int)($json['facility_id'] ?? 0);
+        $facilityName = trim((string)($json['facility_name'] ?? ''));
+        $facilityLocation = trim((string)($json['location'] ?? ''));
         $year = (int)($json['year'] ?? 0);
         $month = (int)($json['month'] ?? 0);
         $readingDate = trim((string)($json['reading_date'] ?? ''));
@@ -161,6 +163,11 @@ try {
             $dataSource = 'Imported';
         }
 
+        // Prefer the real facility name/location CPRF sends; only fall back
+        // to a generic label for older CPRF builds that don't send them yet.
+        $displayName = $facilityName !== '' ? $facilityName : "CPRF Facility #{$facilityId}";
+        $displayLocation = $facilityLocation !== '' ? $facilityLocation : $displayName;
+
         // Idempotent upsert on external_ref: same reading resubmitted (e.g.
         // after a CPRF-side correction) updates the existing row instead of
         // creating a duplicate.
@@ -178,7 +185,7 @@ try {
                 WHERE id = ?
             ');
             $update->execute([
-                "CPRF Facility #{$facilityId}", "CPRF Facility #{$facilityId}", $monthYear,
+                $displayName, $displayLocation, $monthYear,
                 $consumptionKwh, $electricCost, $ratePerKwh,
                 $consumptionWater, $ratePerWater, $waterCost,
                 $dataSource, $combinedNotes,
@@ -202,7 +209,7 @@ try {
             ');
             $insert->execute([
                 $recordId, $facilityId, $externalRef,
-                "CPRF Facility #{$facilityId}", "CPRF Facility #{$facilityId}", $monthYear,
+                $displayName, $displayLocation, $monthYear,
                 $consumptionKwh, $electricCost, $ratePerKwh,
                 $consumptionWater, $ratePerWater, $waterCost,
                 $dataSource, $combinedNotes,
