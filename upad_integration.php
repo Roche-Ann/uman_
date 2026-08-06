@@ -159,6 +159,7 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Urban Planning Integration Hub — UMAN Utilities Management</title>
+    <link rel="icon" type="image/png" href="assets/images/logocityhall.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
@@ -166,16 +167,30 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: 'Poppins', sans-serif;
-            background: #f1f5f9;
-            color: #1e293b;
             min-height: 100vh;
-            transition: background 0.3s ease, color 0.3s ease;
+            display: flex;
+            background: url("assets/images/cityhall.jpeg") center/cover no-repeat fixed;
+            color: #1e293b;
+            position: relative;
+        }
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            background: rgba(0, 0, 0, 0.30);
+            z-index: 0;
+            transition: background 0.3s ease;
         }
 
         .main-content {
+            flex: 1;
             margin-left: 280px;
             padding: 30px;
             transition: margin-left 0.25s ease;
+            z-index: 1;
+            position: relative;
         }
 
         .page-header {
@@ -206,13 +221,17 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
             margin-bottom: 30px;
         }
         .stat-card {
-            background: #ffffff;
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
             border-radius: 14px;
             padding: 20px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.18);
             display: flex;
             align-items: center;
             gap: 15px;
+            border-left: 5px solid #3b82f6;
+            border: 1px solid rgba(255,255,255,0.3);
             border-left: 5px solid #3b82f6;
             transition: background 0.3s ease, box-shadow 0.3s ease;
         }
@@ -239,11 +258,14 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         /* Card Section */
         .card {
-            background: #ffffff;
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
             border-radius: 16px;
             padding: 25px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+            box-shadow: 0 6px 24px rgba(0,0,0,0.2);
             margin-bottom: 30px;
+            border: 1px solid rgba(255,255,255,0.25);
             transition: background 0.3s ease, box-shadow 0.3s ease;
         }
         .card-header {
@@ -373,8 +395,13 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
 
         /* ===== DARK THEME OVERRIDES ===== */
+        /* Keep the background image but darken + de-blur the overlay */
+        .dark-theme body::before {
+            background: rgba(5, 10, 22, 0.80) !important;
+            backdrop-filter: blur(10px) !important;
+            -webkit-backdrop-filter: blur(10px) !important;
+        }
         .dark-theme body {
-            background: #0f172a !important;
             color: #f1f5f9 !important;
         }
         .dark-theme .page-header h1 {
@@ -386,8 +413,9 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         /* Stat cards */
         .dark-theme .stat-card {
-            background: #1e293b !important;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.35) !important;
+            background: rgba(15, 23, 42, 0.90) !important;
+            border-color: rgba(255,255,255,0.08) !important;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.5) !important;
         }
         .dark-theme .stat-card                { border-left-color: #3b82f6 !important; }
         .dark-theme .stat-card.pending        { border-left-color: #f59e0b !important; }
@@ -402,8 +430,9 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         /* Cards */
         .dark-theme .card {
-            background: #1e293b !important;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.4) !important;
+            background: rgba(15, 23, 42, 0.90) !important;
+            border-color: rgba(255,255,255,0.08) !important;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.5) !important;
         }
         .dark-theme .card-header {
             border-bottom-color: #334155 !important;
