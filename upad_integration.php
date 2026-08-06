@@ -169,6 +169,7 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
             background: #f1f5f9;
             color: #1e293b;
             min-height: 100vh;
+            transition: background 0.3s ease, color 0.3s ease;
         }
 
         .main-content {
@@ -213,6 +214,7 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
             align-items: center;
             gap: 15px;
             border-left: 5px solid #3b82f6;
+            transition: background 0.3s ease, box-shadow 0.3s ease;
         }
         .stat-card.pending { border-left-color: #f59e0b; }
         .stat-card.completed { border-left-color: #10b981; }
@@ -242,6 +244,7 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
             padding: 25px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.06);
             margin-bottom: 30px;
+            transition: background 0.3s ease, box-shadow 0.3s ease;
         }
         .card-header {
             display: flex;
@@ -309,11 +312,13 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
             text-align: left;
             padding: 12px 16px;
             border-bottom: 2px solid #e2e8f0;
+            transition: background 0.3s ease, color 0.3s ease;
         }
         td {
             padding: 14px 16px;
             border-bottom: 1px solid #f1f5f9;
             color: #334155;
+            transition: background 0.3s ease, color 0.3s ease;
         }
         tr:hover td { background: #f8fafc; }
 
@@ -352,6 +357,7 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
             max-width: 95%;
             padding: 25px;
             box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+            transition: background 0.3s ease;
         }
         .modal-header {
             display: flex; justify-content: space-between; align-items: center;
@@ -362,8 +368,138 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
         .form-control {
             width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #cbd5e1;
             font-size: 13px; font-family: inherit;
+            transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease;
         }
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+
+        /* ===== DARK THEME OVERRIDES ===== */
+        .dark-theme body {
+            background: #0f172a !important;
+            color: #f1f5f9 !important;
+        }
+        .dark-theme .page-header h1 {
+            color: #f8fafc !important;
+        }
+        .dark-theme .page-header p {
+            color: #94a3b8 !important;
+        }
+
+        /* Stat cards */
+        .dark-theme .stat-card {
+            background: #1e293b !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.35) !important;
+        }
+        .dark-theme .stat-card                { border-left-color: #3b82f6 !important; }
+        .dark-theme .stat-card.pending        { border-left-color: #f59e0b !important; }
+        .dark-theme .stat-card.completed      { border-left-color: #10b981 !important; }
+        .dark-theme .stat-card.failed         { border-left-color: #ef4444 !important; }
+        .dark-theme .stat-icon                { background: rgba(255,255,255,0.06) !important; }
+        .dark-theme .stat-card.pending .stat-icon   { background: rgba(245,158,11,0.15) !important; }
+        .dark-theme .stat-card.completed .stat-icon { background: rgba(16,185,129,0.15) !important; }
+        .dark-theme .stat-card.failed .stat-icon    { background: rgba(239,68,68,0.15) !important; }
+        .dark-theme .stat-info h3             { color: #f8fafc !important; }
+        .dark-theme .stat-info p              { color: #94a3b8 !important; }
+
+        /* Cards */
+        .dark-theme .card {
+            background: #1e293b !important;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4) !important;
+        }
+        .dark-theme .card-header {
+            border-bottom-color: #334155 !important;
+        }
+        .dark-theme .card-header h2 {
+            color: #f8fafc !important;
+        }
+
+        /* Table */
+        .dark-theme th {
+            background: #151f32 !important;
+            color: #94a3b8 !important;
+            border-bottom-color: #334155 !important;
+        }
+        .dark-theme td {
+            color: #cbd5e1 !important;
+            border-bottom-color: #334155 !important;
+        }
+        .dark-theme tr:hover td {
+            background: rgba(255,255,255,0.04) !important;
+        }
+        .dark-theme td strong { color: #f8fafc !important; }
+        .dark-theme td small  { color: #64748b !important; }
+
+        /* Badges */
+        .dark-theme .badge-pending   { background: #3d2500 !important; color: #fcd34d !important; }
+        .dark-theme .badge-completed { background: #052e16 !important; color: #4ade80 !important; }
+        .dark-theme .badge-failed    { background: #450a0a !important; color: #fca5a5 !important; }
+        .dark-theme .badge-urgent    { background: #450a0a !important; color: #fca5a5 !important; }
+        .dark-theme .badge-medium    { background: #0c2a4a !important; color: #7dd3fc !important; }
+        .dark-theme .badge-low       { background: #1e293b !important; color: #94a3b8 !important; border: 1px solid #334155; }
+
+        /* Modal */
+        .dark-theme .modal-content {
+            background: #1e293b !important;
+            color: #f8fafc !important;
+            border: 1px solid rgba(255,255,255,0.1) !important;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6) !important;
+        }
+        .dark-theme .modal-header {
+            border-bottom-color: #334155 !important;
+        }
+        .dark-theme .modal-header h3 {
+            color: #f8fafc !important;
+        }
+        .dark-theme .modal-header > button {
+            color: #94a3b8 !important;
+            background: none !important;
+        }
+        .dark-theme .modal-header > button:hover {
+            color: #f8fafc !important;
+        }
+        .dark-theme .form-group label {
+            color: #94a3b8 !important;
+        }
+        .dark-theme .form-control {
+            background: #0f172a !important;
+            border-color: #475569 !important;
+            color: #f8fafc !important;
+        }
+        .dark-theme .form-control::placeholder {
+            color: #64748b !important;
+        }
+        .dark-theme .form-control:focus {
+            border-color: #3762c8 !important;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(55,98,200,0.25) !important;
+        }
+
+        /* Alerts */
+        .dark-theme .alert-success {
+            background: #064e3b !important;
+            color: #6ee7b7 !important;
+            border-color: #065f46 !important;
+        }
+        .dark-theme .alert-error {
+            background: #450a0a !important;
+            color: #fca5a5 !important;
+            border-color: #7f1d1d !important;
+        }
+
+        /* Buttons */
+        .dark-theme .btn-outline {
+            background: transparent !important;
+            border-color: #475569 !important;
+            color: #94a3b8 !important;
+        }
+        .dark-theme .btn-outline:hover {
+            background: #334155 !important;
+            color: #f8fafc !important;
+        }
+
+        /* Empty-state text */
+        .dark-theme td[colspan] {
+            color: #64748b !important;
+        }
     </style>
 </head>
 <body>
