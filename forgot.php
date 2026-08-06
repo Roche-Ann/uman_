@@ -776,14 +776,14 @@ if ($status === 'sent') {
             </ul>
         </div>
         <div>
-            <h4 class="footer-heading">Services</h4>
-            <ul class="footer-links">
-                <li><a href="#modules">Citizen Hub</a></li>
-                <li><a href="#modules">Asset Tracking</a></li>
-                <li><a href="#modules">Issue Reporting</a></li>
-                <li><a href="#modules">Maintenance Logs</a></li>
-            </ul>
-        </div>
+                <h4 class="footer-heading">Core Services</h4>
+                <ul class="footer-links">
+                    <li><a href="#modules">Asset Inventory</a></li>
+                    <li><a href="#modules">Incident Reporting</a></li>
+                    <li><a href="#modules">Maintenance Dispatch</a></li>
+                    <li><a href="#modules">Energy Monitoring</a></li>
+                </ul>
+            </div>
         <div>
             <h4 class="footer-heading">Contact Us</h4>
             <ul class="footer-links">
