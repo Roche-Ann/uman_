@@ -1089,6 +1089,12 @@ function sidebarActive(string $page, string $current): string {
                 </a>
             </li>
             <li>
+                <a href="cprf_integration.php" class="nav-link<?php echo sidebarActive('cprf_integration.php', $currentPage); ?>">
+                    <i class="fas fa-exchange-alt"></i>
+                    <span class="link-label">Asset Requests</span>
+                </a>
+            </li>
+            <li>
                 <a href="incidents_dashboard.php" class="nav-link<?php echo (strpos($currentPage, 'incidents_') === 0) ? ' active' : ''; ?>">
                     <i class="fas fa-bullhorn"></i>
                     <span class="link-label">Incident Reports</span>
@@ -1108,16 +1114,11 @@ function sidebarActive(string $page, string $current): string {
                 </a>
             </li>
 
-            <li>
-                <a href="cprf_integration.php" class="nav-link<?php echo sidebarActive('cprf_integration.php', $currentPage); ?>">
-                    <i class="fas fa-exchange-alt"></i>
-                    <span class="link-label">CPRF Integration Hub</span>
-                </a>
-            </li>
+
             <li>
                 <a href="upad_integration.php" class="nav-link<?php echo sidebarActive('upad_integration.php', $currentPage); ?>">
                     <i class="fas fa-city"></i>
-                    <span class="link-label">Urban Planning Hub</span>
+                    <span class="link-label">Inspection Requests</span>
                 </a>
             </li>
             <?php else: ?>
