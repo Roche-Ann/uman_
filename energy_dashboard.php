@@ -16,21 +16,53 @@ $totalCost = $pdo->query("SELECT SUM(cost) FROM energy_consumption_records")->fe
 $pendingRecommendations = $pdo->query("SELECT COUNT(*) FROM energy_recommendations WHERE status = 'Pending'")->fetchColumn();
 $successfulSyncs = $pdo->query("SELECT COUNT(*) FROM energy_sync_logs WHERE status = 'Successful'")->fetchColumn();
 
-// Chart Data: Monthly consumption trend
-$monthlyTrends = $pdo->query("
-    SELECT month_year, SUM(consumption_kwh) as kwh 
-    FROM energy_consumption_records 
-    GROUP BY month_year 
+// Chart Data: Monthly consumption trend, broken down per facility/asset —
+// COALESCE(facility_name, asset_type) so real CPRF facilities each get their
+// own series (previously every CPRF row shared the literal 'CPRF Facility'
+// asset_type and collapsed into one bucket).
+$monthlyTrendRows = $pdo->query("
+    SELECT COALESCE(facility_name, asset_type) as label, month_year, SUM(consumption_kwh) as kwh
+    FROM energy_consumption_records
+    GROUP BY label, month_year
     ORDER BY month_year ASC
-")->fetchAll();
-$monthsJson = json_encode(array_column($monthlyTrends, 'month_year'));
-$kwhJson = json_encode(array_column($monthlyTrends, 'kwh'));
+")->fetchAll(PDO::FETCH_ASSOC);
 
-// Chart Data: Top consuming sectors/assets
+$monthsSet = [];
+$byFacility = [];
+foreach ($monthlyTrendRows as $row) {
+    $monthsSet[$row['month_year']] = true;
+    $byFacility[$row['label']][$row['month_year']] = (float)$row['kwh'];
+}
+$monthsList = array_keys($monthsSet);
+sort($monthsList);
+
+$facilityColors = ['#3762c8', '#2ecc71', '#f1c40f', '#e74c3c', '#9b59b6', '#1abc9c', '#e67e22', '#34495e'];
+$trendDatasets = [];
+$colorIndex = 0;
+foreach ($byFacility as $label => $monthMap) {
+    $data = [];
+    foreach ($monthsList as $m) {
+        $data[] = $monthMap[$m] ?? 0;
+    }
+    $trendDatasets[] = [
+        'label' => $label,
+        'data' => $data,
+        'borderColor' => $facilityColors[$colorIndex % count($facilityColors)],
+        'backgroundColor' => $facilityColors[$colorIndex % count($facilityColors)],
+        'fill' => false,
+        'tension' => 0.3,
+    ];
+    $colorIndex++;
+}
+$monthsJson = json_encode($monthsList);
+$trendDatasetsJson = json_encode($trendDatasets);
+
+// Chart Data: Top consuming sectors/facilities — same COALESCE, so each CPRF
+// facility gets its own bar instead of one shared "CPRF Facility" bucket.
 $sectorCounts = $pdo->query("
-    SELECT asset_type, SUM(consumption_kwh) as kwh 
-    FROM energy_consumption_records 
-    GROUP BY asset_type
+    SELECT COALESCE(facility_name, asset_type) as label, SUM(consumption_kwh) as kwh
+    FROM energy_consumption_records
+    GROUP BY label
 ")->fetchAll(PDO::FETCH_KEY_PAIR);
 $sectorsJson = json_encode(array_keys($sectorCounts));
 $sectorKwhJson = json_encode(array_values($sectorCounts));
@@ -51,13 +83,14 @@ function generateAIEnergySummary($records, $pendingRecs) {
 
     $summary = "<strong>LGU AI Assistant Energy Data Summary (" . date('F Y') . ")</strong><br><br>";
     
-    // Grouping by asset/facility type
+    // Grouping by facility (falls back to asset_type for non-CPRF UMAN
+    // assets like streetlights, which have no facility_name of their own)
     $groups = [];
     foreach ($records as $r) {
-        if (!isset($groups[$r['asset_type']])) {
-            $groups[$r['asset_type']] = 0;
+        if (!isset($groups[$r['name']])) {
+            $groups[$r['name']] = 0;
         }
-        $groups[$r['asset_type']] += $r['consumption_kwh'];
+        $groups[$r['name']] += $r['consumption_kwh'];
     }
     
     $summary .= "📊 <strong>Sectored Consumption Aggregation:</strong><br>";
@@ -392,25 +425,18 @@ $aiDigest = generateAIEnergySummary($allRecords, $pendingRecommendations);
 </main>
 
 <script>
-    // Monthly Consumption Chart
+    // Monthly Consumption Chart — one line per facility/asset
     const consumptionCtx = document.getElementById('consumptionChart').getContext('2d');
     new Chart(consumptionCtx, {
         type: 'line',
         data: {
             labels: <?php echo $monthsJson; ?>,
-            datasets: [{
-                label: 'Electricity Usage (kWh)',
-                data: <?php echo $kwhJson; ?>,
-                borderColor: '#3762c8',
-                backgroundColor: 'rgba(55, 98, 200, 0.1)',
-                fill: true,
-                tension: 0.3
-            }]
+            datasets: <?php echo $trendDatasetsJson; ?>
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
+            plugins: { legend: { display: true, position: 'bottom', labels: { font: { family: 'Poppins', size: 10 } } } },
             scales: {
                 y: { beginAtZero: true, ticks: { font: { family: 'Poppins' } } },
                 x: { ticks: { font: { family: 'Poppins', size: 11 } } }
