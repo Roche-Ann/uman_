@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/integration_config.php';
 
-uman_require_api_key($UMAN_INTEGRATION_API_KEY);
+uman_require_api_key($ENERGY_INTEGRATION_API_KEY);
 
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     http_response_code(405);

@@ -4,7 +4,7 @@ UMAN exposes its locally owned monthly electricity records through:
 
 ```text
 GET /api/monthly-energy-records.php
-X-API-Key: <UMAN_INTEGRATION_API_KEY>
+X-API-Key: <ENERGY_INTEGRATION_API_KEY>
 ```
 
 The API also accepts the key as `?key=...` for compatibility with the other
@@ -19,8 +19,10 @@ For local XAMPP installations, LGU1 Energy normally uses:
 
 ```dotenv
 UMAN_MONTHLY_RECORDS_URL=https://uman.infragovservices.com/api/monthly-energy-records.php
-UMAN_INTEGRATION_API_KEY=UMAN_SECURE_KEY_2025
+UMAN_INTEGRATION_API_KEY=<same value as UMAN's ENERGY_INTEGRATION_API_KEY>
 ```
 
-Change the URL if the UMAN folder has a different Apache alias. Both systems
-must use the same integration API key.
+Change the URL if the UMAN folder has a different Apache alias. On UMAN, set
+`ENERGY_INTEGRATION_API_KEY` to the same secret. If the dedicated key is not
+set, UMAN falls back to its general `UMAN_INTEGRATION_API_KEY` for backward
+compatibility.
