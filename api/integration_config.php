@@ -18,6 +18,12 @@ require_once dirname(__DIR__) . '/includes/db.php';
 // ── General integration API key (used by CPRF and other inbound callers) ──────
 $UMAN_INTEGRATION_API_KEY = trim((string)(getenv('UMAN_INTEGRATION_API_KEY') ?: 'UMAN_SECURE_KEY_2025'));
 
+// Dedicated read key for the LGU Energy monthly-record consumer. Keeping it
+// separate lets UMAN rotate Energy access without interrupting CPRF's asset
+// and equipment integration. Existing installations remain compatible by
+// falling back to the general integration key.
+$ENERGY_INTEGRATION_API_KEY = trim((string)(getenv('ENERGY_INTEGRATION_API_KEY') ?: $UMAN_INTEGRATION_API_KEY));
+
 // ── CPRF (Barangay Culiat Facilities Reservation) integration constants ──────────
 // Base URL where CPRF integrations webhook receiver lives.
 // Default matches typical LGU XAMPP vhost "lgu.test"; override in your env for prod.
