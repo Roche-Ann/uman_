@@ -88,6 +88,7 @@ try {
             transition: all 0.2s ease;
             border: none;
             display: inline-block;
+            text-decoration: none;
         }
         .emergency-modal-btn.dismiss-btn {
             background: #f1f5f9;
@@ -141,7 +142,7 @@ try {
                 <button class="emergency-modal-btn dismiss-btn" onclick="hideEmergencyBanner(<?php echo $emergency['id']; ?>)">
                     I Understand
                 </button>
-                <a href="incidents_dashboard.php" class="emergency-modal-btn acknowledge-btn">
+                <a href="citizen_reports.php" class="emergency-modal-btn acknowledge-btn">
                     Report Issue
                 </a>
             </div>
