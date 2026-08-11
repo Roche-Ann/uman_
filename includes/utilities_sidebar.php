@@ -1122,21 +1122,6 @@ function sidebarActive(string $page, string $current): string {
                     <span class="link-label">Inspection Requests</span>
                 </a>
             </li>
-
-                        <li class="nav-section-header">REPORTS & EXPORTS</li>
-            <li>
-                <a href="export_dashboard.php" class="nav-link<?php echo $currentPage === 'export_dashboard.php' ? ' active' : ''; ?>">
-                    <i class="fas fa-file-export"></i>
-                    <span class="link-label">Export Data</span>
-                </a>
-            </li>
-                <a href="admin/users.php" class="nav-link<?php echo $currentPage === 'users.php' ? ' active' : ''; ?>">
-                    <i class="fas fa-users-cog"></i>
-                    <span class="link-label">User Management</span>
-                </a>
-            </li>
-
-
             <?php else: ?>
             <li>
                 <a href="citizen.php" class="nav-link<?php echo sidebarActive('citizen.php', $currentPage); ?>">
