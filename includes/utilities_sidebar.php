@@ -1064,7 +1064,12 @@ function sidebarActive(string $page, string $current): string {
         <button class="collapse-btn" id="collapse-btn" aria-label="Toggle sidebar" aria-pressed="false">&#8249;</button>
 
         <div class="site-logo">
-            <img src="<?php echo $sidebarBase; ?>assets/images/logocityhall.png" alt="LGU Logo">
+            <img src="<?php echo $sidebarBase; ?>assets/images/logocityhall.png" alt="LGU Logo"
+                 id="sidebar-logo-img"
+                 onerror="this.style.display='none'; document.getElementById('sidebar-logo-fallback').style.display='grid';">
+            <span id="sidebar-logo-fallback" style="display:none; width:45px; height:45px; border-radius:10px; background:linear-gradient(135deg,#3762c8,#6384d2); place-items:center; color:#fff; font-size:20px; box-shadow:0 4px 10px rgba(0,0,0,0.15);">
+                <i class="fas fa-city"></i>
+            </span>
             <div class="logo-text">
                 <h3>Utilities Management</h3>
                 <p>Welcome, <?php echo $userName; ?></p>

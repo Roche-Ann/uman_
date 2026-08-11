@@ -267,7 +267,10 @@ $locationsAvail = $pdo->query("
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 
-        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        /* Explicitly keep box-sizing on pseudo-elements without overriding their font
+           (overriding ::before font-family breaks Font Awesome icon rendering) */
+        *::before, *::after { box-sizing: border-box; }
 
         /* ── Body & Background ── */
         body {
@@ -739,7 +742,7 @@ $locationsAvail = $pdo->query("
             </div>
         </div>
         <div class="stat-card green">
-            <div class="stat-icon-wrap"><i class="fas fa-peso-sign"></i></div>
+            <div class="stat-icon-wrap"><i class="fas fa-coins"></i></div>
             <div class="stat-info">
                 <h3>₱<?php echo number_format($totalCost, 2); ?></h3>
                 <p>Estimated Cost</p>
@@ -760,7 +763,7 @@ $locationsAvail = $pdo->query("
             </div>
         </div>
         <div class="stat-card purple">
-            <div class="stat-icon-wrap"><i class="fas fa-exchange-alt"></i></div>
+            <div class="stat-icon-wrap"><i class="fas fa-arrows-rotate"></i></div>
             <div class="stat-info">
                 <h3><?php echo number_format($successfulSyncs); ?></h3>
                 <p>Data Syncs — Last: <?php echo $lastSyncDate; ?></p>
