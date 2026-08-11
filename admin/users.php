@@ -89,7 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     }
     
-    // ===== TOGGLE =====
+    // ===== TOGGLE STATUS =====
     if ($action === 'toggle') {
         $id = intval($_POST['id'] ?? 0);
         if ($id > 0 && $id != $_SESSION['user_id']) {
@@ -103,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     }
     
-    // ===== DELETE =====
+    // ===== DELETE USER =====
     if ($action === 'delete') {
         $id = intval($_POST['id'] ?? 0);
         if ($id > 0 && $id != $_SESSION['user_id']) {
@@ -158,9 +158,65 @@ $users = $stmt->fetchAll();
     <link rel="icon" type="image/png" href="../assets/images/logocityhall.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* Your existing styles - keep them as they are */
-        /* ... (shortened for brevity) ... */
-        /* I'll provide the full CSS in the final code block */
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        * { margin:0; padding:0; box-sizing:border-box; font-family:'Poppins',sans-serif; }
+        body { min-height:100vh; display:flex; background:url("../assets/images/cityhall.jpeg") center/cover no-repeat fixed; position:relative; }
+        body::before { content:""; position:absolute; top:0; left:0; width:100%; height:100%; backdrop-filter:blur(6px); background:rgba(0,0,0,0.35); z-index:0; }
+        .main-content { flex:1; margin-left:280px; padding:30px 40px; z-index:1; position:relative; }
+        .card { width:100%; max-width:1700px; background:rgba(255,255,255,0.85); backdrop-filter:blur(15px); border-radius:18px; padding:40px; box-shadow:0 6px 20px rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.25); }
+        .dashboard-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:30px; flex-wrap:wrap; gap:20px; }
+        .dashboard-header h1 { color:#2c3e50; font-size:32px; font-weight:700; display:flex; align-items:center; gap:15px; }
+        .dashboard-header h1 i { color:#3762c8; }
+        .btn { padding:10px 20px; border-radius:8px; font-weight:600; font-size:14px; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:8px; text-decoration:none; }
+        .btn-primary { background:#3762c8; color:#fff; }
+        .btn-primary:hover { background:#2851b0; }
+        .btn-outline { background:transparent; border:1px solid #cbd5e1; color:#64748b; }
+        .btn-outline:hover { background:#f8f9fa; }
+        .btn-danger { background:#dc3545; color:#fff; }
+        .btn-warning { background:#ffc107; color:#212529; }
+        .btn-sm { padding:5px 10px; font-size:12px; }
+        .alert { padding:15px 20px; border-radius:8px; margin-bottom:25px; font-size:14px; font-weight:500; display:flex; align-items:center; gap:10px; }
+        .alert-error { background:#fde8e8; color:#c0392b; border:1px solid #f8b4b4; }
+        .alert-success { background:#e2fbe8; color:#1e7e34; border:1px solid #b8f0c5; }
+        .filter-panel { background:white; padding:20px; border-radius:12px; margin-bottom:25px; display:flex; gap:15px; align-items:flex-end; flex-wrap:wrap; box-shadow:0 4px 10px rgba(0,0,0,0.05); }
+        .form-group { display:flex; flex-direction:column; gap:6px; flex:1; min-width:160px; }
+        .form-group label { font-size:12px; font-weight:600; color:#64748b; }
+        .form-control { padding:10px 14px; border-radius:8px; border:1px solid #cbd5e1; font-size:14px; outline:none; }
+        .form-control:focus { border-color:#3762c8; }
+        .table-section { background:white; border-radius:12px; padding:25px; box-shadow:0 4px 10px rgba(0,0,0,0.05); }
+        .table-container { overflow-x:auto; }
+        table { width:100%; border-collapse:collapse; text-align:left; }
+        th { background:#f8f9fa; color:#475569; font-weight:600; font-size:12px; text-transform:uppercase; padding:12px 16px; border-bottom:2px solid #e2e8f0; }
+        td { padding:14px 16px; border-bottom:1px solid #edf2f7; font-size:14px; color:#2c3e50; }
+        tr:hover td { background:#fcfcfc; }
+        .badge { display:inline-block; padding:4px 10px; border-radius:99px; font-size:10px; font-weight:700; text-transform:uppercase; }
+        .badge-citizen { background:#e0f2fe; color:#0284c7; }
+        .badge-employee { background:#dbeafe; color:#1e40af; }
+        .badge-active { background:#e2fbe8; color:#1e7e34; }
+        .badge-inactive { background:#fde8e8; color:#bd2130; }
+        .btn-icon { width:32px; height:32px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center; border:none; cursor:pointer; font-size:13px; }
+        .btn-icon-edit { background:#fef9e7; color:#d39e00; }
+        .btn-icon-toggle { background:#e0f2fe; color:#0284c7; }
+        .btn-icon-delete { background:#fde8e8; color:#bd2130; }
+        .pagination-container { display:flex; justify-content:space-between; align-items:center; margin-top:20px; }
+        .pagination-info { font-size:13px; color:#64748b; }
+        .pagination-links { display:flex; gap:6px; }
+        .page-link { padding:6px 12px; border-radius:6px; border:1px solid #cbd5e1; text-decoration:none; color:#64748b; font-size:13px; font-weight:500; }
+        .page-link:hover { border-color:#3762c8; color:#3762c8; background:#f8fafc; }
+        .page-link.active { background:#3762c8; color:#fff; border-color:#3762c8; }
+        .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:2000; justify-content:center; align-items:center; backdrop-filter:blur(4px); }
+        .modal.open { display:flex; }
+        .modal-content { background:white; width:90%; max-width:550px; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,0.15); overflow:hidden; animation:modalFadeIn 0.3s ease; }
+        @keyframes modalFadeIn { from { opacity:0; transform:translateY(-20px); } to { opacity:1; transform:translateY(0); } }
+        .modal-header { padding:20px 24px; background:#f8f9fa; border-bottom:1px solid #edf2f7; display:flex; justify-content:space-between; align-items:center; }
+        .modal-header h3 { font-size:18px; color:#2c3e50; }
+        .modal-close { background:transparent; border:none; font-size:18px; cursor:pointer; color:#64748b; }
+        .modal-body { padding:24px; max-height:70vh; overflow-y:auto; }
+        .modal-footer { padding:16px 24px; background:#f8f9fa; border-top:1px solid #edf2f7; display:flex; justify-content:flex-end; gap:12px; }
+        .form-row { display:flex; gap:15px; margin-bottom:15px; }
+        .form-row .form-group { flex:1; }
+        .checkbox-group { display:flex; align-items:center; gap:10px; margin-top:5px; }
+        .checkbox-group input[type="checkbox"] { width:18px; height:18px; accent-color:#3762c8; }
     </style>
 </head>
 <body>
