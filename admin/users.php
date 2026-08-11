@@ -1,5 +1,5 @@
 <?php
-// admin/users.php - User Management
+// admin/users.php - User Management (FINAL)
 require_once '../includes/auth.php';
 require_once '../includes/db.php';
 
@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_SESSION['flash_error'] = 'Email already exists.';
                 } else {
                     $hashed = password_hash($password, PASSWORD_DEFAULT);
-                    $stmt = $pdo->prepare("INSERT INTO users (full_name, email, password, user_type, is_active) VALUES (?, ?, ?, ?, ?)");
+                    $stmt = $pdo->prepare("INSERT INTO users (full_name, email, password, user_type, is_active, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
                     $stmt->execute([$full_name, $email, $hashed, $user_type, $is_active]);
                     $_SESSION['flash_success'] = "User '$full_name' added.";
                 }
@@ -145,7 +145,9 @@ $countStmt = $pdo->prepare("SELECT COUNT(*) FROM users $where");
 $countStmt->execute($params);
 $total = $countStmt->fetchColumn();
 $totalPages = ceil($total / $limit);
-$stmt = $pdo->prepare("SELECT *, last_login FROM users $where ORDER BY id DESC LIMIT $limit OFFSET $offset");
+
+// Fetch users
+$stmt = $pdo->prepare("SELECT *, last_login, created_at FROM users $where ORDER BY id DESC LIMIT $limit OFFSET $offset");
 $stmt->execute($params);
 $users = $stmt->fetchAll();
 ?>
@@ -270,13 +272,14 @@ $users = $stmt->fetchAll();
                             <th>Email</th>
                             <th>Role</th>
                             <th>Status</th>
+                            <th>Registered</th>
                             <th>Last Login</th>
                             <th style="text-align:right;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (empty($users)): ?>
-                            <tr><td colspan="7" style="text-align:center; padding:30px; color:#94a3b8;">No users found.</td></tr>
+                            <tr><td colspan="8" style="text-align:center; padding:30px; color:#94a3b8;">No users found.</td></tr>
                         <?php else: foreach ($users as $u): $isSelf = ($u['id'] == $_SESSION['user_id']); ?>
                             <tr>
                                 <td><strong><?php echo $u['id']; ?></strong></td>
@@ -284,6 +287,7 @@ $users = $stmt->fetchAll();
                                 <td><?php echo htmlspecialchars($u['email']); ?></td>
                                 <td><span class="badge badge-<?php echo $u['user_type']; ?>"><?php echo ucfirst($u['user_type']); ?></span></td>
                                 <td><span class="badge badge-<?php echo $u['is_active'] ? 'active' : 'inactive'; ?>"><?php echo $u['is_active'] ? 'Active' : 'Inactive'; ?></span><?php if ($isSelf) echo ' <span style="font-size:10px; color:#94a3b8;">(You)</span>'; ?></td>
+                                <td><?php echo date('M d, Y', strtotime($u['created_at'])); ?></td>
                                 <td><?php echo $u['last_login'] ? date('M d, Y h:i A', strtotime($u['last_login'])) : 'Never'; ?></td>
                                 <td style="text-align:right; white-space:nowrap;">
                                     <button class="btn-icon btn-icon-edit" onclick="editUser(<?php echo json_encode($u); ?>)"><i class="fas fa-edit"></i></button>
@@ -313,7 +317,7 @@ $users = $stmt->fetchAll();
     </div>
 </main>
 
-<!-- Add Modal -->
+<!-- ADD MODAL -->
 <div id="addModal" class="modal">
     <div class="modal-content">
         <div class="modal-header"><h3>Add User</h3><button class="modal-close" onclick="closeModal('addModal')">&times;</button></div>
@@ -333,7 +337,7 @@ $users = $stmt->fetchAll();
     </div>
 </div>
 
-<!-- Edit Modal -->
+<!-- EDIT MODAL -->
 <div id="editModal" class="modal">
     <div class="modal-content">
         <div class="modal-header"><h3>Edit User</h3><button class="modal-close" onclick="closeModal('editModal')">&times;</button></div>
@@ -354,7 +358,7 @@ $users = $stmt->fetchAll();
     </div>
 </div>
 
-<!-- Delete Modal -->
+<!-- DELETE MODAL -->
 <div id="deleteModal" class="modal">
     <div class="modal-content" style="max-width:450px;">
         <div class="modal-header" style="background:#fde8e8;"><h3 style="color:#bd2130;">Delete User</h3><button class="modal-close" onclick="closeModal('deleteModal')">&times;</button></div>
@@ -365,7 +369,7 @@ $users = $stmt->fetchAll();
     </div>
 </div>
 
-<!-- Toggle Modal -->
+<!-- TOGGLE MODAL -->
 <div id="toggleModal" class="modal">
     <div class="modal-content" style="max-width:450px;">
         <div class="modal-header" style="background:#e0f2fe;"><h3 style="color:#0284c7;">Toggle Status</h3><button class="modal-close" onclick="closeModal('toggleModal')">&times;</button></div>
@@ -403,6 +407,7 @@ function toggleUser(id,name,current) {
     document.getElementById('toggleModal').classList.add('open');
 }
 
+// Close modals when clicking outside
 document.querySelectorAll('.modal').forEach(m => {
     m.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open'); });
 });
