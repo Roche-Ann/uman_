@@ -3,7 +3,8 @@
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
 
-if (!isLoggedIn()) {
+// ✅ Security: Only employees can access reports
+if (!isLoggedIn() || !isEmployee()) {
     header('Location: login.php');
     exit();
 }
