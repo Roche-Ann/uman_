@@ -1050,6 +1050,7 @@ function sidebarActive(string $page, string $current): string {
     .dark-theme body::before {
         background: rgba(5, 10, 22, 0.75) !important;
     }
+
 </style>
 
 <!-- ===== SIDEBAR HTML ===== -->
@@ -1106,43 +1107,22 @@ function sidebarActive(string $page, string $current): string {
                     <span class="link-label">Maintenance Coordination</span>
                 </a>
             </li>
+
             <li>
                 <a href="energy_dashboard.php" class="nav-link<?php echo (strpos($currentPage, 'energy_') === 0) ? ' active' : ''; ?>">
                     <i class="fas fa-bolt"></i>
                     <span class="link-label">Energy Management</span>
                 </a>
             </li>
+
+
             <li>
                 <a href="upad_integration.php" class="nav-link<?php echo sidebarActive('upad_integration.php', $currentPage); ?>">
                     <i class="fas fa-city"></i>
                     <span class="link-label">Inspection Requests</span>
                 </a>
             </li>
-
-            <!-- ===== NEW: REPORTS & EXPORTS SECTION ===== -->
-            <li class="nav-section-header">REPORTS & EXPORTS</li>
-            <li>
-                <a href="export_dashboard.php" class="nav-link<?php echo $currentPage === 'export_dashboard.php' ? ' active' : ''; ?>">
-                    <i class="fas fa-file-export"></i>
-                    <span class="link-label">Export Data</span>
-                </a>
-            </li>
-            <li>
-                <a href="assets_reports.php" class="nav-link<?php echo sidebarActive('assets_reports.php', $currentPage); ?>">
-                    <i class="fas fa-file-alt"></i>
-                    <span class="link-label">Asset Reports</span>
-                </a>
-            </li>
-            <li>
-                <a href="admin/users.php" class="nav-link<?php echo $currentPage === 'users.php' ? ' active' : ''; ?>">
-                    <i class="fas fa-users-cog"></i>
-                    <span class="link-label">User Management</span>
-                </a>
-            </li>
-            <!-- ===== END REPORTS & EXPORTS ===== -->
-
             <?php else: ?>
-            <!-- Citizen links -->
             <li>
                 <a href="citizen.php" class="nav-link<?php echo sidebarActive('citizen.php', $currentPage); ?>">
                     <i class="fas fa-home"></i>
@@ -1161,6 +1141,7 @@ function sidebarActive(string $page, string $current): string {
                     <span class="link-label">LGU Advisories</span>
                 </a>
             </li>
+
             <li>
                 <a href="citizen_notifications.php" class="nav-link<?php echo sidebarActive('citizen_notifications.php', $currentPage); ?>">
                     <i class="fas fa-bell"></i>
