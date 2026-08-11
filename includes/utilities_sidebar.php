@@ -1,5 +1,6 @@
 <?php
 // includes/utilities_sidebar.php
+include_once __DIR__ . '/emergency_banner.php';
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/db.php';
 
