@@ -238,7 +238,7 @@ $users = $stmt->fetchAll();
     </style>
 </head>
 <body>
-<?php include '../includes/utilities_sidebar.php'; ?>
+<?php $sidebarBase = '../'; include '../includes/utilities_sidebar.php'; ?>
 <main class="main-content">
     <div class="card">
         <div class="dashboard-header">

@@ -12,6 +12,11 @@ if (!isLoggedIn()) {
 $userName  = htmlspecialchars($_SESSION['user_name'] ?? '', ENT_QUOTES, 'UTF-8');
 $userType  = $_SESSION['user_type'] ?? '';
 $currentPage = basename($_SERVER['PHP_SELF']);
+// Allow subdirectory pages (e.g. admin/) to set a base path prefix.
+// Root-level pages don't need to set this; it defaults to ''.
+if (!isset($sidebarBase)) {
+    $sidebarBase = '';
+}
 
 // Helper to mark active link
 function sidebarActive(string $page, string $current): string {
@@ -1059,7 +1064,7 @@ function sidebarActive(string $page, string $current): string {
         <button class="collapse-btn" id="collapse-btn" aria-label="Toggle sidebar" aria-pressed="false">&#8249;</button>
 
         <div class="site-logo">
-            <img src="assets/images/logocityhall.png" alt="LGU Logo">
+            <img src="<?php echo $sidebarBase; ?>assets/images/logocityhall.png" alt="LGU Logo">
             <div class="logo-text">
                 <h3>Utilities Management</h3>
                 <p>Welcome, <?php echo $userName; ?></p>
@@ -1072,44 +1077,44 @@ function sidebarActive(string $page, string $current): string {
             <li class="nav-section-header">MAIN NAVIGATION</li>
             <?php if ($userType === 'employee'): ?>
             <li>
-                <a href="utilities_dashboard.php" class="nav-link<?php echo sidebarActive('utilities_dashboard.php', $currentPage); ?>">
+                <a href="<?php echo $sidebarBase; ?>utilities_dashboard.php" class="nav-link<?php echo sidebarActive('utilities_dashboard.php', $currentPage); ?>">
                     <i class="fas fa-tachometer-alt"></i>
                     <span class="link-label">Dashboard</span>
                 </a>
             </li>
             <li>
-                <a href="assets_dashboard.php" class="nav-link<?php echo $currentPage === 'assets_dashboard.php' ? ' active' : ''; ?>">
+                <a href="<?php echo $sidebarBase; ?>assets_dashboard.php" class="nav-link<?php echo $currentPage === 'assets_dashboard.php' ? ' active' : ''; ?>">
                     <i class="fas fa-chart-line"></i>
                     <span class="link-label">Asset Dashboard</span>
                 </a>
             </li>
             <li>
-                <a href="assets_crud.php" class="nav-link<?php echo ($currentPage === 'assets_crud.php' || (strpos($currentPage, 'assets_') === 0 && $currentPage !== 'assets_dashboard.php')) ? ' active' : ''; ?>">
+                <a href="<?php echo $sidebarBase; ?>assets_crud.php" class="nav-link<?php echo ($currentPage === 'assets_crud.php' || (strpos($currentPage, 'assets_') === 0 && $currentPage !== 'assets_dashboard.php')) ? ' active' : ''; ?>">
                     <i class="fas fa-warehouse"></i>
                     <span class="link-label">Asset Inventory</span>
                 </a>
             </li>
             <li>
-                <a href="cprf_integration.php" class="nav-link<?php echo sidebarActive('cprf_integration.php', $currentPage); ?>">
+                <a href="<?php echo $sidebarBase; ?>cprf_integration.php" class="nav-link<?php echo sidebarActive('cprf_integration.php', $currentPage); ?>">
                     <i class="fas fa-exchange-alt"></i>
                     <span class="link-label">Asset Requests</span>
                 </a>
             </li>
             <li>
-                <a href="incidents_dashboard.php" class="nav-link<?php echo (strpos($currentPage, 'incidents_') === 0) ? ' active' : ''; ?>">
+                <a href="<?php echo $sidebarBase; ?>incidents_dashboard.php" class="nav-link<?php echo (strpos($currentPage, 'incidents_') === 0) ? ' active' : ''; ?>">
                     <i class="fas fa-bullhorn"></i>
                     <span class="link-label">Incident Reports</span>
                 </a>
             </li>
             <li>
-                <a href="maintenance_dashboard.php" class="nav-link<?php echo (strpos($currentPage, 'maintenance_') === 0) ? ' active' : ''; ?>">
+                <a href="<?php echo $sidebarBase; ?>maintenance_dashboard.php" class="nav-link<?php echo (strpos($currentPage, 'maintenance_') === 0) ? ' active' : ''; ?>">
                     <i class="fas fa-tools"></i>
                     <span class="link-label">Maintenance Coordination</span>
                 </a>
             </li>
 
             <li>
-                <a href="energy_dashboard.php" class="nav-link<?php echo (strpos($currentPage, 'energy_') === 0) ? ' active' : ''; ?>">
+                <a href="<?php echo $sidebarBase; ?>energy_dashboard.php" class="nav-link<?php echo (strpos($currentPage, 'energy_') === 0) ? ' active' : ''; ?>">
                     <i class="fas fa-bolt"></i>
                     <span class="link-label">Energy Management</span>
                 </a>
@@ -1117,7 +1122,7 @@ function sidebarActive(string $page, string $current): string {
 
 
             <li>
-                <a href="upad_integration.php" class="nav-link<?php echo sidebarActive('upad_integration.php', $currentPage); ?>">
+                <a href="<?php echo $sidebarBase; ?>upad_integration.php" class="nav-link<?php echo sidebarActive('upad_integration.php', $currentPage); ?>">
                     <i class="fas fa-city"></i>
                     <span class="link-label">Inspection Requests</span>
                 </a>
@@ -1126,19 +1131,19 @@ function sidebarActive(string $page, string $current): string {
 <!-- ===== REPORTS & EXPORTS SECTION ===== -->
 <li class="nav-section-header">REPORTS & EXPORTS</li>
 <li>
-    <a href="export_dashboard.php" class="nav-link<?php echo $currentPage === 'export_dashboard.php' ? ' active' : ''; ?>">
+    <a href="<?php echo $sidebarBase; ?>export_dashboard.php" class="nav-link<?php echo $currentPage === 'export_dashboard.php' ? ' active' : ''; ?>">
         <i class="fas fa-file-export"></i>
         <span class="link-label">Export Data</span>
     </a>
 </li>
 <li>
-    <a href="assets_reports.php" class="nav-link<?php echo $currentPage === 'assets_reports.php' ? ' active' : ''; ?>">
+    <a href="<?php echo $sidebarBase; ?>assets_reports.php" class="nav-link<?php echo $currentPage === 'assets_reports.php' ? ' active' : ''; ?>">
         <i class="fas fa-file-alt"></i>
         <span class="link-label">Asset Reports</span>
     </a>
 </li>
 <li>
-    <a href="admin/users.php" class="nav-link<?php echo $currentPage === 'users.php' ? ' active' : ''; ?>">
+    <a href="<?php echo $sidebarBase; ?>admin/users.php" class="nav-link<?php echo $currentPage === 'users.php' ? ' active' : ''; ?>">
         <i class="fas fa-users-cog"></i>
         <span class="link-label">User Management</span>
     </a>
@@ -1146,32 +1151,32 @@ function sidebarActive(string $page, string $current): string {
 
             <?php else: ?>
             <li>
-                <a href="citizen.php" class="nav-link<?php echo sidebarActive('citizen.php', $currentPage); ?>">
+                <a href="<?php echo $sidebarBase; ?>citizen.php" class="nav-link<?php echo sidebarActive('citizen.php', $currentPage); ?>">
                     <i class="fas fa-home"></i>
                     <span class="link-label">Home Dashboard</span>
                 </a>
             </li>
             <li>
-                <a href="citizen_reports.php" class="nav-link<?php echo sidebarActive('citizen_reports.php', $currentPage); ?>">
+                <a href="<?php echo $sidebarBase; ?>citizen_reports.php" class="nav-link<?php echo sidebarActive('citizen_reports.php', $currentPage); ?>">
                     <i class="fas fa-file-invoice"></i>
                     <span class="link-label">Track Reports</span>
                 </a>
             </li>
             <li>
-                <a href="citizen_advisories.php" class="nav-link<?php echo sidebarActive('citizen_advisories.php', $currentPage); ?>">
+                <a href="<?php echo $sidebarBase; ?>citizen_advisories.php" class="nav-link<?php echo sidebarActive('citizen_advisories.php', $currentPage); ?>">
                     <i class="fas fa-bullhorn"></i>
                     <span class="link-label">LGU Advisories</span>
                 </a>
             </li>
 
             <li>
-                <a href="citizen_notifications.php" class="nav-link<?php echo sidebarActive('citizen_notifications.php', $currentPage); ?>">
+                <a href="<?php echo $sidebarBase; ?>citizen_notifications.php" class="nav-link<?php echo sidebarActive('citizen_notifications.php', $currentPage); ?>">
                     <i class="fas fa-bell"></i>
                     <span class="link-label">Notifications</span>
                 </a>
             </li>
             <li>
-                <a href="citizen_profile.php" class="nav-link<?php echo sidebarActive('citizen_profile.php', $currentPage); ?>">
+                <a href="<?php echo $sidebarBase; ?>citizen_profile.php" class="nav-link<?php echo sidebarActive('citizen_profile.php', $currentPage); ?>">
                     <i class="fas fa-user-cog"></i>
                     <span class="link-label">Profile Settings</span>
                 </a>
@@ -1204,7 +1209,7 @@ function sidebarActive(string $page, string $current): string {
         <p class="logout-modal-text">Are you sure you want to log out of the LGU Utilities System?</p>
         <div class="logout-modal-actions">
             <button type="button" class="logout-modal-btn cancel-btn" onclick="closeLogoutModal()">Cancel</button>
-            <a href="logout.php" class="logout-modal-btn confirm-btn">Logout</a>
+            <a href="<?php echo $sidebarBase; ?>logout.php" class="logout-modal-btn confirm-btn">Logout</a>
         </div>
     </div>
 </div>
