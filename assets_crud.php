@@ -241,10 +241,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $latitude = null;
         $longitude = null;
         $date_installed = $_POST['date_installed'] ?? date('Y-m-d');
-        $status = $_POST['status'] ?? 'Operational';
-        $condition = $_POST['condition'] ?? 'Good';
-        $serial_number = trim($_POST['serial_number'] ?? '');
-        $model_brand = trim($_POST['model_brand'] ?? '');
+        $condition_status = $_POST['condition_status'] ?? 'Operational';
         $description = trim($_POST['description'] ?? '');
         $responsible_office = trim($_POST['responsible_office'] ?? '');
 
@@ -293,10 +290,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 // Insert Asset
                 $stmt = $pdo->prepare("
-                    INSERT INTO utility_assets (asset_id, name, asset_type_id, quantity, location, latitude, longitude, date_installed, status, `condition`, serial_number, model_brand, description, responsible_office)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO utility_assets (asset_id, name, asset_type_id, quantity, location, latitude, longitude, date_installed, condition_status, description, responsible_office)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ");
-                $stmt->execute([$asset_id, $name, $asset_type_id, $quantity, $location, $latitude, $longitude, $date_installed, $status, $condition, $serial_number, $model_brand, $description, $responsible_office]);
+                $stmt->execute([$asset_id, $name, $asset_type_id, $quantity, $location, $latitude, $longitude, $date_installed, $condition_status, $description, $responsible_office]);
                 $id = $pdo->lastInsertId();
 
                 // Handle Image Upload if any (non-critical)
@@ -310,9 +307,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Log Status (non-critical)
                 try {
                     $pdo->prepare("
-                        INSERT INTO asset_audit_logs (utility_asset_id, user_id, action_type, old_value, new_value) 
-                        VALUES (?, ?, 'Status Changed', NULL, ?)
-                    ")->execute([$id, $userId, $status . ' / ' . $condition]);
+                        INSERT INTO asset_status_logs (utility_asset_id, old_status, new_status, changed_by, notes) 
+                        VALUES (?, NULL, ?, ?, 'Asset registered in system.')
+                    ")->execute([$id, $condition_status, $userId]);
                 } catch (Throwable $ignored) {}
 
                 // Create alert notification (non-critical)
@@ -340,10 +337,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $quantity = max(1, intval($_POST['quantity'] ?? 1));
         $location = trim($_POST['location'] ?? '');
         $date_installed = $_POST['date_installed'] ?? date('Y-m-d');
-        $status = $_POST['status'] ?? 'Operational';
-        $condition = $_POST['condition'] ?? 'Good';
-        $serial_number = trim($_POST['serial_number'] ?? '');
-        $model_brand = trim($_POST['model_brand'] ?? '');
+        $condition_status = $_POST['condition_status'] ?? 'Operational';
         $description = trim($_POST['description'] ?? '');
         $responsible_office = trim($_POST['responsible_office'] ?? '');
         $status_notes = trim($_POST['status_notes'] ?? '');
@@ -376,7 +370,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             try {
                 // Get current status & location to log changes
-                $curr = $pdo->prepare("SELECT asset_id, status, `condition`, location, latitude, longitude FROM utility_assets WHERE id = ?");
+                $curr = $pdo->prepare("SELECT asset_id, condition_status, location, latitude, longitude FROM utility_assets WHERE id = ?");
                 $curr->execute([$id]);
                 $oldAsset = $curr->fetch();
 
@@ -388,27 +382,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Update core details
                     $stmt = $pdo->prepare("
                         UPDATE utility_assets 
-                        SET name = ?, asset_type_id = ?, quantity = ?, location = ?, latitude = ?, longitude = ?, date_installed = ?, status = ?, `condition` = ?, serial_number = ?, model_brand = ?, description = ?, responsible_office = ?
+                        SET name = ?, asset_type_id = ?, quantity = ?, location = ?, latitude = ?, longitude = ?, date_installed = ?, condition_status = ?, description = ?, responsible_office = ?
                         WHERE id = ?
                     ");
-                    $stmt->execute([$name, $asset_type_id, $quantity, $location, $latitude, $longitude, $date_installed, $status, $condition, $serial_number, $model_brand, $description, $responsible_office, $id]);
+                    $stmt->execute([$name, $asset_type_id, $quantity, $location, $latitude, $longitude, $date_installed, $condition_status, $description, $responsible_office, $id]);
 
                     // Log status change (non-critical)
-                    if ($oldAsset['status'] !== $status || $oldAsset['condition'] !== $condition) {
+                    if ($oldAsset['condition_status'] !== $condition_status) {
                         try {
                             $pdo->prepare("
-                                INSERT INTO asset_audit_logs (utility_asset_id, user_id, action_type, old_value, new_value) 
-                                VALUES (?, ?, 'Status Changed', ?, ?)
-                            ")->execute([$id, $userId, $oldAsset['status'] . ' / ' . $oldAsset['condition'], $status . ' / ' . $condition]);
+                                INSERT INTO asset_status_logs (utility_asset_id, old_status, new_status, changed_by, notes) 
+                                VALUES (?, ?, ?, ?, ?)
+                            ")->execute([$id, $oldAsset['condition_status'], $condition_status, $userId, $status_notes ?: 'Status modified by administrator.']);
                         } catch (Throwable $ignored) {}
 
                         // Trigger notification (non-critical)
                         try {
-                            $notifType = ($condition === 'Critical') ? 'reported_damaged' : 'status_changed';
+                            $notifType = ($condition_status === 'Damaged') ? 'reported_damaged' : 'status_changed';
                             $pdo->prepare("
                                 INSERT INTO asset_notifications (type, message) 
                                 VALUES (?, ?)
-                            ")->execute([$notifType, "Asset {$asset_id} status/condition changed to {$status}/{$condition}."]);
+                            ")->execute([$notifType, "Asset {$asset_id} status changed from {$oldAsset['condition_status']} to {$condition_status}."]);
                         } catch (Throwable $ignored) {}
                     }
 
@@ -484,18 +478,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $search = trim($_GET['search'] ?? '');
 $type_filter = !empty($_GET['type_id']) ? intval($_GET['type_id']) : null;
 $status_filter = !empty($_GET['status']) ? trim($_GET['status']) : null;
-$condition_filter = !empty($_GET['condition']) ? trim($_GET['condition']) : null;
 
 // Build asset WHERE conditions
 $conditions = [];
 $params = [];
 
 if (!empty($search)) {
-    $conditions[] = "(a.name LIKE ? OR a.asset_id LIKE ? OR a.location LIKE ? OR a.serial_number LIKE ? OR a.model_brand LIKE ?)";
+    $conditions[] = "(a.name LIKE ? OR a.asset_id LIKE ?)";
     $searchWildcard = '%' . $search . '%';
-    $params[] = $searchWildcard;
-    $params[] = $searchWildcard;
-    $params[] = $searchWildcard;
     $params[] = $searchWildcard;
     $params[] = $searchWildcard;
 }
@@ -506,13 +496,8 @@ if ($type_filter) {
 }
 
 if ($status_filter) {
-    $conditions[] = "a.status = ?";
+    $conditions[] = "a.condition_status = ?";
     $params[] = $status_filter;
-}
-
-if ($condition_filter) {
-    $conditions[] = "a.`condition` = ?";
-    $params[] = $condition_filter;
 }
 
 $whereClause = !empty($conditions) ? 'WHERE ' . implode(' AND ', $conditions) : '';
@@ -544,7 +529,7 @@ foreach ($allAssets as $asset) {
         ];
     }
     $groupedAssets[$catKey]['total_qty'] += intval($asset['quantity']);
-    $groupedAssets[$catKey]['statuses'][] = $asset['status'] . ' / ' . $asset['condition'];
+    $groupedAssets[$catKey]['statuses'][] = $asset['condition_status'];
     $groupedAssets[$catKey]['assets'][] = $asset;
 }
 
@@ -1141,9 +1126,6 @@ if (!empty($search) || $status_filter) {
 <main class="main-content" id="mainContent">
     <div class="card">
         
-        <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
         <!-- Header -->
         <div class="dashboard-header">
             <div>
@@ -1206,22 +1188,9 @@ if (!empty($search) || $status_filter) {
                 <select name="status" class="form-control">
                     <option value="">All Statuses</option>
                     <option value="Operational" <?php echo $status_filter === 'Operational' ? 'selected' : ''; ?>>Operational</option>
+                    <option value="Needs Inspection" <?php echo $status_filter === 'Needs Inspection' ? 'selected' : ''; ?>>Needs Inspection</option>
+                    <option value="Damaged" <?php echo $status_filter === 'Damaged' ? 'selected' : ''; ?>>Damaged</option>
                     <option value="Under Maintenance" <?php echo $status_filter === 'Under Maintenance' ? 'selected' : ''; ?>>Under Maintenance</option>
-                    <option value="Non-Operational" <?php echo $status_filter === 'Non-Operational' ? 'selected' : ''; ?>>Non-Operational</option>
-                    <option value="Retired" <?php echo $status_filter === 'Retired' ? 'selected' : ''; ?>>Retired</option>
-                    <option value="Disposed" <?php echo $status_filter === 'Disposed' ? 'selected' : ''; ?>>Disposed</option>
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label>Condition</label>
-                <select name="condition" class="form-control">
-                    <option value="">All Conditions</option>
-                    <option value="Excellent" <?php echo $condition_filter === 'Excellent' ? 'selected' : ''; ?>>Excellent</option>
-                    <option value="Good" <?php echo $condition_filter === 'Good' ? 'selected' : ''; ?>>Good</option>
-                    <option value="Fair" <?php echo $condition_filter === 'Fair' ? 'selected' : ''; ?>>Fair</option>
-                    <option value="Poor" <?php echo $condition_filter === 'Poor' ? 'selected' : ''; ?>>Poor</option>
-                    <option value="Critical" <?php echo $condition_filter === 'Critical' ? 'selected' : ''; ?>>Critical</option>
                 </select>
             </div>
 
@@ -1308,11 +1277,8 @@ if (!empty($search) || $status_filter) {
                                                     <td><?php echo htmlspecialchars($asset['name']); ?></td>
                                                     <td><?php echo intval($asset['quantity']); ?></td>
                                                     <td>
-                                                        <span class="badge badge-<?php echo strtolower(str_replace([' ','_'],'', $asset['status'])); ?>">
-                                                            <?php echo htmlspecialchars($asset['status']); ?>
-                                                        </span>
-                                                        <span class="badge badge-<?php echo strtolower(str_replace([' ','_'],'', $asset['condition'])); ?>" style="margin-top:4px;">
-                                                            <?php echo htmlspecialchars($asset['condition']); ?>
+                                                        <span class="badge badge-<?php echo strtolower(str_replace([' ','_'],'', $asset['condition_status'])); ?>">
+                                                            <?php echo htmlspecialchars($asset['condition_status']); ?>
                                                         </span>
                                                     </td>
                                                     <td style="text-align:right;">
@@ -1341,7 +1307,7 @@ if (!empty($search) || $status_filter) {
                 </div>
                 <div class="pagination-links">
                     <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-                        <a href="assets_crud.php?page=<?php echo $i; ?>&search=<?php echo urlencode($search); ?>&type_id=<?php echo $type_filter; ?>&status=<?php echo urlencode($status_filter ?? ''); ?>&condition=<?php echo urlencode($condition_filter ?? ''); ?>" class="page-link <?php echo $page == $i ? 'active' : ''; ?>">
+                        <a href="assets_crud.php?page=<?php echo $i; ?>&search=<?php echo urlencode($search); ?>&type_id=<?php echo $type_filter; ?>&status=<?php echo urlencode($status_filter); ?>" class="page-link <?php echo $page == $i ? 'active' : ''; ?>">
                             <?php echo $i; ?>
                         </a>
                     <?php endfor; ?>
@@ -1386,39 +1352,15 @@ if (!empty($search) || $status_filter) {
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Status *</label>
-                        <select name="status" class="form-control" required>
+                        <label>Condition Status *</label>
+                        <select name="condition_status" class="form-control" required>
                             <option value="Operational">Operational</option>
+                            <option value="Needs Inspection">Needs Inspection</option>
+                            <option value="Damaged">Damaged</option>
                             <option value="Under Maintenance">Under Maintenance</option>
-                            <option value="Non-Operational">Non-Operational</option>
-                            <option value="Retired">Retired</option>
-                            <option value="Disposed">Disposed</option>
                         </select>
                     </div>
                 </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Condition *</label>
-                        <select name="condition" class="form-control" required>
-                            <option value="Excellent">Excellent</option>
-                            <option value="Good" selected>Good</option>
-                            <option value="Fair">Fair</option>
-                            <option value="Poor">Poor</option>
-                            <option value="Critical">Critical</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Serial Number</label>
-                        <input type="text" name="serial_number" class="form-control" placeholder="e.g. SN12345678">
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Model / Brand</label>
-                        <input type="text" name="model_brand" class="form-control" placeholder="e.g. Philips / SolarMax">
-                    </div>
 
                 <div class="form-group" id="add-new-category-wrapper" style="display:none; margin-bottom:15px;">
                     <label>New Category Name *</label>
@@ -1497,39 +1439,15 @@ if (!empty($search) || $status_filter) {
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Status *</label>
-                        <select id="edit-status" name="status" class="form-control" required>
+                        <label>Condition Status *</label>
+                        <select id="edit-status" name="condition_status" class="form-control" required>
                             <option value="Operational">Operational</option>
+                            <option value="Needs Inspection">Needs Inspection</option>
+                            <option value="Damaged">Damaged</option>
                             <option value="Under Maintenance">Under Maintenance</option>
-                            <option value="Non-Operational">Non-Operational</option>
-                            <option value="Retired">Retired</option>
-                            <option value="Disposed">Disposed</option>
                         </select>
                     </div>
                 </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Condition *</label>
-                        <select id="edit-condition" name="condition" class="form-control" required>
-                            <option value="Excellent">Excellent</option>
-                            <option value="Good">Good</option>
-                            <option value="Fair">Fair</option>
-                            <option value="Poor">Poor</option>
-                            <option value="Critical">Critical</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Serial Number</label>
-                        <input type="text" id="edit-serial" name="serial_number" class="form-control">
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Model / Brand</label>
-                        <input type="text" id="edit-brand" name="model_brand" class="form-control">
-                    </div>
 
                 <div class="form-group" id="edit-new-category-wrapper" style="display:none; margin-bottom:15px;">
                     <label>New Category Name *</label>
@@ -1593,28 +1511,13 @@ if (!empty($search) || $status_filter) {
                         <h2 id="view-name" style="font-size:20px; color:#2c3e50;"></h2>
                         <p id="view-type" style="font-size:12px; color:#64748b; font-weight:600; text-transform:uppercase; margin-top:2px;"></p>
                     </div>
-                    <div>
-                        <span id="view-status" class="badge"></span>
-                        <span id="view-condition" class="badge"></span>
-                    </div>
-                </div>
-
-                <div style="display:flex; justify-content:center; margin-bottom: 20px;">
-                    <div id="view-qr-code"></div>
+                    <span id="view-status" class="badge"></span>
                 </div>
 
                 <table style="width:100%;" id="view-specs-table">
                     <tr>
                         <td style="font-weight:600; width:150px; color:#64748b;">Asset ID</td>
                         <td id="view-asset-id-text"></td>
-                    </tr>
-                    <tr>
-                        <td style="font-weight:600; color:#64748b;">Serial Number</td>
-                        <td id="view-serial-text"></td>
-                    </tr>
-                    <tr>
-                        <td style="font-weight:600; color:#64748b;">Model / Brand</td>
-                        <td id="view-brand-text"></td>
                     </tr>
                     <tr>
                         <td style="font-weight:600; color:#64748b;">Quantity</td>
@@ -1825,10 +1728,7 @@ if (!empty($search) || $status_filter) {
         document.getElementById('edit-quantity').value = asset.quantity || 1;
         document.getElementById('edit-type-id').value = asset.asset_type_id;
         toggleNewCategory(document.getElementById('edit-type-id'), 'edit-new-category-wrapper');
-        document.getElementById('edit-status').value = asset.status || 'Operational';
-        document.getElementById('edit-condition').value = asset.condition || 'Good';
-        document.getElementById('edit-serial').value = asset.serial_number || '';
-        document.getElementById('edit-brand').value = asset.model_brand || '';
+        document.getElementById('edit-status').value = asset.condition_status;
         document.getElementById('edit-date-installed').value = asset.date_installed;
         document.getElementById('edit-location').value = asset.location;
         document.getElementById('edit-office').value = asset.responsible_office || '';
@@ -1845,10 +1745,7 @@ if (!empty($search) || $status_filter) {
         const fieldsToCompare = [
             { id: 'edit-name', name: 'Asset Name', key: 'name' },
             { id: 'edit-quantity', name: 'Quantity', key: 'quantity' },
-            { id: 'edit-status', name: 'Status', key: 'status' },
-            { id: 'edit-condition', name: 'Condition', key: 'condition' },
-            { id: 'edit-serial', name: 'Serial Number', key: 'serial_number' },
-            { id: 'edit-brand', name: 'Model / Brand', key: 'model_brand' },
+            { id: 'edit-status', name: 'Condition Status', key: 'condition_status' },
             { id: 'edit-date-installed', name: 'Installation Date', key: 'date_installed' },
             { id: 'edit-location', name: 'Location', key: 'location' },
             { id: 'edit-office', name: 'Responsible Office', key: 'responsible_office' },
@@ -1937,28 +1834,10 @@ if (!empty($search) || $status_filter) {
         document.getElementById('view-office-text').textContent = asset.responsible_office || 'N/A';
         document.getElementById('view-desc-text').textContent = asset.description || 'No description.';
 
-        document.getElementById('view-serial-text').textContent = asset.serial_number || 'N/A';
-        document.getElementById('view-brand-text').textContent = asset.model_brand || 'N/A';
-
         // Status badge
         const badge = document.getElementById('view-status');
-        badge.className = 'badge badge-' + asset.status.toLowerCase().replace(' ', '');
-        badge.textContent = asset.status;
-        
-        const badgeCond = document.getElementById('view-condition');
-        badgeCond.className = 'badge badge-' + asset.condition.toLowerCase().replace(' ', '');
-        badgeCond.textContent = asset.condition;
-
-        // QR Code
-        const qrContainer = document.getElementById('view-qr-code');
-        qrContainer.innerHTML = '';
-        new QRCode(qrContainer, {
-            text: window.location.origin + "/assets_crud.php?search=" + asset.asset_id,
-            width: 128,
-            height: 128,
-            colorDark : "#2c3e50",
-            colorLight : "#ffffff",
-        });
+        badge.className = 'badge badge-' + asset.condition_status.toLowerCase().replace(' ', '');
+        badge.textContent = asset.condition_status;
 
         // Image Handling
         const imgContainer = document.getElementById('view-image-container');

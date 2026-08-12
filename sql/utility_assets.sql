@@ -19,14 +19,7 @@ CREATE TABLE IF NOT EXISTS `utility_assets` (
   `latitude` DECIMAL(10, 8) NULL,
   `longitude` DECIMAL(11, 8) NULL,
   `date_installed` DATE NOT NULL,
-  `status` ENUM('Operational', 'Under Maintenance', 'Non-Operational', 'Retired', 'Disposed') NOT NULL DEFAULT 'Operational',
-  `condition` ENUM('Excellent', 'Good', 'Fair', 'Poor', 'Critical') NOT NULL DEFAULT 'Good',
-  `serial_number` VARCHAR(100) NULL,
-  `model_brand` VARCHAR(100) NULL,
-  `primary_photo` VARCHAR(255) NULL,
-  `warranty_doc` VARCHAR(255) NULL,
-  `purchase_doc` VARCHAR(255) NULL,
-  `inspection_doc` VARCHAR(255) NULL,
+  `condition_status` ENUM('Operational', 'Needs Inspection', 'Damaged', 'Under Maintenance') NOT NULL DEFAULT 'Operational',
   `description` TEXT NULL,
   `responsible_office` VARCHAR(100) NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -80,31 +73,7 @@ CREATE TABLE IF NOT EXISTS `asset_notifications` (
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 7. Create asset inspections table
-CREATE TABLE IF NOT EXISTS `asset_inspections` (
-  `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `utility_asset_id` INT NOT NULL,
-  `inspection_date` DATE NOT NULL,
-  `next_inspection_date` DATE NULL,
-  `inspector_name` VARCHAR(100) NOT NULL,
-  `findings` TEXT NULL,
-  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (`utility_asset_id`) REFERENCES `utility_assets`(`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- 8. Create asset audit logs table
-CREATE TABLE IF NOT EXISTS `asset_audit_logs` (
-  `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `utility_asset_id` INT NOT NULL,
-  `user_id` INT NOT NULL,
-  `action_type` VARCHAR(50) NOT NULL,
-  `old_value` TEXT NULL,
-  `new_value` TEXT NULL,
-  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (`utility_asset_id`) REFERENCES `utility_assets`(`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- 9. Seed asset types
+-- 7. Seed asset types
 INSERT INTO `asset_types` (`name`, `description`) VALUES
 ('Streetlight', 'Public street illumination lights and solar-powered posts'),
 ('Drainage System', 'Storm drainage networks, manholes, culverts, and gratings'),
