@@ -164,6 +164,34 @@ $totalPages = ceil($total / $limit);
 $stmt = $pdo->prepare("SELECT *, last_login, created_at FROM users $where ORDER BY id DESC LIMIT $limit OFFSET $offset");
 $stmt->execute($params);
 $users = $stmt->fetchAll();
+
+// Fetch user activity details for each user
+foreach ($users as &$u) {
+    $userId = $u['id'];
+    $u['service_requests'] = [];
+    $u['service_requests_count'] = 0;
+    $u['otps'] = [];
+    $u['otp_count'] = 0;
+    
+    try {
+        $srStmt = $pdo->prepare("SELECT id, request_type, utility_type, status, created_at FROM service_requests WHERE user_id = ? ORDER BY created_at DESC LIMIT 10");
+        $srStmt->execute([$userId]);
+        $u['service_requests'] = $srStmt->fetchAll(PDO::FETCH_ASSOC);
+        $u['service_requests_count'] = count($u['service_requests']);
+    } catch (Exception $e) {
+        // Fallback if table/schema differs
+    }
+    
+    try {
+        $otpStmt = $pdo->prepare("SELECT id, created_at, used FROM otps WHERE user_id = ? ORDER BY created_at DESC LIMIT 5");
+        $otpStmt->execute([$userId]);
+        $u['otps'] = $otpStmt->fetchAll(PDO::FETCH_ASSOC);
+        $u['otp_count'] = count($u['otps']);
+    } catch (Exception $e) {
+        // Fallback
+    }
+}
+unset($u);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -174,8 +202,6 @@ $users = $stmt->fetchAll();
     <link rel="icon" type="image/png" href="../assets/images/logocityhall.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* Your existing styles – unchanged */
-        /* ... (I'll keep the same as your current) */
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
         * { margin:0; padding:0; box-sizing:border-box; font-family:'Poppins',sans-serif; }
         body { min-height:100vh; display:flex; background:url("../assets/images/cityhall.jpeg") center/cover no-repeat fixed; position:relative; }
@@ -212,10 +238,15 @@ $users = $stmt->fetchAll();
         .badge-employee { background:#dbeafe; color:#1e40af; }
         .badge-active { background:#e2fbe8; color:#1e7e34; }
         .badge-inactive { background:#fde8e8; color:#bd2130; }
-        .btn-icon { width:32px; height:32px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center; border:none; cursor:pointer; font-size:13px; }
+        .btn-icon { width:32px; height:32px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center; border:none; cursor:pointer; font-size:13px; transition:all 0.2s; }
+        .btn-icon-activity { background:#e0e7ff; color:#4338ca; }
+        .btn-icon-activity:hover { background:#c7d2fe; }
         .btn-icon-edit { background:#fef9e7; color:#d39e00; }
+        .btn-icon-edit:hover { background:#fce8b2; }
         .btn-icon-toggle { background:#e0f2fe; color:#0284c7; }
+        .btn-icon-toggle:hover { background:#bae6fd; }
         .btn-icon-delete { background:#fde8e8; color:#bd2130; }
+        .btn-icon-delete:hover { background:#f8b4b4; }
         .pagination-container { display:flex; justify-content:space-between; align-items:center; margin-top:20px; }
         .pagination-info { font-size:13px; color:#64748b; }
         .pagination-links { display:flex; gap:6px; }
@@ -244,7 +275,7 @@ $users = $stmt->fetchAll();
         <div class="dashboard-header">
             <div>
                 <h1><i class="fas fa-users-cog"></i> User Management</h1>
-                <p style="color:#64748b; font-size:14px;">Manage all LGU user accounts.</p>
+                <p style="color:#64748b; font-size:14px;">Manage all LGU user accounts and monitor website activities.</p>
             </div>
             <div>
                 <button class="btn btn-primary" onclick="openAddModal()"><i class="fas fa-user-plus"></i> Add User</button>
@@ -290,12 +321,13 @@ $users = $stmt->fetchAll();
                             <th>Status</th>
                             <th>Registered</th>
                             <th>Last Login</th>
+                            <th>Activity Summary</th>
                             <th style="text-align:right;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (empty($users)): ?>
-                            <tr><td colspan="8" style="text-align:center; padding:30px; color:#94a3b8;">No users found.</td></tr>
+                            <tr><td colspan="9" style="text-align:center; padding:30px; color:#94a3b8;">No users found.</td></tr>
                         <?php else: foreach ($users as $u): $isSelf = ($u['id'] == $_SESSION['user_id']); ?>
                             <tr>
                                 <td><strong><?php echo $u['id']; ?></strong></td>
@@ -304,14 +336,20 @@ $users = $stmt->fetchAll();
                                 <td><span class="badge badge-<?php echo $u['user_type']; ?>"><?php echo ucfirst($u['user_type']); ?></span></td>
                                 <td><span class="badge badge-<?php echo $u['is_active'] ? 'active' : 'inactive'; ?>"><?php echo $u['is_active'] ? 'Active' : 'Inactive'; ?></span><?php if ($isSelf) echo ' <span style="font-size:10px; color:#94a3b8;">(You)</span>'; ?></td>
                                 <td><?php echo date('M d, Y', strtotime($u['created_at'])); ?></td>
-                                <td><?php echo $u['last_login'] ? date('M d, Y h:i A', strtotime($u['last_login'])) : 'Never'; ?></td>
+                                <td><?php echo $u['last_login'] ? date('M d, Y h:i A', strtotime($u['last_login'])) : '<span style="color:#94a3b8;">Never</span>'; ?></td>
+                                <td>
+                                    <span class="badge" style="background:#e0e7ff; color:#4338ca;">
+                                        <i class="fas fa-file-invoice"></i> <?php echo $u['service_requests_count']; ?> Request<?php echo $u['service_requests_count'] == 1 ? '' : 's'; ?>
+                                    </span>
+                                </td>
                                 <td style="text-align:right; white-space:nowrap;">
-                                    <button class="btn-icon btn-icon-edit" onclick="editUser(<?php echo json_encode($u); ?>)"><i class="fas fa-edit"></i></button>
+                                    <button class="btn-icon btn-icon-activity" title="View User Activity & Actions" onclick="viewActivity(<?php echo htmlspecialchars(json_encode($u, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP)); ?>)"><i class="fas fa-chart-line"></i></button>
+                                    <button class="btn-icon btn-icon-edit" title="Edit User" onclick="editUser(<?php echo htmlspecialchars(json_encode($u, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP)); ?>)"><i class="fas fa-edit"></i></button>
                                     <?php if (!$isSelf): ?>
-                                        <button class="btn-icon btn-icon-toggle" onclick="toggleUser(<?php echo $u['id']; ?>, '<?php echo htmlspecialchars($u['full_name']); ?>', <?php echo $u['is_active']; ?>)"><i class="fas <?php echo $u['is_active'] ? 'fa-pause' : 'fa-play'; ?>"></i></button>
-                                        <button class="btn-icon btn-icon-delete" onclick="deleteUser(<?php echo $u['id']; ?>, '<?php echo htmlspecialchars($u['full_name']); ?>')"><i class="fas fa-trash-alt"></i></button>
+                                        <button class="btn-icon btn-icon-toggle" title="Toggle Status" onclick="toggleUser(<?php echo $u['id']; ?>, '<?php echo htmlspecialchars($u['full_name'], ENT_QUOTES); ?>', <?php echo $u['is_active']; ?>)"><i class="fas <?php echo $u['is_active'] ? 'fa-pause' : 'fa-play'; ?>"></i></button>
+                                        <button class="btn-icon btn-icon-delete" title="Delete User" onclick="deleteUser(<?php echo $u['id']; ?>, '<?php echo htmlspecialchars($u['full_name'], ENT_QUOTES); ?>')"><i class="fas fa-trash-alt"></i></button>
                                     <?php else: ?>
-                                        <span style="font-size:11px; color:#94a3b8;">Self</span>
+                                        <span style="font-size:11px; color:#94a3b8; margin-left:4px;">(Self)</span>
                                     <?php endif; ?>
                                 </td>
                             </tr>
@@ -353,7 +391,7 @@ $users = $stmt->fetchAll();
     </div>
 </div>
 
-<!-- ===== EDIT MODAL (REWRITTEN FOR CLARITY) ===== -->
+<!-- ===== EDIT MODAL ===== -->
 <div id="editModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -393,12 +431,71 @@ $users = $stmt->fetchAll();
                         </div>
                     </div>
                 </div>
+
+                <!-- USER WEBSITE ACTIVITY PREVIEW IN EDIT MODAL -->
+                <div class="form-group" style="margin-top:10px;">
+                    <label style="font-weight:600; color:#475569;"><i class="fas fa-history"></i> Website Activity Preview</label>
+                    <div id="edit-activity-info" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 14px; font-size:12px; color:#475569;">
+                        Loading activity summary...
+                    </div>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline" onclick="closeModal('editModal')">Cancel</button>
-                <button type="submit" class="btn btn-primary">Save</button>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- ===== USER ACTIVITY MODAL ===== -->
+<div id="activityModal" class="modal">
+    <div class="modal-content" style="max-width:650px;">
+        <div class="modal-header" style="background:#e0e7ff;">
+            <h3 style="color:#3730a3; display:flex; align-items:center; gap:8px;">
+                <i class="fas fa-user-clock"></i> User Website Actions & Activity
+            </h3>
+            <button type="button" class="modal-close" onclick="closeModal('activityModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:16px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                <div>
+                    <h4 id="act-name" style="font-size:16px; color:#1e293b; margin-bottom:4px;">User Name</h4>
+                    <p id="act-email" style="font-size:13px; color:#64748b;">user@example.com</p>
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <span id="act-role-badge" class="badge">Citizen</span>
+                    <span id="act-status-badge" class="badge">Active</span>
+                </div>
+            </div>
+
+            <!-- STATS GRID -->
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:12px; margin-bottom:20px;">
+                <div style="background:#f1f5f9; padding:12px; border-radius:10px; text-align:center;">
+                    <div style="font-size:20px; font-weight:700; color:#3762c8;" id="act-stat-requests">0</div>
+                    <div style="font-size:11px; color:#64748b; font-weight:500;">Service Requests</div>
+                </div>
+                <div style="background:#f1f5f9; padding:12px; border-radius:10px; text-align:center;">
+                    <div style="font-size:20px; font-weight:700; color:#0284c7;" id="act-stat-otps">0</div>
+                    <div style="font-size:11px; color:#64748b; font-weight:500;">OTP Verifications</div>
+                </div>
+                <div style="background:#f1f5f9; padding:12px; border-radius:10px; text-align:center;">
+                    <div style="font-size:12px; font-weight:600; color:#334155; margin-top:4px;" id="act-stat-login">Never</div>
+                    <div style="font-size:11px; color:#64748b; font-weight:500;">Last Login</div>
+                </div>
+            </div>
+
+            <!-- ACTIVITY TIMELINE / ACTION LIST -->
+            <h4 style="font-size:14px; font-weight:600; color:#334155; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+                <i class="fas fa-stream"></i> Recent Website Actions Log
+            </h4>
+            <div id="act-list-container" style="max-height:280px; overflow-y:auto; display:flex; flex-direction:column; gap:10px;">
+                <!-- Dynamically filled -->
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-outline" onclick="closeModal('activityModal')">Close</button>
+        </div>
     </div>
 </div>
 
@@ -433,15 +530,128 @@ function openAddModal() {
 }
 
 function editUser(u) {
-    // Populate edit form fields
     document.getElementById('edit-id').value = u.id;
     document.getElementById('edit-full-name').value = u.full_name;
     document.getElementById('edit-email').value = u.email;
     document.getElementById('edit-role').value = u.user_type;
     document.getElementById('edit-is-active').checked = (u.is_active == 1);
     document.getElementById('edit-password').value = '';
-    // Open the modal
+    
+    // Update preview of user activity inside Edit Modal
+    document.getElementById('edit-activity-info').innerHTML = `
+        <strong>Role:</strong> ${u.user_type.toUpperCase()} &nbsp;|&nbsp; 
+        <strong>Registered:</strong> ${u.created_at ? u.created_at.split(' ')[0] : 'N/A'} &nbsp;|&nbsp; 
+        <strong>Last Login:</strong> ${u.last_login ? u.last_login : 'Never'}<br>
+        <strong>Submitted Service Requests:</strong> ${u.service_requests_count || 0}
+    `;
+
     document.getElementById('editModal').classList.add('open');
+}
+
+function viewActivity(u) {
+    document.getElementById('act-name').textContent = u.full_name;
+    document.getElementById('act-email').textContent = u.email;
+    
+    // Badges
+    const roleBadge = document.getElementById('act-role-badge');
+    roleBadge.textContent = u.user_type.charAt(0).toUpperCase() + u.user_type.slice(1);
+    roleBadge.className = 'badge badge-' + u.user_type;
+    
+    const statusBadge = document.getElementById('act-status-badge');
+    statusBadge.textContent = u.is_active == 1 ? 'Active' : 'Inactive';
+    statusBadge.className = 'badge badge-' + (u.is_active == 1 ? 'active' : 'inactive');
+
+    // Stats
+    document.getElementById('act-stat-requests').textContent = u.service_requests_count || 0;
+    document.getElementById('act-stat-otps').textContent = u.otp_count || 0;
+    document.getElementById('act-stat-login').textContent = u.last_login ? u.last_login : 'Never';
+
+    // List container
+    const container = document.getElementById('act-list-container');
+    container.innerHTML = '';
+
+    let items = [];
+
+    // Service requests
+    if (u.service_requests && u.service_requests.length > 0) {
+        u.service_requests.forEach(sr => {
+            items.push({
+                type: 'Service Request',
+                icon: 'fa-file-invoice',
+                color: '#3762c8',
+                title: (sr.request_type ? sr.request_type.toUpperCase() : 'SERVICE') + ' - ' + (sr.utility_type ? sr.utility_type.toUpperCase() : 'UTILITY'),
+                status: sr.status || 'pending',
+                date: sr.created_at
+            });
+        });
+    }
+
+    // OTP activity
+    if (u.otps && u.otps.length > 0) {
+        u.otps.forEach(otp => {
+            items.push({
+                type: 'Security',
+                icon: 'fa-key',
+                color: '#eab308',
+                title: 'OTP Verification Requested ' + (otp.used == 1 ? '(Verified)' : '(Pending/Expired)'),
+                status: otp.used == 1 ? 'Verified' : 'Requested',
+                date: otp.created_at
+            });
+        });
+    }
+
+    // Account creation
+    if (u.created_at) {
+        items.push({
+            type: 'Account',
+            icon: 'fa-user-plus',
+            color: '#16a34a',
+            title: 'Account Registered on Website',
+            status: 'Created',
+            date: u.created_at
+        });
+    }
+
+    // Last login
+    if (u.last_login) {
+        items.push({
+            type: 'Authentication',
+            icon: 'fa-sign-in-alt',
+            color: '#0284c7',
+            title: 'User Logged In to Website',
+            status: 'Success',
+            date: u.last_login
+        });
+    }
+
+    // Sort items by date descending
+    items.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    if (items.length === 0) {
+        container.innerHTML = '<div style="text-align:center; padding:20px; color:#94a3b8; font-size:13px;">No actions logged for this user yet.</div>';
+    } else {
+        items.forEach(item => {
+            const div = document.createElement('div');
+            div.style.cssText = 'background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center; gap:10px;';
+            
+            const left = document.createElement('div');
+            left.style.cssText = 'display:flex; align-items:center; gap:10px;';
+            left.innerHTML = `<div style="width:32px; height:32px; border-radius:50%; background:${item.color}15; color:${item.color}; display:flex; align-items:center; justify-content:center; font-size:13px;"><i class="fas ${item.icon}"></i></div>
+                              <div>
+                                <div style="font-weight:600; font-size:13px; color:#1e293b;">${item.title}</div>
+                                <div style="font-size:11px; color:#64748b;">${new Date(item.date).toLocaleString()}</div>
+                              </div>`;
+            
+            const right = document.createElement('div');
+            right.innerHTML = `<span class="badge" style="background:#e2e8f0; color:#475569; font-size:10px;">${item.status}</span>`;
+            
+            div.appendChild(left);
+            div.appendChild(right);
+            container.appendChild(div);
+        });
+    }
+
+    document.getElementById('activityModal').classList.add('open');
 }
 
 function deleteUser(id, name) {
@@ -465,9 +675,6 @@ document.querySelectorAll('.modal').forEach(m => {
         }
     });
 });
-
-// Debug: check if editUser is called
-console.log('User management script loaded');
 </script>
 </body>
 </html>
