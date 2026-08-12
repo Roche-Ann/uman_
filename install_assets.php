@@ -27,6 +27,8 @@ try {
     $pdo->exec("TRUNCATE TABLE asset_images;");
     $pdo->exec("TRUNCATE TABLE asset_locations;");
     $pdo->exec("TRUNCATE TABLE asset_status_logs;");
+    $pdo->exec("TRUNCATE TABLE asset_audit_logs;");
+    $pdo->exec("TRUNCATE TABLE asset_inspections;");
     $pdo->exec("TRUNCATE TABLE utility_assets;");
     $pdo->exec("SET FOREIGN_KEY_CHECKS = 1;");
     echo "Cleaned up old asset tables.\n";
@@ -44,7 +46,8 @@ try {
             'latitude' => 14.604167,
             'longitude' => 120.982222,
             'date_installed' => '2026-01-15',
-            'condition_status' => 'Operational',
+            'status' => 'Operational',
+            'condition' => 'Good',
             'description' => 'Solar streetlight with 100W LED bulb. Automatic twilight sensor.',
             'responsible_office' => 'City General Services Office'
         ],
@@ -56,7 +59,8 @@ try {
             'latitude' => 14.598333,
             'longitude' => 120.985000,
             'date_installed' => '2025-10-10',
-            'condition_status' => 'Needs Inspection',
+            'status' => 'Operational',
+            'condition' => 'Fair',
             'description' => 'Main storm drainage outflow gate. Reported silt build-up.',
             'responsible_office' => 'City Engineering Office'
         ],
@@ -68,7 +72,8 @@ try {
             'latitude' => 14.611111,
             'longitude' => 120.993889,
             'date_installed' => '2024-05-20',
-            'condition_status' => 'Damaged',
+            'status' => 'Non-Operational',
+            'condition' => 'Critical',
             'description' => '12-inch main cast iron distribution pipe. Minor pressure leak detected.',
             'responsible_office' => 'LGU Water District'
         ],
@@ -80,7 +85,8 @@ try {
             'latitude' => 14.601944,
             'longitude' => 121.008333,
             'date_installed' => '2023-11-12',
-            'condition_status' => 'Operational',
+            'status' => 'Operational',
+            'condition' => 'Good',
             'description' => 'Concrete pole supporting streetlights and LGU surveillance cameras.',
             'responsible_office' => 'City Information Technology Office'
         ],
@@ -92,7 +98,8 @@ try {
             'latitude' => 14.595556,
             'longitude' => 120.990278,
             'date_installed' => '2025-02-28',
-            'condition_status' => 'Under Maintenance',
+            'status' => 'Under Maintenance',
+            'condition' => 'Poor',
             'description' => 'Submersible pump motor. Scheduled periodic cleaning.',
             'responsible_office' => 'LGU Water District'
         ],
@@ -104,15 +111,16 @@ try {
             'latitude' => 14.563889,
             'longitude' => 120.994722,
             'date_installed' => '2026-03-05',
-            'condition_status' => 'Operational',
+            'status' => 'Operational',
+            'condition' => 'Excellent',
             'description' => 'Solar-powered pole with battery storage box secured at 3m height.',
             'responsible_office' => 'City General Services Office'
         ]
     ];
     
     $stmt = $pdo->prepare("
-        INSERT INTO utility_assets (asset_id, name, asset_type_id, quantity, location, latitude, longitude, date_installed, condition_status, description, responsible_office) 
-        VALUES (:asset_id, :name, :asset_type_id, :quantity, :location, :latitude, :longitude, :date_installed, :condition_status, :description, :responsible_office)
+        INSERT INTO utility_assets (asset_id, name, asset_type_id, quantity, location, latitude, longitude, date_installed, status, `condition`, description, responsible_office) 
+        VALUES (:asset_id, :name, :asset_type_id, :quantity, :location, :latitude, :longitude, :date_installed, :status, :condition, :description, :responsible_office)
     ");
     
     $logStmt = $pdo->prepare("
@@ -128,18 +136,18 @@ try {
         // Log status
         $logStmt->execute([
             ':uaid' => $assetId,
-            ':new_status' => $asset['condition_status']
+            ':new_status' => $asset['status'] . ' / ' . $asset['condition']
         ]);
         
         // Trigger initial notification for damaged/needs inspection
-        if ($asset['condition_status'] === 'Damaged') {
+        if ($asset['condition'] === 'Critical') {
             $pdo->prepare("
                 INSERT INTO asset_notifications (type, message) 
                 VALUES ('reported_damaged', :msg)
             ")->execute([
-                ':msg' => "ALERT: Asset {$asset['asset_id']} ({$asset['name']}) is reported as Damaged."
+                ':msg' => "ALERT: Asset {$asset['asset_id']} ({$asset['name']}) is reported as Critical condition."
             ]);
-        } elseif ($asset['condition_status'] === 'Needs Inspection') {
+        } elseif ($asset['condition'] === 'Fair' || $asset['condition'] === 'Poor') {
             $pdo->prepare("
                 INSERT INTO asset_notifications (type, message) 
                 VALUES ('status_changed', :msg)

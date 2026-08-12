@@ -13,10 +13,10 @@ $userName = $_SESSION['user_name'] ?? $_SESSION['full_name'] ?? 'User';
 
 // 1. Core Summary Stats
 $totalAssets = $pdo->query("SELECT COUNT(*) FROM utility_assets")->fetchColumn();
-$operationalAssets = $pdo->query("SELECT COUNT(*) FROM utility_assets WHERE condition_status = 'Operational'")->fetchColumn();
-$needsInspection = $pdo->query("SELECT COUNT(*) FROM utility_assets WHERE condition_status = 'Needs Inspection'")->fetchColumn();
-$damagedAssets = $pdo->query("SELECT COUNT(*) FROM utility_assets WHERE condition_status = 'Damaged'")->fetchColumn();
-$underMaintenance = $pdo->query("SELECT COUNT(*) FROM utility_assets WHERE condition_status = 'Under Maintenance'")->fetchColumn();
+$operationalAssets = $pdo->query("SELECT COUNT(*) FROM utility_assets WHERE status = 'Operational'")->fetchColumn();
+$needsInspection = $pdo->query("SELECT COUNT(*) FROM utility_assets WHERE `condition` IN ('Fair', 'Poor')")->fetchColumn();
+$damagedAssets = $pdo->query("SELECT COUNT(*) FROM utility_assets WHERE `condition` = 'Critical'")->fetchColumn();
+$underMaintenance = $pdo->query("SELECT COUNT(*) FROM utility_assets WHERE status = 'Under Maintenance'")->fetchColumn();
 
 // 2. Data for Category Chart
 $categoryData = $pdo->query("
@@ -38,11 +38,11 @@ $recentAssets = $pdo->query("
     LIMIT 5
 ")->fetchAll();
 
-// 4. Assets with Issues (Damaged / Needs Inspection)
+// 4. Assets with Issues (Critical / Poor)
 $issuesCount = $pdo->query("
     SELECT COUNT(*) 
     FROM utility_assets 
-    WHERE condition_status IN ('Damaged', 'Needs Inspection')
+    WHERE `condition` IN ('Critical', 'Poor')
 ")->fetchColumn();
 
 $show_all_reported = isset($_GET['show_all_reported']) && $_GET['show_all_reported'] == '1';
@@ -52,18 +52,18 @@ $issuesAssets = $pdo->query("
     SELECT a.*, t.name as type_name 
     FROM utility_assets a 
     JOIN asset_types t ON a.asset_type_id = t.id 
-    WHERE a.condition_status IN ('Damaged', 'Needs Inspection')
+    WHERE a.`condition` IN ('Critical', 'Poor')
     ORDER BY a.updated_at DESC
     $limitClause
 ")->fetchAll();
 
-// 5. Recent Activity Logs (Status logs)
+// 5. Recent Activity Logs (Audit logs)
 $recentLogs = $pdo->query("
-    SELECT l.*, a.asset_id, a.name as asset_name, u.full_name as user_name
-    FROM asset_status_logs l 
+    SELECT l.*, a.asset_id, a.name as asset_name, u.full_name as user_name, l.old_value as old_status, l.new_value as new_status, l.created_at as changed_at
+    FROM asset_audit_logs l 
     JOIN utility_assets a ON l.utility_asset_id = a.id 
-    LEFT JOIN users u ON l.changed_by = u.id
-    ORDER BY l.changed_at DESC 
+    LEFT JOIN users u ON l.user_id = u.id
+    ORDER BY l.created_at DESC 
     LIMIT 5
 ")->fetchAll();
 
