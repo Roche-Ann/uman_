@@ -17,39 +17,48 @@ try {
     $colRows = $pdo->query("SHOW COLUMNS FROM `utility_assets`")->fetchAll(PDO::FETCH_ASSOC);
     $cols = array_column($colRows, 'Field');
 
-    if (in_array('condition_status', $cols)) {
-        die("Rollback not needed — condition_status column already exists.\n");
+    $hasCsCol  = in_array('condition_status', $cols);
+    $hasStatus = in_array('status', $cols);
+
+    if ($hasCsCol && !$hasStatus) {
+        die("Rollback already completed — condition_status exists and status is gone.\n");
     }
 
-    if (!in_array('status', $cols)) {
-        die("Error: neither condition_status nor status column found. Cannot rollback.\n");
+    if (!$hasStatus) {
+        die("Error: status column not found. Cannot continue rollback.\n");
     }
 
-    echo "Step 1: Adding back condition_status column...\n";
-    $pdo->exec("
-        ALTER TABLE utility_assets
-        ADD COLUMN condition_status ENUM('Operational','Needs Inspection','Damaged','Under Maintenance')
-        NOT NULL DEFAULT 'Operational'
-        AFTER date_installed
-    ");
-    echo "  OK\n";
+    // Step 1 — only add condition_status if it isn't already there
+    if (!$hasCsCol) {
+        echo "Step 1: Adding back condition_status column...\n";
+        $pdo->exec("
+            ALTER TABLE utility_assets
+            ADD COLUMN condition_status ENUM('Operational','Needs Inspection','Damaged','Under Maintenance')
+            NOT NULL DEFAULT 'Operational'
+            AFTER date_installed
+        ");
+        echo "  OK\n";
+    } else {
+        echo "Step 1: condition_status already exists — skipping ADD COLUMN.\n";
+    }
 
     echo "Step 2: Populating condition_status from status + condition...\n";
-    $pdo->exec("
-        UPDATE utility_assets SET condition_status =
+    $sql = 'UPDATE utility_assets SET condition_status =
         CASE
-            WHEN status = 'Under Maintenance' THEN 'Under Maintenance'
-            WHEN status IN ('Non-Operational','Retired','Disposed') THEN 'Damaged'
-            WHEN status = 'Operational' AND \`condition\` IN ('Poor','Critical') THEN 'Needs Inspection'
-            ELSE 'Operational'
-        END
-    ");
+            WHEN status = \'Under Maintenance\' THEN \'Under Maintenance\'
+            WHEN status IN (\'Non-Operational\',\'Retired\',\'Disposed\') THEN \'Damaged\'
+            WHEN status = \'Operational\' AND `condition` IN (\'Poor\',\'Critical\') THEN \'Needs Inspection\'
+            ELSE \'Operational\'
+        END';
+    $pdo->exec($sql);
     echo "  OK\n";
 
     echo "Step 3: Dropping new status and condition columns...\n";
     $pdo->exec("ALTER TABLE utility_assets DROP COLUMN status");
-    $pdo->exec("ALTER TABLE utility_assets DROP COLUMN \`condition\`");
+    $pdo->exec('ALTER TABLE utility_assets DROP COLUMN `condition`');
     echo "  OK\n";
+
+
 
     echo "Step 4: Dropping added columns (if they exist)...\n";
     $extraCols = ['serial_number','model_brand','primary_photo','warranty_doc','purchase_doc','inspection_doc'];
