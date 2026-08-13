@@ -275,10 +275,9 @@ unset($u);
         <div class="dashboard-header">
             <div>
                 <h1><i class="fas fa-users-cog"></i> User Management</h1>
-                <p style="color:#64748b; font-size:14px;">Manage all LGU user accounts and monitor website activities.</p>
+                <p style="color:#64748b; font-size:14px;">Monitor LGU user accounts and their activities on the website.</p>
             </div>
             <div>
-                <button class="btn btn-primary" onclick="openAddModal()"><i class="fas fa-user-plus"></i> Add User</button>
                 <a href="../utilities_dashboard.php" class="btn btn-outline"><i class="fas fa-chevron-left"></i> Dashboard</a>
             </div>
         </div>
@@ -321,13 +320,12 @@ unset($u);
                             <th>Status</th>
                             <th>Registered</th>
                             <th>Last Login</th>
-                            <th>Activity Summary</th>
-                            <th style="text-align:right;">Actions</th>
+                            <th>Actions on Website</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (empty($users)): ?>
-                            <tr><td colspan="9" style="text-align:center; padding:30px; color:#94a3b8;">No users found.</td></tr>
+                            <tr><td colspan="8" style="text-align:center; padding:30px; color:#94a3b8;">No users found.</td></tr>
                         <?php else: foreach ($users as $u): $isSelf = ($u['id'] == $_SESSION['user_id']); ?>
                             <tr>
                                 <td><strong><?php echo $u['id']; ?></strong></td>
@@ -335,22 +333,27 @@ unset($u);
                                 <td><?php echo htmlspecialchars($u['email']); ?></td>
                                 <td><span class="badge badge-<?php echo $u['user_type']; ?>"><?php echo ucfirst($u['user_type']); ?></span></td>
                                 <td><span class="badge badge-<?php echo $u['is_active'] ? 'active' : 'inactive'; ?>"><?php echo $u['is_active'] ? 'Active' : 'Inactive'; ?></span><?php if ($isSelf) echo ' <span style="font-size:10px; color:#94a3b8;">(You)</span>'; ?></td>
-                                <td><?php echo date('M d, Y', strtotime($u['created_at'])); ?></td>
-                                <td><?php echo $u['last_login'] ? date('M d, Y h:i A', strtotime($u['last_login'])) : '<span style="color:#94a3b8;">Never</span>'; ?></td>
+                                <td><?php echo date('M d, Y h:i:s A', strtotime($u['created_at'])); ?></td>
+                                <td><?php echo $u['last_login'] ? date('M d, Y h:i:s A', strtotime($u['last_login'])) : '<span style="color:#94a3b8;">Never</span>'; ?></td>
                                 <td>
-                                    <span class="badge" style="background:#e0e7ff; color:#4338ca;">
-                                        <i class="fas fa-file-invoice"></i> <?php echo $u['service_requests_count']; ?> Request<?php echo $u['service_requests_count'] == 1 ? '' : 's'; ?>
-                                    </span>
-                                </td>
-                                <td style="text-align:right; white-space:nowrap;">
-                                    <button class="btn-icon btn-icon-activity" title="View User Activity & Actions" onclick="viewActivity(<?php echo htmlspecialchars(json_encode($u, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP)); ?>)"><i class="fas fa-chart-line"></i></button>
-                                    <button class="btn-icon btn-icon-edit" title="Edit User" onclick="editUser(<?php echo htmlspecialchars(json_encode($u, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP)); ?>)"><i class="fas fa-edit"></i></button>
-                                    <?php if (!$isSelf): ?>
-                                        <button class="btn-icon btn-icon-toggle" title="Toggle Status" onclick="toggleUser(<?php echo $u['id']; ?>, '<?php echo htmlspecialchars($u['full_name'], ENT_QUOTES); ?>', <?php echo $u['is_active']; ?>)"><i class="fas <?php echo $u['is_active'] ? 'fa-pause' : 'fa-play'; ?>"></i></button>
-                                        <button class="btn-icon btn-icon-delete" title="Delete User" onclick="deleteUser(<?php echo $u['id']; ?>, '<?php echo htmlspecialchars($u['full_name'], ENT_QUOTES); ?>')"><i class="fas fa-trash-alt"></i></button>
-                                    <?php else: ?>
-                                        <span style="font-size:11px; color:#94a3b8; margin-left:4px;">(Self)</span>
-                                    <?php endif; ?>
+                                    <?php
+                                    $userActions = [];
+                                    if ($u['user_type'] === 'employee') {
+                                        $userActions[] = '<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd;"><i class="fas fa-search"></i> Inspect Records</span>';
+                                        $userActions[] = '<span class="badge" style="background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0;"><i class="fas fa-file-export"></i> Generate Reports</span>';
+                                        $userActions[] = '<span class="badge" style="background:#fef3c7; color:#b45309; border:1px solid #fde68a;"><i class="fas fa-check-double"></i> Approval Requests</span>';
+                                    } else {
+                                        if ($u['service_requests_count'] > 0) {
+                                            $userActions[] = '<span class="badge" style="background:#f5f3ff; color:#6d28d9; border:1px solid #ddd6fe;"><i class="fas fa-file-signature"></i> Submit Service Requests</span>';
+                                        } else {
+                                            $userActions[] = '<span class="badge" style="background:#f8fafc; color:#64748b; border:1px solid #cbd5e1;"><i class="fas fa-globe"></i> Browse Portal</span>';
+                                        }
+                                        if ($u['otp_count'] > 0) {
+                                            $userActions[] = '<span class="badge" style="background:#fff1f2; color:#be123c; border:1px solid #fecdd3;"><i class="fas fa-key"></i> OTP Verifications</span>';
+                                        }
+                                    }
+                                    echo implode(' ', $userActions);
+                                    ?>
                                 </td>
                             </tr>
                         <?php endforeach; endif; ?>
@@ -370,311 +373,5 @@ unset($u);
         </div>
     </div>
 </main>
-
-<!-- ADD MODAL -->
-<div id="addModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header"><h3>Add User</h3><button class="modal-close" onclick="closeModal('addModal')">&times;</button></div>
-        <form method="POST">
-            <input type="hidden" name="action" value="add">
-            <div class="modal-body">
-                <div class="form-group"><label>Full Name *</label><input type="text" name="full_name" class="form-control" required></div>
-                <div class="form-group"><label>Email *</label><input type="email" name="email" class="form-control" required></div>
-                <div class="form-group"><label>Password * (min 6)</label><input type="password" name="password" class="form-control" required minlength="6"></div>
-                <div class="form-row">
-                    <div class="form-group"><label>Role</label><select name="user_type" class="form-control"><option value="citizen">Citizen</option><option value="employee">Employee</option></select></div>
-                    <div class="form-group"><label>&nbsp;</label><div class="checkbox-group"><input type="checkbox" name="is_active" checked><label>Active</label></div></div>
-                </div>
-            </div>
-            <div class="modal-footer"><button type="button" class="btn btn-outline" onclick="closeModal('addModal')">Cancel</button><button type="submit" class="btn btn-primary">Add</button></div>
-        </form>
-    </div>
-</div>
-
-<!-- ===== EDIT MODAL ===== -->
-<div id="editModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>Edit User</h3>
-            <button type="button" class="modal-close" onclick="closeModal('editModal')">&times;</button>
-        </div>
-        <form method="POST" action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>">
-            <!-- Hidden action and ID -->
-            <input type="hidden" name="action" value="edit">
-            <input type="hidden" id="edit-id" name="id">
-            <div class="modal-body">
-                <div class="form-group">
-                    <label>Full Name *</label>
-                    <input type="text" id="edit-full-name" name="full_name" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <label>Email *</label>
-                    <input type="email" id="edit-email" name="email" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <label>New Password (optional)</label>
-                    <input type="password" id="edit-password" name="new_password" class="form-control" placeholder="Leave blank to keep current">
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Role</label>
-                        <select id="edit-role" name="user_type" class="form-control">
-                            <option value="citizen">Citizen</option>
-                            <option value="employee">Employee</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>&nbsp;</label>
-                        <div class="checkbox-group">
-                            <input type="checkbox" id="edit-is-active" name="is_active" value="1">
-                            <label for="edit-is-active">Active</label>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- USER WEBSITE ACTIVITY PREVIEW IN EDIT MODAL -->
-                <div class="form-group" style="margin-top:10px;">
-                    <label style="font-weight:600; color:#475569;"><i class="fas fa-history"></i> Website Activity Preview</label>
-                    <div id="edit-activity-info" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 14px; font-size:12px; color:#475569;">
-                        Loading activity summary...
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-outline" onclick="closeModal('editModal')">Cancel</button>
-                <button type="submit" class="btn btn-primary">Save Changes</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- ===== USER ACTIVITY MODAL ===== -->
-<div id="activityModal" class="modal">
-    <div class="modal-content" style="max-width:650px;">
-        <div class="modal-header" style="background:#e0e7ff;">
-            <h3 style="color:#3730a3; display:flex; align-items:center; gap:8px;">
-                <i class="fas fa-user-clock"></i> User Website Actions & Activity
-            </h3>
-            <button type="button" class="modal-close" onclick="closeModal('activityModal')">&times;</button>
-        </div>
-        <div class="modal-body">
-            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:16px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-                <div>
-                    <h4 id="act-name" style="font-size:16px; color:#1e293b; margin-bottom:4px;">User Name</h4>
-                    <p id="act-email" style="font-size:13px; color:#64748b;">user@example.com</p>
-                </div>
-                <div style="display:flex; gap:8px;">
-                    <span id="act-role-badge" class="badge">Citizen</span>
-                    <span id="act-status-badge" class="badge">Active</span>
-                </div>
-            </div>
-
-            <!-- STATS GRID -->
-            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:12px; margin-bottom:20px;">
-                <div style="background:#f1f5f9; padding:12px; border-radius:10px; text-align:center;">
-                    <div style="font-size:20px; font-weight:700; color:#3762c8;" id="act-stat-requests">0</div>
-                    <div style="font-size:11px; color:#64748b; font-weight:500;">Service Requests</div>
-                </div>
-                <div style="background:#f1f5f9; padding:12px; border-radius:10px; text-align:center;">
-                    <div style="font-size:20px; font-weight:700; color:#0284c7;" id="act-stat-otps">0</div>
-                    <div style="font-size:11px; color:#64748b; font-weight:500;">OTP Verifications</div>
-                </div>
-                <div style="background:#f1f5f9; padding:12px; border-radius:10px; text-align:center;">
-                    <div style="font-size:12px; font-weight:600; color:#334155; margin-top:4px;" id="act-stat-login">Never</div>
-                    <div style="font-size:11px; color:#64748b; font-weight:500;">Last Login</div>
-                </div>
-            </div>
-
-            <!-- ACTIVITY TIMELINE / ACTION LIST -->
-            <h4 style="font-size:14px; font-weight:600; color:#334155; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
-                <i class="fas fa-stream"></i> Recent Website Actions Log
-            </h4>
-            <div id="act-list-container" style="max-height:280px; overflow-y:auto; display:flex; flex-direction:column; gap:10px;">
-                <!-- Dynamically filled -->
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button type="button" class="btn btn-outline" onclick="closeModal('activityModal')">Close</button>
-        </div>
-    </div>
-</div>
-
-<!-- DELETE MODAL -->
-<div id="deleteModal" class="modal">
-    <div class="modal-content" style="max-width:450px;">
-        <div class="modal-header" style="background:#fde8e8;"><h3 style="color:#bd2130;">Delete User</h3><button class="modal-close" onclick="closeModal('deleteModal')">&times;</button></div>
-        <form method="POST"><input type="hidden" name="action" value="delete"><input type="hidden" id="delete-id" name="id">
-            <div class="modal-body"><p>Delete user <strong id="delete-name"></strong>? This cannot be undone.</p></div>
-            <div class="modal-footer"><button type="button" class="btn btn-outline" onclick="closeModal('deleteModal')">Cancel</button><button type="submit" class="btn btn-danger">Delete</button></div>
-        </form>
-    </div>
-</div>
-
-<!-- TOGGLE MODAL -->
-<div id="toggleModal" class="modal">
-    <div class="modal-content" style="max-width:450px;">
-        <div class="modal-header" style="background:#e0f2fe;"><h3 style="color:#0284c7;">Toggle Status</h3><button class="modal-close" onclick="closeModal('toggleModal')">&times;</button></div>
-        <form method="POST"><input type="hidden" name="action" value="toggle"><input type="hidden" id="toggle-id" name="id">
-            <div class="modal-body"><p>Are you sure you want to <strong id="toggle-action-text"></strong> user <strong id="toggle-name"></strong>?</p></div>
-            <div class="modal-footer"><button type="button" class="btn btn-outline" onclick="closeModal('toggleModal')">Cancel</button><button type="submit" class="btn btn-warning">Confirm</button></div>
-        </form>
-    </div>
-</div>
-
-<script>
-function closeModal(id) {
-    document.getElementById(id).classList.remove('open');
-}
-function openAddModal() {
-    document.getElementById('addModal').classList.add('open');
-}
-
-function editUser(u) {
-    document.getElementById('edit-id').value = u.id;
-    document.getElementById('edit-full-name').value = u.full_name;
-    document.getElementById('edit-email').value = u.email;
-    document.getElementById('edit-role').value = u.user_type;
-    document.getElementById('edit-is-active').checked = (u.is_active == 1);
-    document.getElementById('edit-password').value = '';
-    
-    // Update preview of user activity inside Edit Modal
-    document.getElementById('edit-activity-info').innerHTML = `
-        <strong>Role:</strong> ${u.user_type.toUpperCase()} &nbsp;|&nbsp; 
-        <strong>Registered:</strong> ${u.created_at ? u.created_at.split(' ')[0] : 'N/A'} &nbsp;|&nbsp; 
-        <strong>Last Login:</strong> ${u.last_login ? u.last_login : 'Never'}<br>
-        <strong>Submitted Service Requests:</strong> ${u.service_requests_count || 0}
-    `;
-
-    document.getElementById('editModal').classList.add('open');
-}
-
-function viewActivity(u) {
-    document.getElementById('act-name').textContent = u.full_name;
-    document.getElementById('act-email').textContent = u.email;
-    
-    // Badges
-    const roleBadge = document.getElementById('act-role-badge');
-    roleBadge.textContent = u.user_type.charAt(0).toUpperCase() + u.user_type.slice(1);
-    roleBadge.className = 'badge badge-' + u.user_type;
-    
-    const statusBadge = document.getElementById('act-status-badge');
-    statusBadge.textContent = u.is_active == 1 ? 'Active' : 'Inactive';
-    statusBadge.className = 'badge badge-' + (u.is_active == 1 ? 'active' : 'inactive');
-
-    // Stats
-    document.getElementById('act-stat-requests').textContent = u.service_requests_count || 0;
-    document.getElementById('act-stat-otps').textContent = u.otp_count || 0;
-    document.getElementById('act-stat-login').textContent = u.last_login ? u.last_login : 'Never';
-
-    // List container
-    const container = document.getElementById('act-list-container');
-    container.innerHTML = '';
-
-    let items = [];
-
-    // Service requests
-    if (u.service_requests && u.service_requests.length > 0) {
-        u.service_requests.forEach(sr => {
-            items.push({
-                type: 'Service Request',
-                icon: 'fa-file-invoice',
-                color: '#3762c8',
-                title: (sr.request_type ? sr.request_type.toUpperCase() : 'SERVICE') + ' - ' + (sr.utility_type ? sr.utility_type.toUpperCase() : 'UTILITY'),
-                status: sr.status || 'pending',
-                date: sr.created_at
-            });
-        });
-    }
-
-    // OTP activity
-    if (u.otps && u.otps.length > 0) {
-        u.otps.forEach(otp => {
-            items.push({
-                type: 'Security',
-                icon: 'fa-key',
-                color: '#eab308',
-                title: 'OTP Verification Requested ' + (otp.used == 1 ? '(Verified)' : '(Pending/Expired)'),
-                status: otp.used == 1 ? 'Verified' : 'Requested',
-                date: otp.created_at
-            });
-        });
-    }
-
-    // Account creation
-    if (u.created_at) {
-        items.push({
-            type: 'Account',
-            icon: 'fa-user-plus',
-            color: '#16a34a',
-            title: 'Account Registered on Website',
-            status: 'Created',
-            date: u.created_at
-        });
-    }
-
-    // Last login
-    if (u.last_login) {
-        items.push({
-            type: 'Authentication',
-            icon: 'fa-sign-in-alt',
-            color: '#0284c7',
-            title: 'User Logged In to Website',
-            status: 'Success',
-            date: u.last_login
-        });
-    }
-
-    // Sort items by date descending
-    items.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-    if (items.length === 0) {
-        container.innerHTML = '<div style="text-align:center; padding:20px; color:#94a3b8; font-size:13px;">No actions logged for this user yet.</div>';
-    } else {
-        items.forEach(item => {
-            const div = document.createElement('div');
-            div.style.cssText = 'background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center; gap:10px;';
-            
-            const left = document.createElement('div');
-            left.style.cssText = 'display:flex; align-items:center; gap:10px;';
-            left.innerHTML = `<div style="width:32px; height:32px; border-radius:50%; background:${item.color}15; color:${item.color}; display:flex; align-items:center; justify-content:center; font-size:13px;"><i class="fas ${item.icon}"></i></div>
-                              <div>
-                                <div style="font-weight:600; font-size:13px; color:#1e293b;">${item.title}</div>
-                                <div style="font-size:11px; color:#64748b;">${new Date(item.date).toLocaleString()}</div>
-                              </div>`;
-            
-            const right = document.createElement('div');
-            right.innerHTML = `<span class="badge" style="background:#e2e8f0; color:#475569; font-size:10px;">${item.status}</span>`;
-            
-            div.appendChild(left);
-            div.appendChild(right);
-            container.appendChild(div);
-        });
-    }
-
-    document.getElementById('activityModal').classList.add('open');
-}
-
-function deleteUser(id, name) {
-    document.getElementById('delete-id').value = id;
-    document.getElementById('delete-name').textContent = name;
-    document.getElementById('deleteModal').classList.add('open');
-}
-
-function toggleUser(id, name, current) {
-    document.getElementById('toggle-id').value = id;
-    document.getElementById('toggle-name').textContent = name;
-    document.getElementById('toggle-action-text').textContent = current ? 'deactivate' : 'activate';
-    document.getElementById('toggleModal').classList.add('open');
-}
-
-// Close modals when clicking outside
-document.querySelectorAll('.modal').forEach(m => {
-    m.addEventListener('click', function(e) {
-        if (e.target === this) {
-            this.classList.remove('open');
-        }
-    });
-});
-</script>
 </body>
 </html>
