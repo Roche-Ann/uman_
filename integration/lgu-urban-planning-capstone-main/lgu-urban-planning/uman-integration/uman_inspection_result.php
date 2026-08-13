@@ -89,6 +89,49 @@ $notes = trim(sprintf(
 
 $db = Database::getInstance()->getConnection();
 
+// Fail-safe table creation
+try {
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS `energy_inspection_requests` (
+          `id` int(11) NOT NULL AUTO_INCREMENT,
+          `application_id` int(11) NOT NULL,
+          `status` varchar(50) DEFAULT 'pending',
+          `external_ref_id` varchar(100) DEFAULT NULL,
+          `response_payload` text DEFAULT NULL,
+          `responded_at` datetime DEFAULT NULL,
+          `overall_condition` varchar(50) DEFAULT NULL,
+          `severity` varchar(50) DEFAULT NULL,
+          `recommendation` text DEFAULT NULL,
+          `engineer_assigned` varchar(255) DEFAULT NULL,
+          `inspection_date` date DEFAULT NULL,
+          `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (`id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+        CREATE TABLE IF NOT EXISTS `impact_assessments` (
+          `id` int(11) NOT NULL AUTO_INCREMENT,
+          `application_id` int(11) NOT NULL,
+          `energy_flag` varchar(20) DEFAULT 'ok',
+          `energy_notes` text DEFAULT NULL,
+          `checked_at` datetime DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (`id`),
+          UNIQUE KEY `idx_app_id` (`application_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+        CREATE TABLE IF NOT EXISTS `application_status_history` (
+          `id` int(11) NOT NULL AUTO_INCREMENT,
+          `application_id` int(11) NOT NULL,
+          `status` varchar(50) DEFAULT NULL,
+          `remarks` text DEFAULT NULL,
+          `changed_by` int(11) DEFAULT 0,
+          `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (`id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ");
+} catch (Throwable $e) {
+    // Ignore schema fail-safe if already exists
+}
+
 try {
     $db->beginTransaction();
 
