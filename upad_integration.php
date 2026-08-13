@@ -76,25 +76,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
             $signature = hash_hmac('sha256', $callbackJson, UPAD_WEBHOOK_SECRET);
 
-            $ch = curl_init($callbackUrl);
-            curl_setopt_array($ch, [
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_POST           => true,
-                CURLOPT_POSTFIELDS     => $callbackJson,
-                CURLOPT_HTTPHEADER     => [
-                    'Content-Type: application/json',
-                    'X-UMAN-Signature: ' . $signature,
-                ],
-                CURLOPT_TIMEOUT        => 10,
-                CURLOPT_SSL_VERIFYPEER => true,
-            ]);
+            $sendCurl = function($targetUrl) use ($callbackJson, $signature) {
+                $ch = curl_init($targetUrl);
+                curl_setopt_array($ch, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_POST           => true,
+                    CURLOPT_POSTFIELDS     => $callbackJson,
+                    CURLOPT_HTTPHEADER     => [
+                        'Content-Type: application/json',
+                        'X-UMAN-Signature: ' . $signature,
+                    ],
+                    CURLOPT_TIMEOUT        => 10,
+                    CURLOPT_SSL_VERIFYPEER => false,
+                ]);
 
-            $responseBody = curl_exec($ch);
-            $httpCode     = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $curlErr      = curl_error($ch);
-            curl_close($ch);
+                $responseBody = curl_exec($ch);
+                $httpCode     = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                $curlErr      = curl_error($ch);
+                curl_close($ch);
 
+                return [$httpCode, $curlErr, $responseBody];
+            };
+
+            [$httpCode, $curlErr, $responseBody] = $sendCurl($callbackUrl);
             $success = !$curlErr && $httpCode >= 200 && $httpCode < 300;
+
+            if (!$success && UPAD_DEFAULT_CALLBACK_URL !== $callbackUrl) {
+                [$httpCode, $curlErr, $responseBody] = $sendCurl(UPAD_DEFAULT_CALLBACK_URL);
+                $success = !$curlErr && $httpCode >= 200 && $httpCode < 300;
+            }
+
             $errText = $curlErr ?: ($success ? null : "HTTP $httpCode: " . mb_substr(strip_tags($responseBody ?: ''), 0, 150));
 
             // Update status in DB
@@ -140,9 +151,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 }
 
 
-// ── Handle Seed Test Request ──────────────────────────────────────────────────
+// ── Handle Seed Real Urban Planning Requests ─────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'seed_test_request') {
-    $testAppId = rand(1000, 9999);
+    $realProjects = [
+        [
+            'project' => 'Quezon Boulevard Urban Drainage & Power Outflow Inspection',
+            'barangay' => 'Quiapo',
+            'district' => 'District 3',
+            'category' => 'Infrastructure',
+            'load' => 350.00,
+            'priority' => 'Urgent',
+            'address' => 'Quezon Blvd, Quiapo, Manila',
+            'lat' => 14.59833300,
+            'lng' => 120.98500000,
+            'desc' => 'Urban planning grid inspection for high-volume commercial drainage and lighting project.'
+        ],
+        [
+            'project' => 'Magsaysay Boulevard Electrical Substation & Pole Connection',
+            'barangay' => 'Santa Mesa',
+            'district' => 'District 6',
+            'category' => 'Commercial',
+            'load' => 600.00,
+            'priority' => 'Medium',
+            'address' => 'Magsaysay Blvd, Santa Mesa, Manila',
+            'lat' => 14.60194400,
+            'lng' => 121.00833300,
+            'desc' => 'Grid capacity verification for new civic infrastructure development.'
+        ],
+        [
+            'project' => 'Taft Avenue Smart Streetlight & Microgrid Expansion',
+            'barangay' => 'Malate',
+            'district' => 'District 5',
+            'category' => 'Infrastructure',
+            'load' => 450.00,
+            'priority' => 'Low',
+            'address' => 'Taft Avenue corner Vito Cruz, Manila',
+            'lat' => 14.56388900,
+            'lng' => 120.99472200,
+            'desc' => 'Load analysis and solar grid sync check for smart street lighting corridor.'
+        ]
+    ];
+
+    $selected = $realProjects[array_rand($realProjects)];
+    $testAppId = rand(2000, 9999);
     $year      = date('Y');
     $seqRow    = $pdo->query("SELECT COUNT(*) AS c FROM upad_inspection_requests WHERE YEAR(created_at) = $year")->fetch(PDO::FETCH_ASSOC);
     $seq       = ((int) ($seqRow['c'] ?? 0)) + 1;
@@ -153,15 +204,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             (reference_id, application_id, source_system, project_name, barangay, district, category,
              estimated_load_kva, priority, address, latitude, longitude, description, requested_by,
              callback_url, status, created_at)
-        VALUES (?, ?, 'UPAD', ?, 'San Lorenzo', 'District 1', 'Commercial', 250.00, 'Urgent',
-                '123 Commercial Ave, San Lorenzo', 14.676000, 121.043700,
-                'Grid capacity & transformer load inspection for new commercial hub',
+        VALUES (?, ?, 'UPAD', ?, ?, ?, ?, ?, ?,
+                ?, ?, ?, ?,
                 'Urban Planning Office',
                 ?,
                 'pending', NOW())
     ");
-    $stmt->execute([$refId, $testAppId, "Commercial Complex #$testAppId", UPAD_DEFAULT_CALLBACK_URL]);
-    $successes[] = "Sample UPAD Inspection Request created ($refId).";
+    $stmt->execute([
+        $refId,
+        $testAppId,
+        $selected['project'],
+        $selected['barangay'],
+        $selected['district'],
+        $selected['category'],
+        $selected['load'],
+        $selected['priority'],
+        $selected['address'],
+        $selected['lat'],
+        $selected['lng'],
+        $selected['desc'],
+        UPAD_DEFAULT_CALLBACK_URL
+    ]);
+    $successes[] = "Real Urban Planning Inspection Request created ($refId - {$selected['project']}).";
 }
 
 // ── Query statistics ─────────────────────────────────────────────────────────

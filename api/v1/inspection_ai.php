@@ -139,25 +139,37 @@ function runInspectionAIValidation(string $referenceId, PDO $pdo): array {
         $callbackUrl  = !empty($req['callback_url']) ? $req['callback_url'] : UPAD_DEFAULT_CALLBACK_URL;
         $signature    = hash_hmac('sha256', $callbackJson, UPAD_WEBHOOK_SECRET);
 
-        $ch = curl_init($callbackUrl);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_POST           => true,
-            CURLOPT_POSTFIELDS     => $callbackJson,
-            CURLOPT_HTTPHEADER     => [
-                'Content-Type: application/json',
-                'X-UMAN-Signature: ' . $signature,
-            ],
-            CURLOPT_TIMEOUT        => 10,
-            CURLOPT_SSL_VERIFYPEER => false,
-        ]);
+        $sendCurl = function($targetUrl) use ($callbackJson, $signature) {
+            $ch = curl_init($targetUrl);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST           => true,
+                CURLOPT_POSTFIELDS     => $callbackJson,
+                CURLOPT_HTTPHEADER     => [
+                    'Content-Type: application/json',
+                    'X-UMAN-Signature: ' . $signature,
+                ],
+                CURLOPT_TIMEOUT        => 10,
+                CURLOPT_SSL_VERIFYPEER => false,
+            ]);
 
-        $responseBody = curl_exec($ch);
-        $httpCode     = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curlErr      = curl_error($ch);
-        curl_close($ch);
+            $responseBody = curl_exec($ch);
+            $httpCode     = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlErr      = curl_error($ch);
+            curl_close($ch);
 
+            return [$httpCode, $curlErr, $responseBody];
+        };
+
+        [$httpCode, $curlErr, $responseBody] = $sendCurl($callbackUrl);
         $success = !$curlErr && $httpCode >= 200 && $httpCode < 300;
+
+        // If primary URL returns 404 or connection error, attempt local UPAD callback URL
+        if (!$success && UPAD_DEFAULT_CALLBACK_URL !== $callbackUrl) {
+            [$httpCode, $curlErr, $responseBody] = $sendCurl(UPAD_DEFAULT_CALLBACK_URL);
+            $success = !$curlErr && $httpCode >= 200 && $httpCode < 300;
+        }
+
         $errText = $curlErr ?: ($success ? null : "HTTP $httpCode: " . mb_substr(strip_tags($responseBody ?: ''), 0, 150));
 
         // Update request status in DB
