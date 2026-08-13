@@ -119,6 +119,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
+// ── Handle AI Validation Trigger ──────────────────────────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'run_ai_validation') {
+    $refId = trim($_POST['reference_id'] ?? '');
+    if (empty($refId)) {
+        $errors[] = "Reference ID is required.";
+    } else {
+        require_once __DIR__ . '/api/v1/inspection_ai.php';
+        $aiResult = runInspectionAIValidation($refId, $pdo);
+        if ($aiResult['success']) {
+            if ($aiResult['approved']) {
+                $successes[] = "AI Validation Success: Request $refId was automatically approved based on real asset inventory and closed incidents! Callback was successfully sent to UPAD.";
+            } else {
+                $errors[] = "AI Validation Deferred for $refId: " . $aiResult['message'];
+            }
+        } else {
+            $errors[] = "AI System Error: " . $aiResult['error'];
+        }
+    }
+}
+
+
 // ── Handle Seed Test Request ──────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'seed_test_request') {
     $testAppId = rand(1000, 9999);
@@ -677,6 +698,15 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                     </td>
                                     <td><small><?php echo date('M d, Y H:i', strtotime($r['created_at'])); ?></small></td>
                                     <td>
+                                        <?php if ($r['status'] === 'pending'): ?>
+                                            <form method="POST" style="display:inline; margin-right: 5px;">
+                                                <input type="hidden" name="action" value="run_ai_validation">
+                                                <input type="hidden" name="reference_id" value="<?php echo htmlspecialchars($r['reference_id']); ?>">
+                                                <button type="submit" class="btn btn-primary" style="padding: 5px 10px; font-size: 11px; background: #6366f1; border-color: #6366f1;">
+                                                    <i class="fas fa-robot"></i> AI Validate
+                                                </button>
+                                            </form>
+                                        <?php endif; ?>
                                         <button class="btn btn-success" style="padding: 5px 10px; font-size: 11px;" 
                                                 onclick="openCallbackModal('<?php echo htmlspecialchars($r['reference_id']); ?>')">
                                             <i class="fas fa-paper-plane"></i> Send Result

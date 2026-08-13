@@ -171,13 +171,27 @@ try {
         $rawBody,
     ]);
 
+    // ── Run AI Auto-Verification and Auto-Approval ───────────────────────────
+    $aiStatusMessage = 'AI auto-approval deferred.';
+    try {
+        require_once __DIR__ . '/inspection_ai.php';
+        $aiResult = runInspectionAIValidation($referenceId, $pdo);
+        if ($aiResult['success'] && $aiResult['approved']) {
+            $aiStatusMessage = 'AI Auto-Approved: ' . $aiResult['message'];
+        } else {
+            $aiStatusMessage = 'AI Deferred: ' . ($aiResult['message'] ?? 'Pending manual survey.');
+        }
+    } catch (Throwable $e) {
+        $aiStatusMessage = 'AI Engine offline: ' . $e->getMessage();
+    }
+
     // ── Log the inbound request ───────────────────────────────────────────
     try {
         $pdo->prepare("
             INSERT INTO planning_coordination_logs (direction, log_type, details)
             VALUES ('Inbound', 'UPAD Inspection Request', ?)
         ")->execute([
-            "Received inspection request from UPAD. App ID: $applicationId | Ref: $referenceId | Priority: $priority | Location: $address"
+            "Received inspection request from UPAD. App ID: $applicationId | Ref: $referenceId | Priority: $priority | Location: $address | $aiStatusMessage"
         ]);
     } catch (Throwable) {
         // planning_coordination_logs is optional — don't fail if it doesn't exist
@@ -188,7 +202,7 @@ try {
     echo json_encode([
         'success'      => true,
         'reference_id' => $referenceId,
-        'message'      => 'Inspection request received. A UMAN engineer will be dispatched. Results will be sent to your callback URL.',
+        'message'      => 'Inspection request received. UMAN AI Engine processed details: ' . $aiStatusMessage,
     ], JSON_UNESCAPED_UNICODE);
 
 } catch (Throwable $e) {
