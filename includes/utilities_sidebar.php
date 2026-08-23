@@ -23,6 +23,7 @@ function sidebarActive(string $page, string $current): string {
     return $page === $current ? ' active' : '';
 }
 ?>
+<link rel="stylesheet" href="<?php echo $sidebarBase; ?>assets/css/responsive.css">
 <script>
     // Immediate script to apply theme before document rendering to prevent flash of light theme
     (function() {
@@ -1094,6 +1095,27 @@ function sidebarActive(string $page, string $current): string {
 
 </style>
 
+<!-- ===== MOBILE TOPBAR ===== -->
+<div class="mobile-topbar" id="mobile-topbar">
+    <div class="mobile-topbar-left">
+        <button type="button" class="mobile-nav-toggle" id="mobile-nav-toggle" aria-label="Open Navigation Menu">
+            <i class="fas fa-bars"></i>
+        </button>
+        <a href="<?php echo $sidebarBase; ?><?php echo $userType === 'employee' ? 'utilities_dashboard.php' : 'citizen.php'; ?>" class="mobile-topbar-brand">
+            <img src="<?php echo $sidebarBase; ?>assets/images/logocityhall.png" alt="Logo" onerror="this.style.display='none';">
+            <span>UMAN</span>
+        </a>
+    </div>
+    <div class="mobile-topbar-right">
+        <button type="button" class="mobile-theme-toggle" onclick="toggleTheme()" aria-label="Toggle Dark Mode">
+            <i class="fas fa-moon" id="mobile-theme-icon"></i>
+        </button>
+    </div>
+</div>
+
+<!-- Backdrop Overlay for Mobile Drawer -->
+<div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
 <!-- ===== SIDEBAR HTML ===== -->
 <nav class="sidebar-nav" id="sidebar-nav" role="navigation" aria-label="Utilities Navigation">
     <div class="sidebar-top">
@@ -1258,16 +1280,19 @@ function sidebarActive(string $page, string $current): string {
 <script>
 function applyTheme(theme) {
     const icon = document.getElementById('theme-toggle-icon');
+    const mobIcon = document.getElementById('mobile-theme-icon');
     const text = document.getElementById('theme-toggle-text');
     if (theme === 'dark') {
         document.body.classList.add('dark-theme');
         document.documentElement.classList.add('dark-theme');
         if (icon) icon.className = 'fas fa-sun';
+        if (mobIcon) mobIcon.className = 'fas fa-sun';
         if (text) text.textContent = 'Light Mode';
     } else {
         document.body.classList.remove('dark-theme');
         document.documentElement.classList.remove('dark-theme');
         if (icon) icon.className = 'fas fa-moon';
+        if (mobIcon) mobIcon.className = 'fas fa-moon';
         if (text) text.textContent = 'Dark Mode';
     }
 }
@@ -1302,16 +1327,65 @@ window.addEventListener('click', function(event) {
 });
 
 (function () {
-    const sidebar  = document.getElementById('sidebar-nav');
+    const sidebar     = document.getElementById('sidebar-nav');
     const collapseBtn = document.getElementById('collapse-btn');
+    const mobileToggle = document.getElementById('mobile-nav-toggle');
+    const backdrop    = document.getElementById('sidebar-backdrop');
     const mainContent = document.querySelector('.main-content');
-    if (!collapseBtn || !sidebar) return;
 
-    collapseBtn.addEventListener('click', () => {
-        const isCollapsed = sidebar.classList.toggle('collapsed');
-        if (mainContent) mainContent.classList.toggle('collapsed', isCollapsed);
-        collapseBtn.innerHTML = isCollapsed ? '&#8250;' : '&#8249;';
-        collapseBtn.setAttribute('aria-pressed', isCollapsed);
+    // Desktop collapse toggle
+    if (collapseBtn && sidebar) {
+        collapseBtn.addEventListener('click', () => {
+            const isCollapsed = sidebar.classList.toggle('collapsed');
+            if (mainContent) mainContent.classList.toggle('collapsed', isCollapsed);
+            collapseBtn.innerHTML = isCollapsed ? '&#8250;' : '&#8249;';
+            collapseBtn.setAttribute('aria-pressed', isCollapsed);
+        });
+    }
+
+    // Mobile drawer open/close
+    function openMobileSidebar() {
+        if (sidebar) sidebar.classList.add('mobile-open');
+        if (backdrop) backdrop.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeMobileSidebar() {
+        if (sidebar) sidebar.classList.remove('mobile-open');
+        if (backdrop) backdrop.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+    if (mobileToggle) {
+        mobileToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (sidebar && sidebar.classList.contains('mobile-open')) {
+                closeMobileSidebar();
+            } else {
+                openMobileSidebar();
+            }
+        });
+    }
+
+    if (backdrop) {
+        backdrop.addEventListener('click', closeMobileSidebar);
+    }
+
+    // Auto-close drawer on link click on small screens
+    const navLinks = document.querySelectorAll('.sidebar-nav .nav-link');
+    navLinks.forEach(link => {
+        link.addEventListener('click', () => {
+            if (window.innerWidth <= 992) {
+                closeMobileSidebar();
+            }
+        });
+    });
+
+    // Close on ESC key
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && sidebar && sidebar.classList.contains('mobile-open')) {
+            closeMobileSidebar();
+        }
     });
 })();
 </script>
