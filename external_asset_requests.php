@@ -1100,9 +1100,9 @@ foreach ($requests as $r) {
             </div>
 
             <div class="filter-bar">
-                <label><i class="fas fa-filter"></i> Filter by Status:</label>
-                <form method="GET" style="margin:0;">
-                    <select name="status" onchange="this.form.submit()">
+                <form method="GET" style="margin:0; width:100%; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <label style="margin:0; white-space:nowrap;"><i class="fas fa-filter"></i> Filter by Status:</label>
+                    <select name="status" onchange="this.form.submit()" class="form-control" style="flex:1; min-width:180px;">
                         <option value="">All Statuses</option>
                         <?php foreach (['pending', 'approved', 'fulfilled', 'rejected'] as $s): ?>
                             <option value="<?= $s; ?>" <?= $filter === $s ? 'selected' : ''; ?>><?= ucfirst($s); ?></option>
