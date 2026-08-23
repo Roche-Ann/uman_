@@ -519,26 +519,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit();
             }
         }
-    } elseif ($action === 'delete') {
-        $id = intval($_POST['id'] ?? 0);
-        if ($id > 0) {
-            try {
-                $curr = $pdo->prepare("SELECT asset_id, name FROM utility_assets WHERE id = ?");
-                $curr->execute([$id]);
-                $asset = $curr->fetch();
-                
-                if ($asset) {
-                    $pdo->prepare("DELETE FROM utility_assets WHERE id = ?")->execute([$id]);
-                    $_SESSION['flash_success'] = "Asset {$asset['asset_id']} ({$asset['name']}) has been successfully deleted.";
-                    header('Location: ' . $_SERVER['PHP_SELF']);
-                    exit();
-                }
-            } catch (PDOException $e) {
-                $_SESSION['flash_error'] = "Failed to delete asset: " . $e->getMessage();
-                header('Location: ' . $_SERVER['PHP_SELF']);
-                exit();
-            }
-        }
     } elseif ($action === 'delete_category') {
         $category_id = intval($_POST['category_id'] ?? 0);
         if ($category_id > 0) {
@@ -1423,9 +1403,6 @@ if (!empty($search) || $status_filter) {
                                                     <td style="text-align:right;">
                                                         <button class="btn-icon btn-icon-view" onclick='viewAsset(<?php echo json_encode($asset); ?>)' title="View Details"><i class="fas fa-eye"></i></button>
                                                         <button class="btn-icon btn-icon-edit" onclick='editAsset(<?php echo json_encode($asset); ?>)' title="Edit Asset"><i class="fas fa-edit"></i></button>
-                                                        <?php if (!$isOffshoot): ?>
-                                                        <button class="btn-icon btn-icon-delete" onclick="confirmDelete(<?php echo $asset['id']; ?>, '<?php echo htmlspecialchars($asset['asset_id']); ?>')" title="Delete"><i class="fas fa-trash-alt"></i></button>
-                                                        <?php endif; ?>
                                                     </td>
                                                 </tr>
                                                 <?php endforeach; ?>
@@ -1716,26 +1693,6 @@ if (!empty($search) || $status_filter) {
     </div>
 </div>
 
-<!-- DELETE CONFIRM MODAL -->
-<div id="deleteModal" class="modal">
-    <div class="modal-content" style="max-width: 450px;">
-        <div class="modal-header" style="background:#fde8e8;">
-            <h3 style="color:#bd2130;"><i class="fas fa-exclamation-triangle"></i> Delete Asset Record</h3>
-            <button class="modal-close" onclick="closeModal('deleteModal')">&times;</button>
-        </div>
-        <form method="POST">
-            <input type="hidden" name="action" value="delete">
-            <input type="hidden" id="delete-id" name="id">
-            <div class="modal-body" style="padding: 20px 24px;">
-                <p>Are you sure you want to delete asset <strong id="delete-asset-id-text"></strong>? This will permanently remove its inventory records and history logs from the database.</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-outline" onclick="closeModal('deleteModal')">Cancel</button>
-                <button type="submit" class="btn btn-danger">Confirm Delete</button>
-            </div>
-        </form>
-    </div>
-</div>
 
 <!-- REVIEW CHANGES CONFIRM MODAL -->
 <div id="reviewChangesModal" class="modal">
@@ -2050,11 +2007,6 @@ if (!empty($search) || $status_filter) {
         document.getElementById('viewModal').classList.add('open');
     }
 
-    function confirmDelete(id, assetId) {
-        document.getElementById('delete-id').value = id;
-        document.getElementById('delete-asset-id-text').textContent = assetId;
-        document.getElementById('deleteModal').classList.add('open');
-    }
 
     function toggleGroup(catId) {
         const headerRow = document.querySelector('.group-header-row[data-cat-id="' + catId + '"]');

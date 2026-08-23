@@ -979,6 +979,42 @@ function sidebarActive(string $page, string $current): string {
         background: #3b2f00 !important;
         border-left-color: #ca8a04 !important;
     }
+    /* ── Offshoot / split rows (Assets CRUD dark mode) ── */
+    .dark-theme .child-asset-row.is-offshoot {
+        background: #2c1f06 !important;
+        border-left-color: #b45309 !important;
+    }
+    .dark-theme .child-asset-row.is-offshoot:hover {
+        background: #3b2a08 !important;
+    }
+    .dark-theme .offshoot-badge {
+        background: #3b2a08 !important;
+        border-color: #854d0e !important;
+        color: #fbbf24 !important;
+    }
+    .dark-theme .offshoot-merge-notice {
+        background: #1c1007 !important;
+        border-color: #78350f !important;
+        color: #fcd34d !important;
+    }
+    .dark-theme .offshoot-merge-notice strong {
+        color: #fbbf24 !important;
+    }
+    .dark-theme .split-panel {
+        background: #052e16 !important;
+        border-color: #166534 !important;
+    }
+    .dark-theme .split-panel label,
+    .dark-theme .split-panel label.panel-title {
+        color: #4ade80 !important;
+    }
+    .dark-theme .split-panel p.panel-hint {
+        color: #86efac !important;
+    }
+    .dark-theme .split-panel [style*="color:#166534"],
+    .dark-theme .split-panel div[style] {
+        color: #86efac !important;
+    }
 
     /* ── Form control inputs in pages (CRUD filter bar) ── */
     .dark-theme .form-control {
