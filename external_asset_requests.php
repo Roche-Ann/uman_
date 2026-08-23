@@ -141,9 +141,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors[] = 'Invalid request.';
         } elseif ($action === 'approve') {
             $notes = trim((string)($_POST['review_notes'] ?? ''));
-            $pdo->prepare("UPDATE external_asset_requests SET status = 'approved', review_notes = ?, updated_at = NOW() WHERE id = ?")
-                ->execute([$notes ?: null, $id]);
-            $successes[] = 'Request approved.';
+
+            // Check real-time inventory availability before approving
+            $reqStmt = $pdo->prepare("SELECT id, request_ref, asset_type, quantity FROM external_asset_requests WHERE id = ? LIMIT 1");
+            $reqStmt->execute([$id]);
+            $targetReq = $reqStmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$targetReq) {
+                $errors[] = 'Request not found.';
+            } else {
+                $currentStock = [];
+                try {
+                    $currentStock = $pdo->query("
+                        SELECT a.id, a.asset_id, a.name, a.quantity, a.condition_status,
+                               t.id AS type_id, t.name AS asset_type
+                        FROM utility_assets a
+                        JOIN asset_types t ON t.id = a.asset_type_id
+                        WHERE a.condition_status IN ('Operational', 'Needs Inspection')
+                          AND (a.cprf_custody_status IS NULL OR a.cprf_custody_status IN ('WAREHOUSED', 'LOAN_RETURNED'))
+                          AND (a.cprf_facility_id IS NULL OR a.cprf_facility_id = 0)
+                    ")->fetchAll(PDO::FETCH_ASSOC) ?: [];
+                } catch (Throwable $e) {
+                    $currentStock = [];
+                }
+
+                $availCheck = get_request_asset_availability($targetReq['asset_type'], (int)$targetReq['quantity'], $currentStock);
+
+                if (!$availCheck['is_sufficient']) {
+                    $errors[] = "Cannot approve request {$targetReq['request_ref']}: Insufficient stock. Only {$availCheck['available_qty']} of {$targetReq['quantity']} units of '{$targetReq['asset_type']}' are available in inventory.";
+                } else {
+                    $pdo->prepare("UPDATE external_asset_requests SET status = 'approved', review_notes = ?, updated_at = NOW() WHERE id = ?")
+                        ->execute([$notes ?: null, $id]);
+                    $successes[] = "Request {$targetReq['request_ref']} approved successfully (Stock verified: {$availCheck['available_qty']} units available).";
+                }
+            }
         } elseif ($action === 'reject') {
             $notes = trim((string)($_POST['review_notes'] ?? ''));
             $pdo->prepare("UPDATE external_asset_requests SET status = 'rejected', review_notes = ?, updated_at = NOW() WHERE id = ?")
@@ -1175,17 +1206,35 @@ foreach ($requests as $r) {
                                                 <form method="POST">
                                                     <input type="hidden" name="id" value="<?= (int)$req['id']; ?>">
                                                     <input type="hidden" name="action" value="approve">
-                                                    <textarea name="review_notes" rows="2" placeholder="Review notes (optional)"></textarea>
-                                                    <div class="btn-actions">
-                                                        <button class="btn btn-primary" type="submit"><i class="fas fa-check"></i> Approve</button>
-                                                    </div>
+                                                    <?php if ($avail['is_sufficient']): ?>
+                                                        <textarea name="review_notes" rows="2" placeholder="Approval notes (optional)"></textarea>
+                                                        <div class="btn-actions">
+                                                            <button class="btn btn-primary" type="submit"><i class="fas fa-check"></i> Approve</button>
+                                                        </div>
+                                                    <?php else: ?>
+                                                        <div style="background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:8px 10px; margin-bottom:8px;">
+                                                            <div style="font-size:11px; font-weight:600; color:#991b1b; display:flex; align-items:center; gap:5px;">
+                                                                <i class="fas fa-ban"></i> Cannot Approve (Stock Shortage)
+                                                            </div>
+                                                            <div style="font-size:11px; color:#b91c1c; margin-top:2px; line-height:1.35;">
+                                                                <?php if ($avail['available_qty'] > 0): ?>
+                                                                    Only <strong><?= $avail['available_qty']; ?></strong> of <strong><?= (int)$req['quantity']; ?></strong> units available in inventory.
+                                                                <?php else: ?>
+                                                                    <strong>0</strong> units available in inventory.
+                                                                <?php endif; ?>
+                                                            </div>
+                                                        </div>
+                                                        <div class="btn-actions">
+                                                            <button class="btn btn-primary" type="button" disabled style="opacity:0.5; cursor:not-allowed; background:#94a3b8; border-color:#94a3b8;"><i class="fas fa-lock"></i> Approval Blocked</button>
+                                                        </div>
+                                                    <?php endif; ?>
                                                 </form>
                                             </div>
                                             <div class="action-form">
                                                 <form method="POST">
                                                     <input type="hidden" name="id" value="<?= (int)$req['id']; ?>">
                                                     <input type="hidden" name="action" value="reject">
-                                                    <textarea name="review_notes" rows="1" placeholder="Rejection reason (optional)"></textarea>
+                                                    <textarea name="review_notes" rows="1" placeholder="Rejection reason (e.g. stock unavailable)"></textarea>
                                                     <div class="btn-actions">
                                                         <button class="btn btn-danger" type="submit"><i class="fas fa-times"></i> Reject</button>
                                                     </div>
