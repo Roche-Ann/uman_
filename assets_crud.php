@@ -406,7 +406,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             try {
                 // Get current status & location to log changes
-                $curr = $pdo->prepare("SELECT asset_id, condition_status, location, latitude, longitude, quantity, parent_asset_id FROM utility_assets WHERE id = ?");
+                $curr = $pdo->prepare("
+                    SELECT asset_id, condition_status, location, latitude, longitude,
+                           quantity, parent_asset_id, name, asset_type_id,
+                           date_installed, description, responsible_office
+                    FROM utility_assets WHERE id = ?
+                ");
                 $curr->execute([$id]);
                 $oldAsset = $curr->fetch();
 
@@ -428,7 +433,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $parentCodeStmt->execute([$parentId]);
                             $parentCode = $parentCodeStmt->fetchColumn() ?: 'parent';
                             try {
-                                $pdo->prepare("INSERT INTO asset_status_logs (utility_asset_id, old_status, new_status, changed_by, notes) VALUES (?, ?, ?, ?, ?)")
+                                $pdo->prepare("INSERT INTO asset_status_logs (utility_asset_id, action_type, old_status, new_status, changed_by, notes) VALUES (?, 'split_merged', ?, ?, ?, ?)")
                                     ->execute([$id, $oldAsset['condition_status'], 'Operational (Merged)', $userId,
                                         "{$total_qty} unit(s) restored to Operational and merged back into {$parentCode}. " . ($status_notes ?: '')]);
                             } catch (Throwable $ignored) {}
@@ -472,7 +477,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $childId = $pdo->lastInsertId();
 
                             try {
-                                $pdo->prepare("INSERT INTO asset_status_logs (utility_asset_id, old_status, new_status, changed_by, notes) VALUES (?, NULL, ?, ?, ?)")
+                                $pdo->prepare("INSERT INTO asset_status_logs (utility_asset_id, action_type, old_status, new_status, changed_by, notes) VALUES (?, 'split_created', NULL, ?, ?, ?)")
                                     ->execute([$childId, $condition_status, $userId,
                                         "Offshoot created from {$baseAssetId}: {$affected_quantity} unit(s) marked as {$condition_status}. " . ($status_notes ?: '')]);
                             } catch (Throwable $ignored) {}
@@ -533,18 +538,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             : (empty($diff) ? 'asset_edited' : 'asset_edited');
 
                         if (!empty($diff) || $oldAsset['condition_status'] !== $condition_status) {
-                            $pdo->prepare("
-                                INSERT INTO asset_status_logs (utility_asset_id, action_type, old_status, new_status, changed_by, notes, changed_fields)
-                                VALUES (?, ?, ?, ?, ?, ?, ?)
-                            ")->execute([
-                                $id,
-                                $actionType,
-                                $oldAsset['condition_status'],
-                                $condition_status,
-                                $userId,
-                                $status_notes ?: (empty($diff) ? 'Status modified.' : 'Asset details updated.'),
-                                !empty($diff) ? json_encode($diff, JSON_UNESCAPED_UNICODE) : null
-                            ]);
+                            // Try full insert with action_type + changed_fields; fall back to basic insert if columns missing
+                            $logged = false;
+                            try {
+                                $pdo->prepare("
+                                    INSERT INTO asset_status_logs (utility_asset_id, action_type, old_status, new_status, changed_by, notes, changed_fields)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                                ")->execute([
+                                    $id,
+                                    $actionType,
+                                    $oldAsset['condition_status'],
+                                    $condition_status,
+                                    $userId,
+                                    $status_notes ?: (empty($diff) ? 'Status modified.' : 'Asset details updated.'),
+                                    !empty($diff) ? json_encode($diff, JSON_UNESCAPED_UNICODE) : null
+                                ]);
+                                $logged = true;
+                            } catch (Throwable $ignored) {}
+                            // Fallback: plain insert without new columns (compatibility)
+                            if (!$logged) {
+                                try {
+                                    $pdo->prepare("
+                                        INSERT INTO asset_status_logs (utility_asset_id, old_status, new_status, changed_by, notes)
+                                        VALUES (?, ?, ?, ?, ?)
+                                    ")->execute([
+                                        $id,
+                                        $oldAsset['condition_status'],
+                                        $condition_status,
+                                        $userId,
+                                        $status_notes ?: 'Status or details updated.',
+                                    ]);
+                                } catch (Throwable $ignored) {}
+                            }
                         }
 
                         // Trigger notification only for status changes (non-critical)
