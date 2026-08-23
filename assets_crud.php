@@ -170,6 +170,17 @@ function ensureAssetsSchema($pdo) {
 
 ensureAssetsSchema($pdo);
 
+// Auto-add parent_asset_id column for asset-splitting feature (idempotent: fast no-op if column already exists)
+try {
+    $col = $pdo->query("SHOW COLUMNS FROM utility_assets LIKE 'parent_asset_id'")->fetch();
+    if (!$col) {
+        $pdo->exec("ALTER TABLE `utility_assets` ADD COLUMN `parent_asset_id` INT NULL DEFAULT NULL AFTER `asset_id`");
+        try {
+            $pdo->exec("ALTER TABLE `utility_assets` ADD CONSTRAINT `fk_parent_asset` FOREIGN KEY (`parent_asset_id`) REFERENCES `utility_assets`(`id`) ON DELETE SET NULL");
+        } catch (Throwable $ignored) {}
+    }
+} catch (Throwable $e) {}
+
 if (!isLoggedIn()) {
     header('Location: login.php');
     exit();
@@ -335,6 +346,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $asset_type_id = $_POST['asset_type_id'] ?? '';
         $new_category_name = trim($_POST['new_category_name'] ?? '');
         $quantity = max(1, intval($_POST['quantity'] ?? 1));
+        $affected_quantity = max(0, intval($_POST['affected_quantity'] ?? 0));
         $location = trim($_POST['location'] ?? '');
         $date_installed = $_POST['date_installed'] ?? date('Y-m-d');
         $condition_status = $_POST['condition_status'] ?? 'Operational';
@@ -370,7 +382,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             try {
                 // Get current status & location to log changes
-                $curr = $pdo->prepare("SELECT asset_id, condition_status, location, latitude, longitude FROM utility_assets WHERE id = ?");
+                $curr = $pdo->prepare("SELECT asset_id, condition_status, location, latitude, longitude, quantity, parent_asset_id FROM utility_assets WHERE id = ?");
                 $curr->execute([$id]);
                 $oldAsset = $curr->fetch();
 
@@ -378,8 +390,81 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $asset_id = $oldAsset['asset_id'];
                     $latitude = $oldAsset['latitude'];
                     $longitude = $oldAsset['longitude'];
+                    $total_qty = intval($oldAsset['quantity']);
+                    $is_non_operational = in_array($condition_status, ['Damaged', 'Needs Inspection', 'Under Maintenance']);
+                    $is_child = !empty($oldAsset['parent_asset_id']);
 
-                    // Update core details
+                    // ---- AUTO-MERGE: child offshoot restored to Operational ----
+                    if ($is_child && $condition_status === 'Operational') {
+                        try {
+                            $parentId = intval($oldAsset['parent_asset_id']);
+                            $pdo->prepare("UPDATE utility_assets SET quantity = quantity + ? WHERE id = ?")
+                                ->execute([$total_qty, $parentId]);
+                            $parentCodeStmt = $pdo->prepare("SELECT asset_id FROM utility_assets WHERE id = ?");
+                            $parentCodeStmt->execute([$parentId]);
+                            $parentCode = $parentCodeStmt->fetchColumn() ?: 'parent';
+                            try {
+                                $pdo->prepare("INSERT INTO asset_status_logs (utility_asset_id, old_status, new_status, changed_by, notes) VALUES (?, ?, ?, ?, ?)")
+                                    ->execute([$id, $oldAsset['condition_status'], 'Operational (Merged)', $userId,
+                                        "{$total_qty} unit(s) restored to Operational and merged back into {$parentCode}. " . ($status_notes ?: '')]);
+                            } catch (Throwable $ignored) {}
+                            try {
+                                $pdo->prepare("INSERT INTO asset_notifications (type, message) VALUES (?, ?)")
+                                    ->execute(['status_changed', "Asset {$asset_id}: {$total_qty} unit(s) restored and merged back into {$parentCode}."]);
+                            } catch (Throwable $ignored) {}
+                            $pdo->prepare("DELETE FROM utility_assets WHERE id = ?")->execute([$id]);
+                            $_SESSION['flash_success'] = "{$total_qty} unit(s) of {$asset_id} restored to Operational and merged back into {$parentCode}.";
+                        } catch (PDOException $e) {
+                            $_SESSION['flash_error'] = "Auto-merge failed: " . $e->getMessage();
+                        }
+                        header('Location: ' . $_SERVER['PHP_SELF']);
+                        exit();
+                    }
+
+                    // ---- SPLIT: partial quantity changing to a non-operational status ----
+                    $doSplit = ($is_non_operational && !$is_child && $affected_quantity > 0 && $affected_quantity < $total_qty);
+                    if ($doSplit) {
+                        try {
+                            $newParentQty = $total_qty - $affected_quantity;
+                            $pdo->prepare("UPDATE utility_assets SET quantity = ? WHERE id = ?")
+                                ->execute([$newParentQty, $id]);
+
+                            // Generate unique child asset_id: e.g. ELEC-0012-M1, -M2, etc.
+                            $baseAssetId = $oldAsset['asset_id'];
+                            $countStmt = $pdo->prepare("SELECT COUNT(*) FROM utility_assets WHERE asset_id LIKE ?");
+                            $countStmt->execute([$baseAssetId . '-M%']);
+                            $offshotCount = intval($countStmt->fetchColumn());
+                            $childAssetId = $baseAssetId . '-M' . ($offshotCount + 1);
+
+                            $pdo->prepare("
+                                INSERT INTO utility_assets
+                                    (asset_id, parent_asset_id, name, asset_type_id, quantity, location, latitude, longitude, date_installed, condition_status, description, responsible_office)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            ")->execute([
+                                $childAssetId, $id, $name, $asset_type_id, $affected_quantity,
+                                $location, $latitude, $longitude, $date_installed,
+                                $condition_status, $description, $responsible_office
+                            ]);
+                            $childId = $pdo->lastInsertId();
+
+                            try {
+                                $pdo->prepare("INSERT INTO asset_status_logs (utility_asset_id, old_status, new_status, changed_by, notes) VALUES (?, NULL, ?, ?, ?)")
+                                    ->execute([$childId, $condition_status, $userId,
+                                        "Offshoot created from {$baseAssetId}: {$affected_quantity} unit(s) marked as {$condition_status}. " . ($status_notes ?: '')]);
+                            } catch (Throwable $ignored) {}
+                            try {
+                                $pdo->prepare("INSERT INTO asset_notifications (type, message) VALUES (?, ?)")
+                                    ->execute(['status_changed', "Asset {$baseAssetId}: {$affected_quantity} unit(s) split off as {$childAssetId} with status {$condition_status}."]);
+                            } catch (Throwable $ignored) {}
+                            $_SESSION['flash_success'] = "{$affected_quantity} unit(s) split from {$baseAssetId} as {$childAssetId} (Status: {$condition_status}). {$newParentQty} unit(s) remain Operational.";
+                        } catch (PDOException $e) {
+                            $_SESSION['flash_error'] = "Split failed: " . $e->getMessage();
+                        }
+                        header('Location: ' . $_SERVER['PHP_SELF']);
+                        exit();
+                    }
+
+                    // Update core details (normal full-batch update)
                     $stmt = $pdo->prepare("
                         UPDATE utility_assets 
                         SET name = ?, asset_type_id = ?, quantity = ?, location = ?, latitude = ?, longitude = ?, date_installed = ?, condition_status = ?, description = ?, responsible_office = ?
@@ -1117,6 +1202,54 @@ if (!empty($search) || $status_filter) {
             background: #fefce8 !important;
             border-left: 3px solid #eab308;
         }
+        /* ---- Offshoot / split child rows ---- */
+        .child-asset-row.is-offshoot {
+            background: #fffbeb !important;
+            border-left: 3px solid #f59e0b !important;
+        }
+        .child-asset-row.is-offshoot:hover {
+            background: #fef3c7 !important;
+        }
+        .offshoot-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 10px;
+            color: #92400e;
+            background: #fef3c7;
+            border: 1px solid #fde68a;
+            border-radius: 4px;
+            padding: 2px 6px;
+            margin-top: 3px;
+        }
+        .offshoot-merge-notice {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            border-radius: 8px;
+            padding: 12px 15px;
+            margin-bottom: 14px;
+            font-size: 13px;
+            color: #78350f;
+            display: none;
+        }
+        .split-panel {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            display: none;
+        }
+        .split-panel label.panel-title {
+            font-weight: 700;
+            color: #166534;
+            font-size: 13px;
+        }
+        .split-panel p.panel-hint {
+            font-size: 11px;
+            color: #166534;
+            margin: 4px 0 10px;
+        }
     </style>
 </head>
 <body>
@@ -1272,8 +1405,14 @@ if (!empty($search) || $status_filter) {
                                             </thead>
                                             <tbody>
                                                 <?php foreach ($group['assets'] as $asset): ?>
-                                                <tr class="child-asset-row <?php echo (!empty($search) && (stripos($asset['name'], $search) !== false || stripos($asset['asset_id'], $search) !== false)) ? 'search-highlight' : ''; ?>">
-                                                    <td><strong><?php echo htmlspecialchars($asset['asset_id']); ?></strong></td>
+                                                <?php $isOffshoot = !empty($asset['parent_asset_id']); ?>
+                                                <tr class="child-asset-row <?php echo $isOffshoot ? 'is-offshoot' : ''; ?> <?php echo (!empty($search) && (stripos($asset['name'], $search) !== false || stripos($asset['asset_id'], $search) !== false)) ? 'search-highlight' : ''; ?>">
+                                                    <td>
+                                                        <strong><?php echo htmlspecialchars($asset['asset_id']); ?></strong>
+                                                        <?php if ($isOffshoot): ?>
+                                                        <br><span class="offshoot-badge"><i class="fas fa-link"></i> Offshoot</span>
+                                                        <?php endif; ?>
+                                                    </td>
                                                     <td><?php echo htmlspecialchars($asset['name']); ?></td>
                                                     <td><?php echo intval($asset['quantity']); ?></td>
                                                     <td>
@@ -1284,7 +1423,9 @@ if (!empty($search) || $status_filter) {
                                                     <td style="text-align:right;">
                                                         <button class="btn-icon btn-icon-view" onclick='viewAsset(<?php echo json_encode($asset); ?>)' title="View Details"><i class="fas fa-eye"></i></button>
                                                         <button class="btn-icon btn-icon-edit" onclick='editAsset(<?php echo json_encode($asset); ?>)' title="Edit Asset"><i class="fas fa-edit"></i></button>
+                                                        <?php if (!$isOffshoot): ?>
                                                         <button class="btn-icon btn-icon-delete" onclick="confirmDelete(<?php echo $asset['id']; ?>, '<?php echo htmlspecialchars($asset['asset_id']); ?>')" title="Delete"><i class="fas fa-trash-alt"></i></button>
+                                                        <?php endif; ?>
                                                     </td>
                                                 </tr>
                                                 <?php endforeach; ?>
@@ -1440,12 +1581,35 @@ if (!empty($search) || $status_filter) {
                     </div>
                     <div class="form-group">
                         <label>Condition Status *</label>
-                        <select id="edit-status" name="condition_status" class="form-control" required>
+                        <select id="edit-status" name="condition_status" class="form-control" required
+                            onchange="toggleSplitPanel(this.value, parseInt(document.getElementById('edit-quantity').value)||1, !!(currentEditingAsset && currentEditingAsset.parent_asset_id))">
                             <option value="Operational">Operational</option>
                             <option value="Needs Inspection">Needs Inspection</option>
                             <option value="Damaged">Damaged</option>
                             <option value="Under Maintenance">Under Maintenance</option>
                         </select>
+                    </div>
+                </div>
+
+                <!-- Merge notice (shown only for child offshoots) -->
+                <div id="edit-merge-notice" class="offshoot-merge-notice">
+                    <i class="fas fa-link"></i>
+                    <strong>This is an offshoot record.</strong>
+                    Setting the status back to <strong>Operational</strong> will automatically merge it back into its parent asset and restore the quantity.
+                </div>
+
+                <!-- Partial split panel (shown only when qty > 1 and non-operational status is selected) -->
+                <div id="edit-split-wrapper" class="split-panel">
+                    <label class="panel-title"><i class="fas fa-scissors"></i> Partial Status Change — How many items are affected?</label>
+                    <p class="panel-hint">Only some items in this batch need this status. The rest will remain Operational as a separate record.</p>
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <div style="flex:1;">
+                            <label style="font-size:12px; color:#166534; font-weight:600;">Affected Items <span style="font-weight:400;">(out of <strong id="edit-split-max">1</strong> total)</span></label>
+                            <input type="number" id="edit-affected-quantity" name="affected_quantity" class="form-control" min="1" value="1" style="margin-top:4px;">
+                        </div>
+                        <div style="padding-top:22px; font-size:12px; color:#166534;">
+                            <i class="fas fa-info-circle"></i> Set equal to total to update all without splitting
+                        </div>
                     </div>
                 </div>
 
@@ -1733,7 +1897,30 @@ if (!empty($search) || $status_filter) {
         document.getElementById('edit-location').value = asset.location;
         document.getElementById('edit-office').value = asset.responsible_office || '';
         document.getElementById('edit-description').value = asset.description || '';
+
+        // --- Partial-split / merge-notice wiring ---
+        const qty   = parseInt(asset.quantity) || 1;
+        const isChild = !!asset.parent_asset_id;
+
+        // Merge notice: visible only for child offshoots
+        const mergeNotice = document.getElementById('edit-merge-notice');
+        if (mergeNotice) mergeNotice.style.display = isChild ? 'block' : 'none';
+
+        // Split panel: set max and default, then show/hide
+        const splitMax = document.getElementById('edit-split-max');
+        const affectedInput = document.getElementById('edit-affected-quantity');
+        if (splitMax) splitMax.textContent = qty;
+        if (affectedInput) { affectedInput.max = qty; affectedInput.value = qty > 1 ? 1 : 1; }
+
+        toggleSplitPanel(asset.condition_status, qty, isChild);
         document.getElementById('editModal').classList.add('open');
+    }
+
+    function toggleSplitPanel(status, qty, isChild) {
+        const nonOp = ['Damaged', 'Needs Inspection', 'Under Maintenance'].includes(status);
+        const wrapper = document.getElementById('edit-split-wrapper');
+        // Show split panel only for parent assets (not children) with qty > 1 and a non-operational status
+        if (wrapper) wrapper.style.display = (nonOp && qty > 1 && !isChild) ? 'block' : 'none';
     }
 
     function showReviewChanges() {
@@ -1779,6 +1966,17 @@ if (!empty($search) || $status_filter) {
             }
             appendReviewRow('Asset Type / Category', oldCatName, newCatName);
             changesCount++;
+        }
+
+        // Include affected qty row in review if split panel is active
+        const splitWrapper = document.getElementById('edit-split-wrapper');
+        if (splitWrapper && splitWrapper.style.display !== 'none') {
+            const affectedQty = parseInt(document.getElementById('edit-affected-quantity').value) || 0;
+            const totalQty    = parseInt(document.getElementById('edit-quantity').value) || 1;
+            if (affectedQty > 0 && affectedQty < totalQty) {
+                appendReviewRow('Affected Items (Split Off)', 'All ' + totalQty + ' items', affectedQty + ' item(s) — rest remain Operational');
+                changesCount++;
+            }
         }
 
         if (changesCount > 0) {
