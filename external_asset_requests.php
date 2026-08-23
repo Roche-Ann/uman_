@@ -76,6 +76,56 @@ function build_asset_meta(PDO $pdo, int $assetId): array
 
 function h(?string $v): string { return htmlspecialchars((string)$v, ENT_QUOTES); }
 
+/**
+ * Checks utility asset inventory for available stock matching an external request.
+ */
+function get_request_asset_availability(string $reqAssetType, int $reqQty, array $allAvailableAssets): array
+{
+    $reqTypeLower = mb_strtolower(trim($reqAssetType));
+    $reqTokens = array_filter(preg_split('/[\s,\-\/&]+/', $reqTypeLower), function($t) { return mb_strlen($t) >= 3; });
+
+    $matchingAssets = [];
+    $totalAvailableQty = 0;
+
+    foreach ($allAvailableAssets as $asset) {
+        $typeNameLower = mb_strtolower(trim((string)($asset['asset_type'] ?? '')));
+        $assetNameLower = mb_strtolower(trim((string)($asset['name'] ?? '')));
+        $qty = intval($asset['quantity'] ?? 1);
+
+        $matches = false;
+        if ($typeNameLower !== '' && $reqTypeLower !== '' && ($typeNameLower === $reqTypeLower || stripos($typeNameLower, $reqTypeLower) !== false || stripos($reqTypeLower, $typeNameLower) !== false)) {
+            $matches = true;
+        } elseif ($reqTypeLower !== '' && stripos($assetNameLower, $reqTypeLower) !== false) {
+            $matches = true;
+        } else {
+            foreach ($reqTokens as $token) {
+                if (($typeNameLower !== '' && stripos($typeNameLower, $token) !== false) || stripos($assetNameLower, $token) !== false) {
+                    $matches = true;
+                    break;
+                }
+            }
+        }
+
+        if ($matches) {
+            $matchingAssets[] = $asset;
+            $totalAvailableQty += $qty;
+        }
+    }
+
+    $isSufficient = ($totalAvailableQty >= $reqQty && $reqQty > 0);
+    $isPartial = ($totalAvailableQty > 0 && $totalAvailableQty < $reqQty);
+    $isUnavailable = ($totalAvailableQty === 0);
+
+    return [
+        'available_qty'   => $totalAvailableQty,
+        'requested_qty'   => $reqQty,
+        'is_sufficient'   => $isSufficient,
+        'is_partial'      => $isPartial,
+        'is_unavailable'  => $isUnavailable,
+        'matching_assets' => $matchingAssets,
+    ];
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // POST handlers (for BOTH tabs — action= determines which one)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -433,13 +483,22 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $requests = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
-$assetsForFulfill = $pdo->query("
-    SELECT a.id, a.asset_id, a.name, t.name AS asset_type
-    FROM utility_assets a
-    JOIN asset_types t ON t.id = a.asset_type_id
-    WHERE a.condition_status IN ('Operational', 'Needs Inspection')
-    ORDER BY a.name ASC
-")->fetchAll(PDO::FETCH_ASSOC) ?: [];
+$allAvailableAssets = [];
+try {
+    $allAvailableAssets = $pdo->query("
+        SELECT a.id, a.asset_id, a.name, a.quantity, a.condition_status,
+               t.id AS type_id, t.name AS asset_type
+        FROM utility_assets a
+        JOIN asset_types t ON t.id = a.asset_type_id
+        WHERE a.condition_status IN ('Operational', 'Needs Inspection')
+          AND (a.cprf_custody_status IS NULL OR a.cprf_custody_status IN ('WAREHOUSED', 'LOAN_RETURNED'))
+          AND (a.cprf_facility_id IS NULL OR a.cprf_facility_id = 0)
+        ORDER BY t.name ASC, a.name ASC
+    ")->fetchAll(PDO::FETCH_ASSOC) ?: [];
+} catch (Throwable $e) {
+    $allAvailableAssets = [];
+}
+$assetsForFulfill = $allAvailableAssets;
 
 // ═════════════════════════════════════════════════════════════════════════════
 // Tab 2 — Facility Assignments: data preload (facilities + assignment panels)
@@ -754,6 +813,13 @@ foreach ($requests as $r) {
         .badge.count     { background:#e0e7ff; color:#3730a3; margin-left:6px; }
         .badge.ret-pending { background:#fecaca; color:#991b1b; margin-left:4px; }
         .badge.cant-assign { background:#e5e7eb; color:#475569; margin-left:6px; }
+        .badge.avail-sufficient { background: linear-gradient(135deg, #dcfce7, #bbf7d0); color: #166534; border: 1px solid #86efac; }
+        .badge.avail-partial    { background: linear-gradient(135deg, #fef3c7, #fde68a); color: #92400e; border: 1px solid #fcd34d; }
+        .badge.avail-none       { background: linear-gradient(135deg, #fee2e2, #fecaca); color: #991b1b; border: 1px solid #fca5a5; }
+        .avail-qty-sub { font-size: 11px; margin-top: 3px; }
+        .avail-match-chips { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 5px; }
+        .avail-chip { font-size: 10px; background: #f1f5f9; border: 1px solid #e2e8f0; padding: 2px 6px; border-radius: 4px; color: #475569; }
+        .dark-theme .avail-chip { background: #1e293b; border-color: #334155; color: #94a3b8; }
         .action-form {
             background: #f8fafc; border-radius: 10px; padding: 12px;
             margin-bottom: 8px; border: 1px solid #e2e8f0;
@@ -1029,13 +1095,15 @@ foreach ($requests as $r) {
                                 <th>Reference</th>
                                 <th>Facility (CPRF)</th>
                                 <th>Asset Type</th>
-                                <th>Qty</th>
+                                <th>Requested Qty</th>
+                                <th>Available in Stock</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach ($requests as $req): ?>
+                                <?php $avail = get_request_asset_availability($req['asset_type'], (int)$req['quantity'], $allAvailableAssets); ?>
                                 <tr>
                                     <td>
                                         <strong><?= htmlspecialchars($req['request_ref']); ?></strong><br>
@@ -1046,13 +1114,60 @@ foreach ($requests as $r) {
                                         <small>CPRF ID: <?= (int)$req['cprf_facility_id']; ?></small>
                                         <?php if (!empty($req['notes'])): ?><br><em><?= htmlspecialchars($req['notes']); ?></em><?php endif; ?>
                                     </td>
-                                    <td><?= htmlspecialchars($req['asset_type']); ?></td>
-                                    <td><strong><?= (int)$req['quantity']; ?></strong></td>
+                                    <td>
+                                        <strong><?= htmlspecialchars($req['asset_type']); ?></strong>
+                                    </td>
+                                    <td>
+                                        <strong style="font-size:14px; color:#1e293b;"><?= (int)$req['quantity']; ?></strong> <span class="muted" style="font-size:12px;">unit<?= ((int)$req['quantity'] !== 1) ? 's' : ''; ?></span>
+                                    </td>
+                                    <td>
+                                        <?php if ($req['status'] === 'fulfilled'): ?>
+                                            <span class="badge fulfilled"><i class="fas fa-check-circle"></i> Fulfilled</span>
+                                            <?php if (!empty($req['fulfilled_asset_name'])): ?>
+                                                <div class="fulfilled-link"><i class="fas fa-link"></i> <?= htmlspecialchars($req['fulfilled_asset_name']); ?></div>
+                                            <?php endif; ?>
+                                        <?php elseif ($req['status'] === 'rejected'): ?>
+                                            <span class="badge rejected"><i class="fas fa-ban"></i> Closed</span>
+                                        <?php else: ?>
+                                            <?php if ($avail['is_sufficient']): ?>
+                                                <span class="badge avail-sufficient">
+                                                    <i class="fas fa-check-circle"></i> <?= $avail['available_qty']; ?> In Stock
+                                                </span>
+                                                <div class="avail-qty-sub" style="color:#16a34a; font-weight:500;">
+                                                    <i class="fas fa-cubes"></i> Sufficient stock (<?= $avail['available_qty']; ?> of <?= $avail['requested_qty']; ?>)
+                                                </div>
+                                            <?php elseif ($avail['is_partial']): ?>
+                                                <span class="badge avail-partial">
+                                                    <i class="fas fa-exclamation-triangle"></i> <?= $avail['available_qty']; ?> In Stock
+                                                </span>
+                                                <div class="avail-qty-sub" style="color:#d97706; font-weight:500;">
+                                                    <i class="fas fa-cubes"></i> Partial shortage (<?= $avail['available_qty']; ?> of <?= $avail['requested_qty']; ?>)
+                                                </div>
+                                            <?php else: ?>
+                                                <span class="badge avail-none">
+                                                    <i class="fas fa-times-circle"></i> 0 In Stock
+                                                </span>
+                                                <div class="avail-qty-sub" style="color:#dc2626; font-weight:500;">
+                                                    <i class="fas fa-times"></i> No matching units available
+                                                </div>
+                                            <?php endif; ?>
+
+                                            <?php if (!empty($avail['matching_assets'])): ?>
+                                                <div class="avail-match-chips" title="Matching available warehouse units">
+                                                    <?php foreach (array_slice($avail['matching_assets'], 0, 3) as $m): ?>
+                                                        <span class="avail-chip" title="<?= htmlspecialchars($m['name'] . ' (' . $m['condition_status'] . ')'); ?>">
+                                                            <?= htmlspecialchars($m['asset_id']); ?>: <strong><?= intval($m['quantity']); ?> qty</strong>
+                                                        </span>
+                                                    <?php endforeach; ?>
+                                                    <?php if (count($avail['matching_assets']) > 3): ?>
+                                                        <span class="avail-chip">+<?= count($avail['matching_assets']) - 3; ?> more</span>
+                                                    <?php endif; ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        <?php endif; ?>
+                                    </td>
                                     <td>
                                         <span class="badge <?= htmlspecialchars($req['status']); ?>"><?= ucfirst($req['status']); ?></span>
-                                        <?php if (!empty($req['fulfilled_asset_name'])): ?>
-                                            <div class="fulfilled-link"><i class="fas fa-link"></i> <?= htmlspecialchars($req['fulfilled_asset_name']); ?></div>
-                                        <?php endif; ?>
                                     </td>
                                     <td>
                                         <?php if ($req['status'] === 'pending'): ?>
@@ -1082,10 +1197,28 @@ foreach ($requests as $r) {
                                                     <input type="hidden" name="id" value="<?= (int)$req['id']; ?>">
                                                     <input type="hidden" name="action" value="fulfill">
                                                     <select name="fulfilled_asset_id" required>
-                                                        <option value="">Link asset…</option>
-                                                        <?php foreach ($assetsForFulfill as $a): ?>
-                                                            <option value="<?= (int)$a['id']; ?>"><?= htmlspecialchars($a['asset_id'] . ' — ' . $a['name']); ?></option>
-                                                        <?php endforeach; ?>
+                                                        <option value="">Select asset to fulfill…</option>
+                                                        <?php if (!empty($avail['matching_assets'])): ?>
+                                                            <optgroup label="★ Matching Available (<?= count($avail['matching_assets']); ?>)">
+                                                                <?php foreach ($avail['matching_assets'] as $a): ?>
+                                                                    <option value="<?= (int)$a['id']; ?>">
+                                                                        <?= htmlspecialchars($a['asset_id'] . ' — ' . $a['name'] . ' (' . $a['quantity'] . ' available)'); ?>
+                                                                    </option>
+                                                                <?php endforeach; ?>
+                                                            </optgroup>
+                                                        <?php endif; ?>
+                                                        <optgroup label="All Available Assets">
+                                                            <?php foreach ($assetsForFulfill as $a): ?>
+                                                                <?php
+                                                                    $isAlreadyIn = false;
+                                                                    foreach ($avail['matching_assets'] as $ma) {
+                                                                        if ($ma['id'] == $a['id']) { $isAlreadyIn = true; break; }
+                                                                    }
+                                                                    if ($isAlreadyIn) continue;
+                                                                ?>
+                                                                <option value="<?= (int)$a['id']; ?>"><?= htmlspecialchars($a['asset_id'] . ' — ' . $a['name'] . ' (' . ($a['quantity'] ?? '1') . ' available)'); ?></option>
+                                                            <?php endforeach; ?>
+                                                        </optgroup>
                                                     </select>
                                                     <textarea name="review_notes" rows="2" placeholder="Fulfillment notes"></textarea>
                                                     <button class="btn btn-success" type="submit"><i class="fas fa-check-double"></i> Mark Fulfilled</button>
