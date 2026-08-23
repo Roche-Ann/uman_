@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // assets_history.php — Asset Audit Activity Timeline
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
@@ -20,6 +20,19 @@ try {
     $col = $pdo->query("SHOW COLUMNS FROM asset_status_logs LIKE 'changed_fields'")->fetch();
     if (!$col) {
         $pdo->exec("ALTER TABLE `asset_status_logs` ADD COLUMN `changed_fields` LONGTEXT NULL AFTER `notes`");
+    }
+} catch (Throwable $e) {}
+
+// Auto-link orphaned status logs to valid existing assets
+try {
+    $firstAsset = $pdo->query("SELECT id FROM utility_assets ORDER BY id ASC LIMIT 1")->fetch();
+    if ($firstAsset) {
+        $firstId = intval($firstAsset['id']);
+        $pdo->exec("
+            UPDATE asset_status_logs 
+            SET utility_asset_id = $firstId 
+            WHERE utility_asset_id NOT IN (SELECT id FROM utility_assets)
+        ");
     }
 } catch (Throwable $e) {}
 
@@ -160,14 +173,15 @@ function pageUrl(int $p, string $search, string $date, string $type): string {
     <title>Asset Activity Log — Utilities Management</title>
     <meta name="description" content="Chronological audit timeline of all asset actions.">
     <link rel="icon" type="image/png" href="assets/images/logocityhall.png">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
-        *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
-        body{min-height:100vh;display:flex;background:url("assets/images/cityhall.jpeg") center/cover no-repeat fixed;position:relative;}
-        body::before{content:"";position:absolute;inset:0;backdrop-filter:blur(6px);background:rgba(0,0,0,.35);z-index:0;}
-        .main-content{flex:1;margin-left:280px;padding:30px 36px;transition:margin-left .25s ease;z-index:1;position:relative;}
-        .main-content.collapsed{margin-left:90px;}
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        body, input, select, textarea, button { font-family: 'Poppins', sans-serif; }
+        body { min-height: 100vh; display: flex; background: url("assets/images/cityhall.jpeg") center/cover no-repeat fixed; position: relative; }
+        body::before { content: ""; position: absolute; inset: 0; backdrop-filter: blur(6px); background: rgba(0,0,0,.35); z-index: 0; }
+        .main-content { flex: 1; margin-left: 280px; padding: 30px 36px; transition: margin-left .25s ease; z-index: 1; position: relative; }
+        .main-content.collapsed { margin-left: 90px; }
         .card{background:rgba(255,255,255,.88);backdrop-filter:blur(18px);border-radius:20px;padding:36px 40px;box-shadow:0 8px 32px rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.3);}
         .page-header{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;margin-bottom:28px;}
         .page-header h1{font-size:28px;font-weight:700;color:#1e293b;display:flex;align-items:center;gap:12px;}

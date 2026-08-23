@@ -205,7 +205,16 @@ if (!isLoggedIn()) {
 }
 
 $userType = $_SESSION['user_type'] ?? '';
-$userId = $_SESSION['user_id'] ?? 1;
+$userId = intval($_SESSION['user_id'] ?? 1);
+if ($userId <= 0) $userId = 1;
+try {
+    $chkUser = $pdo->prepare("SELECT id FROM users WHERE id = ?");
+    $chkUser->execute([$userId]);
+    if (!$chkUser->fetch()) {
+        $firstU = $pdo->query("SELECT id FROM users ORDER BY id ASC LIMIT 1")->fetchColumn();
+        if ($firstU) $userId = intval($firstU);
+    }
+} catch (Throwable $e) {}
 
 $error = $_SESSION['flash_error'] ?? '';
 $success = $_SESSION['flash_success'] ?? '';
