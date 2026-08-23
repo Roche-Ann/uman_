@@ -613,7 +613,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     } catch (Throwable $ignored) {}
 
                     $_SESSION['flash_success'] = "Asset {$asset_id} updated successfully!";
-                    header('Location: ' . $_SERVER['PHP_SELF']);
+                    header('Location: ' . $_SERVER['PHP_SELF'] . ($condition_status === 'Retired' ? '?tab=retired' : ''));
                     exit();
                 }
             } catch (PDOException $e) {
@@ -621,6 +621,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 header('Location: ' . $_SERVER['PHP_SELF']);
                 exit();
             }
+        }
+    } elseif ($action === 'reactivate') {
+        $reactivateId = intval($_POST['id'] ?? 0);
+        $reactivateNote = trim($_POST['reactivate_notes'] ?? 'Asset restored from Retired status to Operational.');
+        if ($reactivateId > 0) {
+            try {
+                $aStmt = $pdo->prepare("SELECT asset_id, condition_status FROM utility_assets WHERE id = ?");
+                $aStmt->execute([$reactivateId]);
+                $targetAsset = $aStmt->fetch();
+                if ($targetAsset) {
+                    $pdo->prepare("UPDATE utility_assets SET condition_status = 'Operational' WHERE id = ?")->execute([$reactivateId]);
+                    
+                    // Log status change
+                    try {
+                        $diff = ['Status' => ['old' => $targetAsset['condition_status'], 'new' => 'Operational']];
+                        $pdo->prepare("
+                            INSERT INTO asset_status_logs (utility_asset_id, action_type, old_status, new_status, changed_by, notes, changed_fields)
+                            VALUES (?, 'status_changed', ?, 'Operational', ?, ?, ?)
+                        ")->execute([
+                            $reactivateId,
+                            $targetAsset['condition_status'],
+                            $userId,
+                            $reactivateNote,
+                            json_encode($diff, JSON_UNESCAPED_UNICODE)
+                        ]);
+                    } catch (Throwable $e) {}
+                    
+                    $_SESSION['flash_success'] = "Asset {$targetAsset['asset_id']} has been restored to Operational status.";
+                }
+            } catch (PDOException $e) {
+                $_SESSION['flash_error'] = "Failed to reactivate asset: " . $e->getMessage();
+            }
+            header('Location: ' . $_SERVER['PHP_SELF']);
+            exit();
         }
     } elseif ($action === 'delete_category') {
         $category_id = intval($_POST['category_id'] ?? 0);
@@ -641,19 +675,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // ------------------------------------------------------------------------
-// Get Search / Filter / Pagination parameters
+// Get Search / Filter / Tab / Pagination parameters
 // ------------------------------------------------------------------------
-$search = trim($_GET['search'] ?? '');
-$type_filter = !empty($_GET['type_id']) ? intval($_GET['type_id']) : null;
+$currentTab    = ($_GET['tab'] ?? 'active') === 'retired' ? 'retired' : 'active';
+$search        = trim($_GET['search'] ?? '');
+$type_filter   = !empty($_GET['type_id']) ? intval($_GET['type_id']) : null;
 $status_filter = !empty($_GET['status']) ? trim($_GET['status']) : null;
+
+// Tab counts
+$activeCount  = 0;
+$retiredCount = 0;
+try {
+    $activeCount  = intval($pdo->query("SELECT COUNT(*) FROM utility_assets WHERE condition_status != 'Retired'")->fetchColumn() ?: 0);
+    $retiredCount = intval($pdo->query("SELECT COUNT(*) FROM utility_assets WHERE condition_status = 'Retired'")->fetchColumn() ?: 0);
+} catch (Throwable $e) {}
 
 // Build asset WHERE conditions
 $conditions = [];
 $params = [];
 
+if ($currentTab === 'retired') {
+    $conditions[] = "a.condition_status = 'Retired'";
+} else {
+    $conditions[] = "a.condition_status != 'Retired'";
+    if ($status_filter) {
+        $conditions[] = "a.condition_status = ?";
+        $params[] = $status_filter;
+    }
+}
+
 if (!empty($search)) {
-    $conditions[] = "(a.name LIKE ? OR a.asset_id LIKE ?)";
+    $conditions[] = "(a.name LIKE ? OR a.asset_id LIKE ? OR a.location LIKE ?)";
     $searchWildcard = '%' . $search . '%';
+    $params[] = $searchWildcard;
     $params[] = $searchWildcard;
     $params[] = $searchWildcard;
 }
@@ -661,11 +715,6 @@ if (!empty($search)) {
 if ($type_filter) {
     $conditions[] = "a.asset_type_id = ?";
     $params[] = $type_filter;
-}
-
-if ($status_filter) {
-    $conditions[] = "a.condition_status = ?";
-    $params[] = $status_filter;
 }
 
 $whereClause = !empty($conditions) ? 'WHERE ' . implode(' AND ', $conditions) : '';
@@ -1333,6 +1382,82 @@ if (!empty($search) || $status_filter) {
             color: #166534;
             margin: 4px 0 10px;
         }
+        /* Inventory Tabs CSS */
+        .inventory-tabs {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 22px;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        .inventory-tab {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            color: #64748b;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            transition: all 0.2s ease;
+        }
+        .inventory-tab:hover {
+            color: #3762c8;
+            background: #eff6ff;
+            border-color: #bfdbfe;
+        }
+        .inventory-tab.active {
+            background: #3762c8;
+            color: #ffffff;
+            border-color: #3762c8;
+            box-shadow: 0 4px 12px rgba(55, 98, 200, 0.25);
+        }
+        .inventory-tab .tab-badge {
+            background: #e2e8f0;
+            color: #475569;
+            padding: 2px 8px;
+            border-radius: 99px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .inventory-tab.active .tab-badge {
+            background: rgba(255, 255, 255, 0.25);
+            color: #ffffff;
+        }
+        .inventory-tab.tab-retired.active {
+            background: #475569;
+            border-color: #475569;
+            box-shadow: 0 4px 12px rgba(71, 85, 105, 0.25);
+        }
+        .dark-theme .inventory-tabs {
+            border-bottom-color: #334155 !important;
+        }
+        .dark-theme .inventory-tab {
+            background: #1e293b !important;
+            border-color: #334155 !important;
+            color: #94a3b8 !important;
+        }
+        .dark-theme .inventory-tab:hover {
+            color: #93c5fd !important;
+            background: #151f32 !important;
+        }
+        .dark-theme .inventory-tab.active {
+            background: #3762c8 !important;
+            color: #ffffff !important;
+            border-color: #3762c8 !important;
+        }
+        .dark-theme .inventory-tab.tab-retired.active {
+            background: #334155 !important;
+            border-color: #475569 !important;
+        }
+        .dark-theme .inventory-tab .tab-badge {
+            background: #334155 !important;
+            color: #94a3b8 !important;
+        }
     </style>
 </head>
 <body>
@@ -1363,8 +1488,21 @@ if (!empty($search) || $status_filter) {
             <div class="alert alert-success" id="flash-success"><i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($success); ?></div>
         <?php endif; ?>
 
+        <!-- Inventory Navigation Tabs -->
+        <div class="inventory-tabs">
+            <a href="assets_crud.php?tab=active<?php echo $search ? '&search='.urlencode($search) : ''; ?><?php echo $type_filter ? '&type_id='.$type_filter : ''; ?>" class="inventory-tab <?php echo $currentTab === 'active' ? 'active' : ''; ?>">
+                <i class="fas fa-boxes"></i> Active Inventory
+                <span class="tab-badge"><?php echo number_format($activeCount); ?></span>
+            </a>
+            <a href="assets_crud.php?tab=retired<?php echo $search ? '&search='.urlencode($search) : ''; ?><?php echo $type_filter ? '&type_id='.$type_filter : ''; ?>" class="inventory-tab tab-retired <?php echo $currentTab === 'retired' ? 'active' : ''; ?>">
+                <i class="fas fa-archive"></i> Retired &amp; Decommissioned
+                <span class="tab-badge"><?php echo number_format($retiredCount); ?></span>
+            </a>
+        </div>
+
         <!-- Filters Form -->
         <form method="GET" class="filter-container">
+            <input type="hidden" name="tab" value="<?php echo htmlspecialchars($currentTab); ?>">
             <div class="form-group" style="flex: 2;">
                 <label>Search Asset</label>
                 <input type="text" name="search" class="form-control" placeholder="Search by name, ID, or location..." value="<?php echo htmlspecialchars($search); ?>">
@@ -1400,20 +1538,22 @@ if (!empty($search) || $status_filter) {
                 </div>
             </div>
 
+            <?php if ($currentTab === 'active'): ?>
             <div class="form-group">
                 <label>Status</label>
                 <select name="status" class="form-control">
-                    <option value="">All Statuses</option>
+                    <option value="">All Active Statuses</option>
                     <option value="Operational" <?php echo $status_filter === 'Operational' ? 'selected' : ''; ?>>Operational</option>
                     <option value="Needs Inspection" <?php echo $status_filter === 'Needs Inspection' ? 'selected' : ''; ?>>Needs Inspection</option>
                     <option value="Damaged" <?php echo $status_filter === 'Damaged' ? 'selected' : ''; ?>>Damaged</option>
                     <option value="Under Maintenance" <?php echo $status_filter === 'Under Maintenance' ? 'selected' : ''; ?>>Under Maintenance</option>
                 </select>
             </div>
+            <?php endif; ?>
 
             <div style="display: flex; gap: 8px;">
                 <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> Apply</button>
-                <a href="assets_crud.php" class="btn btn-outline">Reset</a>
+                <a href="assets_crud.php?tab=<?php echo $currentTab; ?>" class="btn btn-outline">Reset</a>
             </div>
         </form>
 
@@ -1433,7 +1573,9 @@ if (!empty($search) || $status_filter) {
                     </thead>
                     <tbody>
                         <?php if (empty($pagedGroups)): ?>
-                            <tr><td colspan="6" style="text-align:center; padding:30px; color:#64748b;">No assets found matching filters.</td></tr>
+                            <tr><td colspan="6" style="text-align:center; padding:30px; color:#64748b;">
+                                <?php echo $currentTab === 'retired' ? 'No retired or decommissioned assets found.' : 'No active assets found matching filters.'; ?>
+                            </td></tr>
                         <?php else: ?>
                             <?php foreach ($pagedGroups as $catId => $group): ?>
                             <?php
@@ -1506,6 +1648,9 @@ if (!empty($search) || $status_filter) {
                                                     </td>
                                                     <td style="text-align:right;">
                                                         <button class="btn-icon btn-icon-view" onclick='viewAsset(<?php echo json_encode($asset); ?>)' title="View Details"><i class="fas fa-eye"></i></button>
+                                                        <?php if ($currentTab === 'retired'): ?>
+                                                            <button class="btn-icon" style="color:#10b981;border-color:#a7f3d0;background:#ecfdf5;" onclick='openReactivateModal(<?php echo json_encode($asset); ?>)' title="Restore to Operational"><i class="fas fa-undo"></i></button>
+                                                        <?php endif; ?>
                                                         <button class="btn-icon btn-icon-edit" onclick='editAsset(<?php echo json_encode($asset); ?>)' title="Edit Asset"><i class="fas fa-edit"></i></button>
                                                     </td>
                                                 </tr>
@@ -1529,7 +1674,7 @@ if (!empty($search) || $status_filter) {
                 </div>
                 <div class="pagination-links">
                     <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-                        <a href="assets_crud.php?page=<?php echo $i; ?>&search=<?php echo urlencode($search); ?>&type_id=<?php echo $type_filter; ?>&status=<?php echo urlencode($status_filter); ?>" class="page-link <?php echo $page == $i ? 'active' : ''; ?>">
+                        <a href="assets_crud.php?page=<?php echo $i; ?>&tab=<?php echo $currentTab; ?>&search=<?php echo urlencode($search); ?>&type_id=<?php echo $type_filter; ?>&status=<?php echo urlencode($status_filter); ?>" class="page-link <?php echo $page == $i ? 'active' : ''; ?>">
                             <?php echo $i; ?>
                         </a>
                     <?php endfor; ?>
@@ -1829,6 +1974,33 @@ if (!empty($search) || $status_filter) {
     </div>
 </div>
 
+<!-- REACTIVATE ASSET MODAL -->
+<div id="reactivateModal" class="modal">
+    <div class="modal-content" style="max-width: 480px;">
+        <div class="modal-header" style="background:#ecfdf5;">
+            <h3 style="color:#065f46;"><i class="fas fa-undo"></i> Reactivate Asset</h3>
+            <button type="button" class="modal-close" onclick="closeModal('reactivateModal')">&times;</button>
+        </div>
+        <form method="POST">
+            <input type="hidden" name="action" value="reactivate">
+            <input type="hidden" id="reactivate-id" name="id">
+            <div class="modal-body" style="padding:20px 24px;">
+                <p style="font-size:13px; color:#475569; margin-bottom:14px;">
+                    You are restoring <strong id="reactivate-asset-title"></strong> back to <strong>Operational</strong> status. It will move to the Active Inventory tab.
+                </p>
+                <div class="form-group">
+                    <label>Recommissioning Reason / Notes</label>
+                    <input type="text" name="reactivate_notes" class="form-control" placeholder="e.g. Asset repaired / recommissioned into service" required value="Asset repaired and recommissioned into service.">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeModal('reactivateModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary" style="background:#10b981;border-color:#10b981;"><i class="fas fa-check"></i> Confirm Reactivation</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- HIDDEN FORM FOR CATEGORY DELETION -->
 <form id="delete-category-form" method="POST" style="display:none;">
     <input type="hidden" name="action" value="delete_category">
@@ -1837,6 +2009,12 @@ if (!empty($search) || $status_filter) {
 
 <script>
     let currentEditingAsset = null;
+
+    function openReactivateModal(asset) {
+        document.getElementById('reactivate-id').value = asset.id;
+        document.getElementById('reactivate-asset-title').textContent = asset.name + ' (' + asset.asset_id + ')';
+        document.getElementById('reactivateModal').classList.add('open');
+    }
 
     // Searchable Category Dropdown Logic
     document.addEventListener('DOMContentLoaded', () => {
