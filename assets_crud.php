@@ -181,6 +181,20 @@ try {
     }
 } catch (Throwable $e) {}
 
+// Auto-add audit columns to asset_status_logs if missing
+try {
+    $col = $pdo->query("SHOW COLUMNS FROM asset_status_logs LIKE 'action_type'")->fetch();
+    if (!$col) {
+        $pdo->exec("ALTER TABLE `asset_status_logs` ADD COLUMN `action_type` VARCHAR(50) NOT NULL DEFAULT 'status_changed' AFTER `utility_asset_id`");
+    }
+} catch (Throwable $e) {}
+try {
+    $col = $pdo->query("SHOW COLUMNS FROM asset_status_logs LIKE 'changed_fields'")->fetch();
+    if (!$col) {
+        $pdo->exec("ALTER TABLE `asset_status_logs` ADD COLUMN `changed_fields` JSON NULL AFTER `notes`");
+    }
+} catch (Throwable $e) {}
+
 if (!isLoggedIn()) {
     header('Location: login.php');
     exit();
@@ -315,12 +329,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 } catch (Throwable $ignored) {}
 
-                // Log Status (non-critical)
+                // Log creation with full snapshot (non-critical)
                 try {
+                    $snapshot = json_encode([
+                        'asset_id'           => $asset_id,
+                        'name'               => $name,
+                        'quantity'           => $quantity,
+                        'location'           => $location,
+                        'condition_status'   => $condition_status,
+                        'date_installed'     => $date_installed,
+                        'responsible_office' => $responsible_office,
+                        'description'        => $description,
+                    ], JSON_UNESCAPED_UNICODE);
                     $pdo->prepare("
-                        INSERT INTO asset_status_logs (utility_asset_id, old_status, new_status, changed_by, notes) 
-                        VALUES (?, NULL, ?, ?, 'Asset registered in system.')
-                    ")->execute([$id, $condition_status, $userId]);
+                        INSERT INTO asset_status_logs (utility_asset_id, action_type, old_status, new_status, changed_by, notes, changed_fields) 
+                        VALUES (?, 'asset_created', NULL, ?, ?, 'Asset registered in system.', ?)
+                    ")->execute([$id, $condition_status, $userId, $snapshot]);
                 } catch (Throwable $ignored) {}
 
                 // Create alert notification (non-critical)
@@ -472,34 +496,76 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ");
                     $stmt->execute([$name, $asset_type_id, $quantity, $location, $latitude, $longitude, $date_installed, $condition_status, $description, $responsible_office, $id]);
 
-                    // Log status change (non-critical)
-                    if ($oldAsset['condition_status'] !== $condition_status) {
+                    // --- Unified field-diff audit log (non-critical) ---
+                    try {
+                        // Fetch type name for comparison
+                        $oldTypeName = '';
+                        $newTypeName = '';
                         try {
-                            $pdo->prepare("
-                                INSERT INTO asset_status_logs (utility_asset_id, old_status, new_status, changed_by, notes) 
-                                VALUES (?, ?, ?, ?, ?)
-                            ")->execute([$id, $oldAsset['condition_status'], $condition_status, $userId, $status_notes ?: 'Status modified by administrator.']);
+                            $tStmt = $pdo->prepare("SELECT id, name FROM asset_types WHERE id IN (?, ?)");
+                            $tStmt->execute([$oldAsset['asset_type_id'] ?? 0, $asset_type_id]);
+                            foreach ($tStmt->fetchAll() as $t) {
+                                if ($t['id'] == ($oldAsset['asset_type_id'] ?? 0)) $oldTypeName = $t['name'];
+                                if ($t['id'] == $asset_type_id) $newTypeName = $t['name'];
+                            }
                         } catch (Throwable $ignored) {}
 
-                        // Trigger notification (non-critical)
-                        try {
-                            $notifType = ($condition_status === 'Damaged') ? 'reported_damaged' : 'status_changed';
-                            $pdo->prepare("
-                                INSERT INTO asset_notifications (type, message) 
-                                VALUES (?, ?)
-                            ")->execute([$notifType, "Asset {$asset_id} status changed from {$oldAsset['condition_status']} to {$condition_status}."]);
-                        } catch (Throwable $ignored) {}
-                    }
+                        $fieldLabels = [
+                            'name'               => ['Name',               $oldAsset['name'] ?? '',                $name],
+                            'quantity'           => ['Quantity',            $total_qty,                             $quantity],
+                            'location'           => ['Location',            $oldAsset['location'] ?? '',            $location],
+                            'condition_status'   => ['Status',              $oldAsset['condition_status'] ?? '',    $condition_status],
+                            'asset_type'         => ['Category',            $oldTypeName,                          $newTypeName],
+                            'date_installed'     => ['Date Installed',      $oldAsset['date_installed'] ?? '',      $date_installed],
+                            'responsible_office' => ['Responsible Office',  $oldAsset['responsible_office'] ?? '', $responsible_office],
+                            'description'        => ['Description',         $oldAsset['description'] ?? '',        $description],
+                        ];
 
-                    // Log location change (non-critical)
-                    if ($oldAsset['location'] !== $location) {
-                        try {
+                        $diff = [];
+                        foreach ($fieldLabels as $key => [$label, $old, $new]) {
+                            if (strval($old) !== strval($new)) {
+                                $diff[$label] = ['old' => strval($old), 'new' => strval($new)];
+                            }
+                        }
+
+                        $actionType = ($oldAsset['condition_status'] !== $condition_status)
+                            ? 'status_changed'
+                            : (empty($diff) ? 'asset_edited' : 'asset_edited');
+
+                        if (!empty($diff) || $oldAsset['condition_status'] !== $condition_status) {
                             $pdo->prepare("
-                                INSERT INTO asset_locations (utility_asset_id, old_location, new_location, old_latitude, new_latitude, old_longitude, new_longitude, changed_by) 
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                            ")->execute([$id, $oldAsset['location'], $location, $oldAsset['latitude'], $latitude, $oldAsset['longitude'], $longitude, $userId]);
-                        } catch (Throwable $ignored) {}
-                    }
+                                INSERT INTO asset_status_logs (utility_asset_id, action_type, old_status, new_status, changed_by, notes, changed_fields)
+                                VALUES (?, ?, ?, ?, ?, ?, ?)
+                            ")->execute([
+                                $id,
+                                $actionType,
+                                $oldAsset['condition_status'],
+                                $condition_status,
+                                $userId,
+                                $status_notes ?: (empty($diff) ? 'Status modified.' : 'Asset details updated.'),
+                                !empty($diff) ? json_encode($diff, JSON_UNESCAPED_UNICODE) : null
+                            ]);
+                        }
+
+                        // Trigger notification only for status changes (non-critical)
+                        if ($oldAsset['condition_status'] !== $condition_status) {
+                            try {
+                                $notifType = ($condition_status === 'Damaged') ? 'reported_damaged' : 'status_changed';
+                                $pdo->prepare("INSERT INTO asset_notifications (type, message) VALUES (?, ?)")
+                                    ->execute([$notifType, "Asset {$asset_id} status changed from {$oldAsset['condition_status']} to {$condition_status}."]);
+                            } catch (Throwable $ignored) {}
+                        }
+
+                        // Log location change in asset_locations table too (non-critical)
+                        if ($oldAsset['location'] !== $location) {
+                            try {
+                                $pdo->prepare("
+                                    INSERT INTO asset_locations (utility_asset_id, old_location, new_location, old_latitude, new_latitude, old_longitude, new_longitude, changed_by)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                                ")->execute([$id, $oldAsset['location'], $location, $oldAsset['latitude'], $latitude, $oldAsset['longitude'], $longitude, $userId]);
+                            } catch (Throwable $ignored) {}
+                        }
+                    } catch (Throwable $ignored) {}
 
                     // Handle Image Upload (non-critical)
                     try {
@@ -1476,6 +1542,7 @@ if (!empty($search) || $status_filter) {
                             <option value="Needs Inspection">Needs Inspection</option>
                             <option value="Damaged">Damaged</option>
                             <option value="Under Maintenance">Under Maintenance</option>
+                            <option value="Retired">Retired</option>
                         </select>
                     </div>
                 </div>
@@ -1564,6 +1631,7 @@ if (!empty($search) || $status_filter) {
                             <option value="Needs Inspection">Needs Inspection</option>
                             <option value="Damaged">Damaged</option>
                             <option value="Under Maintenance">Under Maintenance</option>
+                            <option value="Retired">Retired</option>
                         </select>
                     </div>
                 </div>
