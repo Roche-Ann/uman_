@@ -1130,7 +1130,7 @@ function sidebarActive(string $page, string $current): string {
                 </a>
             </li>
             <li>
-                <a href="<?php echo $sidebarBase; ?>assets_crud.php" class="nav-link<?php echo ($currentPage === 'assets_crud.php' || (strpos($currentPage, 'assets_') === 0 && $currentPage !== 'assets_dashboard.php')) ? ' active' : ''; ?>">
+                <a href="<?php echo $sidebarBase; ?>assets_crud.php" class="nav-link<?php echo ($currentPage === 'assets_crud.php') ? ' active' : ''; ?>">
                     <i class="fas fa-warehouse"></i>
                     <span class="link-label">Asset Inventory</span>
                 </a>
