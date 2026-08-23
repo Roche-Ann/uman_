@@ -430,8 +430,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 if ($oldAsset) {
                     $asset_id = $oldAsset['asset_id'];
-                    $latitude = $oldAsset['latitude'];
-                    $longitude = $oldAsset['longitude'];
+                    $latitude = (isset($oldAsset['latitude']) && is_numeric($oldAsset['latitude'])) ? (float)$oldAsset['latitude'] : null;
+                    $longitude = (isset($oldAsset['longitude']) && is_numeric($oldAsset['longitude'])) ? (float)$oldAsset['longitude'] : null;
                     $total_qty = intval($oldAsset['quantity']);
                     $is_non_operational = in_array($condition_status, ['Damaged', 'Needs Inspection', 'Under Maintenance']);
                     $is_child = !empty($oldAsset['parent_asset_id']);
@@ -1973,7 +1973,7 @@ if (!empty($search) || $status_filter) {
         const splitMax = document.getElementById('edit-split-max');
         const affectedInput = document.getElementById('edit-affected-quantity');
         if (splitMax) splitMax.textContent = qty;
-        if (affectedInput) { affectedInput.max = qty; affectedInput.value = qty > 1 ? 1 : 1; }
+        if (affectedInput) { affectedInput.max = qty; affectedInput.value = qty; }
 
         toggleSplitPanel(asset.condition_status, qty, isChild);
         document.getElementById('editModal').classList.add('open');

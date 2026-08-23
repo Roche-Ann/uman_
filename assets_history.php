@@ -23,18 +23,26 @@ try {
     }
 } catch (Throwable $e) {}
 
-// Auto-link orphaned status logs to valid existing assets
+// Remove legacy initial seeding placeholder logs
 try {
-    $firstAsset = $pdo->query("SELECT id FROM utility_assets ORDER BY id ASC LIMIT 1")->fetch();
-    if ($firstAsset) {
-        $firstId = intval($firstAsset['id']);
-        $pdo->exec("
-            UPDATE asset_status_logs 
-            SET utility_asset_id = $firstId 
-            WHERE utility_asset_id NOT IN (SELECT id FROM utility_assets)
-        ");
-    }
+    $pdo->exec("DELETE FROM asset_status_logs WHERE notes LIKE '%Initial seeding%' OR (changed_at < '2026-08-01' AND notes LIKE '%seeding%')");
 } catch (Throwable $e) {}
+
+// Handle Clear All Logs POST request
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'clear_all_logs') {
+    try {
+        $pdo->exec("TRUNCATE TABLE asset_status_logs");
+        $_SESSION['flash_success'] = "All activity logs have been cleared successfully.";
+    } catch (Throwable $e) {
+        $_SESSION['flash_error'] = "Failed to clear logs: " . $e->getMessage();
+    }
+    header('Location: assets_history.php');
+    exit();
+}
+
+$error   = $_SESSION['flash_error'] ?? '';
+$success = $_SESSION['flash_success'] ?? '';
+unset($_SESSION['flash_error'], $_SESSION['flash_success']);
 
 $search      = trim($_GET['search']      ?? '');
 $filterDate  = trim($_GET['date']        ?? '');
@@ -275,8 +283,23 @@ function pageUrl(int $p, string $search, string $date, string $type): string {
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
             <a href="assets_crud.php" class="btn btn-outline"><i class="fas fa-boxes"></i> Inventory</a>
             <a href="assets_dashboard.php" class="btn btn-outline"><i class="fas fa-chart-pie"></i> Dashboard</a>
+            <form method="POST" onsubmit="return confirm('Are you sure you want to clear all activity logs? This action cannot be undone.');" style="display:inline;">
+                <input type="hidden" name="action" value="clear_all_logs">
+                <button type="submit" class="btn btn-outline" style="color:#ef4444;border-color:#fca5a5;"><i class="fas fa-trash-alt"></i> Clear Logs</button>
+            </form>
         </div>
     </div>
+
+    <?php if (!empty($success)): ?>
+        <div style="background:#ecfdf5;border:1px solid #6ee7b7;color:#065f46;padding:12px 16px;border-radius:10px;margin-bottom:20px;font-size:13px;display:flex;align-items:center;gap:8px;">
+            <i class="fas fa-check-circle" style="color:#10b981;"></i> <?php echo htmlspecialchars($success); ?>
+        </div>
+    <?php endif; ?>
+    <?php if (!empty($error)): ?>
+        <div style="background:#fef2f2;border:1px solid #fca5a5;color:#991b1b;padding:12px 16px;border-radius:10px;margin-bottom:20px;font-size:13px;display:flex;align-items:center;gap:8px;">
+            <i class="fas fa-exclamation-circle" style="color:#ef4444;"></i> <?php echo htmlspecialchars($error); ?>
+        </div>
+    <?php endif; ?>
 
     <!-- Filter Bar -->
     <form method="GET" class="filter-bar">
