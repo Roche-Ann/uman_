@@ -8,6 +8,21 @@ if (!isLoggedIn()) {
     exit();
 }
 
+// Ensure schema is up to date (idempotent, fast check)
+try {
+    $col = $pdo->query("SHOW COLUMNS FROM asset_status_logs LIKE 'action_type'")->fetch();
+    if (!$col) {
+        $pdo->exec("ALTER TABLE `asset_status_logs` ADD COLUMN `action_type` VARCHAR(50) NOT NULL DEFAULT 'status_changed' AFTER `utility_asset_id`");
+    }
+} catch (Throwable $e) {}
+
+try {
+    $col = $pdo->query("SHOW COLUMNS FROM asset_status_logs LIKE 'changed_fields'")->fetch();
+    if (!$col) {
+        $pdo->exec("ALTER TABLE `asset_status_logs` ADD COLUMN `changed_fields` LONGTEXT NULL AFTER `notes`");
+    }
+} catch (Throwable $e) {}
+
 $search      = trim($_GET['search']      ?? '');
 $filterDate  = trim($_GET['date']        ?? '');
 $filterType  = trim($_GET['action_type'] ?? '');
@@ -18,34 +33,91 @@ $searchParam = '%' . $search . '%';
 
 $where  = [];
 $params = [];
-if ($search !== '') { $where[] = '(a.asset_id LIKE ? OR a.name LIKE ?)'; $params[] = $searchParam; $params[] = $searchParam; }
-if ($filterDate !== '') { $where[] = 'DATE(l.changed_at) = ?'; $params[] = $filterDate; }
-if ($filterType !== '') { $where[] = 'l.action_type = ?'; $params[] = $filterType; }
+if ($search !== '') {
+    $where[] = '(a.asset_id LIKE ? OR a.name LIKE ? OR l.notes LIKE ?)';
+    $params[] = $searchParam;
+    $params[] = $searchParam;
+    $params[] = $searchParam;
+}
+if ($filterDate !== '') {
+    $where[] = 'DATE(l.changed_at) = ?';
+    $params[] = $filterDate;
+}
+if ($filterType !== '') {
+    $where[] = 'COALESCE(l.action_type, "status_changed") = ?';
+    $params[] = $filterType;
+}
 $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
 
+$totalLogs  = 0;
+$totalPages = 1;
 try {
-    $countStmt = $pdo->prepare("SELECT COUNT(*) FROM asset_status_logs l LEFT JOIN utility_assets a ON l.utility_asset_id = a.id $whereSql");
+    $countStmt = $pdo->prepare("
+        SELECT COUNT(*) 
+        FROM asset_status_logs l 
+        LEFT JOIN utility_assets a ON l.utility_asset_id = a.id 
+        $whereSql
+    ");
     $countStmt->execute($params);
     $totalLogs  = (int)$countStmt->fetchColumn();
     $totalPages = max(1, ceil($totalLogs / $limit));
-} catch (Throwable $e) { $totalLogs = 0; $totalPages = 1; }
+} catch (Throwable $e) {
+    try {
+        $totalLogs = (int)$pdo->query("SELECT COUNT(*) FROM asset_status_logs")->fetchColumn();
+        $totalPages = max(1, ceil($totalLogs / $limit));
+    } catch (Throwable $e2) {
+        $totalLogs = 0; $totalPages = 1;
+    }
+}
 
 $logs = [];
 try {
     $stmt = $pdo->prepare("
-        SELECT l.id, l.action_type, l.old_status, l.new_status, l.notes, l.changed_fields, l.changed_at,
-               a.asset_id, a.name AS asset_name, a.parent_asset_id,
-               u.full_name AS user_name
+        SELECT l.id, 
+               COALESCE(l.action_type, 'status_changed') AS action_type, 
+               l.old_status, 
+               l.new_status, 
+               l.notes, 
+               l.changed_fields, 
+               l.changed_at,
+               COALESCE(a.asset_id, CONCAT('Asset #', l.utility_asset_id)) AS asset_id, 
+               COALESCE(a.name, 'Registered Utility Asset') AS asset_name, 
+               a.parent_asset_id,
+               COALESCE(u.full_name, 'System Administrator') AS user_name
         FROM asset_status_logs l
         LEFT JOIN utility_assets a ON l.utility_asset_id = a.id
         LEFT JOIN users u ON l.changed_by = u.id
         $whereSql
-        ORDER BY l.changed_at DESC
+        ORDER BY l.changed_at DESC, l.id DESC
         LIMIT $limit OFFSET $offset
     ");
     $stmt->execute($params);
     $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (Throwable $e) { $logs = []; }
+} catch (Throwable $e) {
+    // Graceful fallback query in case of custom schema differences
+    try {
+        $fallbackStmt = $pdo->query("
+            SELECT l.id, 
+                   'status_changed' AS action_type, 
+                   l.old_status, 
+                   l.new_status, 
+                   l.notes, 
+                   NULL AS changed_fields, 
+                   l.changed_at,
+                   COALESCE(a.asset_id, CONCAT('Asset #', l.utility_asset_id)) AS asset_id, 
+                   COALESCE(a.name, 'Utility Asset') AS asset_name, 
+                   a.parent_asset_id,
+                   'Administrator' AS user_name
+            FROM asset_status_logs l
+            LEFT JOIN utility_assets a ON l.utility_asset_id = a.id
+            ORDER BY l.changed_at DESC, l.id DESC
+            LIMIT 40
+        ");
+        $logs = $fallbackStmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $e2) {
+        $logs = [];
+    }
+}
 
 $grouped = [];
 foreach ($logs as $log) {
@@ -53,22 +125,24 @@ foreach ($logs as $log) {
     $grouped[$day][] = $log;
 }
 
-function actionMeta(string $type): array {
-    return match($type) {
+function actionMeta(?string $type): array {
+    $t = strtolower(trim((string)$type));
+    if (!$t) $t = 'status_changed';
+    return match($t) {
         'asset_created'  => ['icon' => 'fa-plus-circle',  'color' => '#10b981', 'bg' => '#ecfdf5', 'label' => 'Asset Registered'],
         'asset_edited'   => ['icon' => 'fa-pen',          'color' => '#3762c8', 'bg' => '#eff6ff', 'label' => 'Details Edited'],
         'status_changed' => ['icon' => 'fa-exchange-alt', 'color' => '#f59e0b', 'bg' => '#fffbeb', 'label' => 'Status Changed'],
         'split_created'  => ['icon' => 'fa-scissors',     'color' => '#8b5cf6', 'bg' => '#f5f3ff', 'label' => 'Quantity Split'],
         'split_merged'   => ['icon' => 'fa-link',         'color' => '#0891b2', 'bg' => '#ecfeff', 'label' => 'Split Merged'],
-        default          => ['icon' => 'fa-circle',       'color' => '#94a3b8', 'bg' => '#f8fafc', 'label' => ucwords(str_replace('_',' ',$type))],
+        default          => ['icon' => 'fa-circle',       'color' => '#94a3b8', 'bg' => '#f8fafc', 'label' => ucwords(str_replace('_',' ', $t))],
     };
 }
 
 $actionTypes = [
-    '' => 'All Actions',
-    'asset_created'  => 'Asset Registered',
-    'asset_edited'   => 'Details Edited',
+    ''               => 'All Actions',
     'status_changed' => 'Status Changed',
+    'asset_edited'   => 'Details Edited',
+    'asset_created'  => 'Asset Registered',
     'split_created'  => 'Quantity Split',
     'split_merged'   => 'Split Merged',
 ];
@@ -193,8 +267,8 @@ function pageUrl(int $p, string $search, string $date, string $type): string {
     <!-- Filter Bar -->
     <form method="GET" class="filter-bar">
         <div class="filter-group" style="flex:2;min-width:200px;">
-            <label><i class="fas fa-search" style="margin-right:4px;"></i> Search Asset</label>
-            <input type="text" name="search" class="form-control" placeholder="Asset ID or name…" value="<?php echo htmlspecialchars($search); ?>">
+            <label><i class="fas fa-search" style="margin-right:4px;"></i> Search Asset / Notes</label>
+            <input type="text" name="search" class="form-control" placeholder="Asset ID, name, or note keyword…" value="<?php echo htmlspecialchars($search); ?>">
         </div>
         <div class="filter-group">
             <label><i class="fas fa-calendar-day" style="margin-right:4px;"></i> Date</label>
@@ -216,12 +290,14 @@ function pageUrl(int $p, string $search, string $date, string $type): string {
 
     <!-- Stats chips -->
     <?php
-    try { $statsRows = $pdo->query("SELECT action_type, COUNT(*) as cnt FROM asset_status_logs GROUP BY action_type")->fetchAll(PDO::FETCH_KEY_PAIR); }
-    catch (Throwable $e) { $statsRows = []; }
+    $statsRows = [];
+    try { 
+        $statsRows = $pdo->query("SELECT COALESCE(action_type, 'status_changed') as action_type, COUNT(*) as cnt FROM asset_status_logs GROUP BY action_type")->fetchAll(PDO::FETCH_KEY_PAIR); 
+    } catch (Throwable $e) {}
     $chipDefs = [
-        ['asset_created','#10b981','#ecfdf5','fa-plus-circle'],
         ['status_changed','#f59e0b','#fffbeb','fa-exchange-alt'],
         ['asset_edited','#3762c8','#eff6ff','fa-pen'],
+        ['asset_created','#10b981','#ecfdf5','fa-plus-circle'],
         ['split_created','#8b5cf6','#f5f3ff','fa-scissors'],
         ['split_merged','#0891b2','#ecfeff','fa-link'],
     ];
@@ -235,7 +311,7 @@ function pageUrl(int $p, string $search, string $date, string $type): string {
         <?php endforeach;?>
         <div class="stat-chip" style="background:#f8fafc;border-color:#e2e8f0;color:#475569;margin-left:auto;">
             <i class="fas fa-list-ol"></i>
-            <div><div class="stat-num"><?php echo number_format($totalLogs);?></div><div style="font-size:10px;font-weight:600;opacity:.75;">Filtered Results</div></div>
+            <div><div class="stat-num"><?php echo number_format($totalLogs);?></div><div style="font-size:10px;font-weight:600;opacity:.75;">Total Logs</div></div>
         </div>
     </div>
 
@@ -244,7 +320,7 @@ function pageUrl(int $p, string $search, string $date, string $type): string {
         <div class="empty-state">
             <i class="fas fa-scroll"></i>
             <h3>No activity logs found</h3>
-            <p>Try adjusting your filters or perform some asset actions to generate logs.</p>
+            <p>Try adjusting your filters or update an asset in inventory to generate logs.</p>
         </div>
     <?php else: ?>
         <?php foreach ($grouped as $day => $entries):
@@ -264,13 +340,19 @@ function pageUrl(int $p, string $search, string $date, string $type): string {
             </div>
             <div class="timeline">
             <?php foreach ($entries as $log):
-                $meta = actionMeta($log['action_type'] ?? 'status_changed');
+                $actionVal = $log['action_type'] ?? 'status_changed';
+                $meta = actionMeta($actionVal);
                 $diff = [];
                 if (!empty($log['changed_fields'])) {
                     $decoded = json_decode($log['changed_fields'], true);
                     if (is_array($decoded)) $diff = $decoded;
                 }
-                $spClass = fn(string $s) => 'sp-' . strtolower(preg_replace('/[^a-zA-Z]/','',$s));
+                $oldStatus = trim((string)($log['old_status'] ?? ''));
+                $newStatus = trim((string)($log['new_status'] ?? ''));
+                $spClass = function(?string $s): string {
+                    $clean = strtolower(preg_replace('/[^a-zA-Z]/','', (string)$s));
+                    return $clean ? 'sp-' . $clean : 'sp-null';
+                };
             ?>
             <div class="timeline-item">
                 <div class="tl-dot" style="background:<?php echo $meta['color'];?>;"></div>
@@ -279,7 +361,7 @@ function pageUrl(int $p, string $search, string $date, string $type): string {
                         <div>
                             <div><span class="tl-action-badge" style="background:<?php echo $meta['bg'];?>;color:<?php echo $meta['color'];?>;"><i class="fas <?php echo $meta['icon'];?>"></i><?php echo $meta['label'];?></span></div>
                             <div class="tl-asset-name">
-                                <?php echo htmlspecialchars($log['asset_name'] ?? '(Deleted Asset)');?>
+                                <?php echo htmlspecialchars($log['asset_name'] ?? 'Utility Asset');?>
                                 <?php if (!empty($log['parent_asset_id'])): ?><span style="font-size:10px;background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:4px;margin-left:6px;font-weight:700;">OFFSHOOT</span><?php endif;?>
                             </div>
                             <div class="tl-asset-id"><?php echo htmlspecialchars($log['asset_id'] ?? '—');?></div>
@@ -290,11 +372,11 @@ function pageUrl(int $p, string $search, string $date, string $type): string {
                         </div>
                     </div>
 
-                    <?php if (($log['old_status'] ?? '') !== '' || ($log['new_status'] ?? '') !== ''): ?>
+                    <?php if ($oldStatus !== '' || $newStatus !== ''): ?>
                     <div class="status-flow">
-                        <span class="status-pill <?php echo $spClass($log['old_status'] ?? '');?>"><?php echo htmlspecialchars($log['old_status'] ?: 'None');?></span>
+                        <span class="status-pill <?php echo $spClass($oldStatus);?>"><?php echo htmlspecialchars($oldStatus !== '' ? $oldStatus : 'None');?></span>
                         <i class="fas fa-arrow-right" style="color:#94a3b8;font-size:11px;"></i>
-                        <span class="status-pill <?php echo $spClass($log['new_status'] ?? '');?>"><?php echo htmlspecialchars($log['new_status'] ?: 'N/A');?></span>
+                        <span class="status-pill <?php echo $spClass($newStatus);?>"><?php echo htmlspecialchars($newStatus !== '' ? $newStatus : 'N/A');?></span>
                     </div>
                     <?php endif;?>
 
@@ -304,9 +386,9 @@ function pageUrl(int $p, string $search, string $date, string $type): string {
                         <tbody>
                             <?php foreach ($diff as $field => $change): ?>
                             <tr>
-                                <td class="diff-field"><?php echo htmlspecialchars($field);?></td>
-                                <td><span class="diff-old"><?php echo htmlspecialchars($change['old'] ?: '—');?></span></td>
-                                <td><span class="diff-new"><?php echo htmlspecialchars($change['new'] ?: '—');?></span></td>
+                                <td class="diff-field"><?php echo htmlspecialchars((string)$field);?></td>
+                                <td><span class="diff-old"><?php echo htmlspecialchars((string)($change['old'] ?? '—'));?></span></td>
+                                <td><span class="diff-new"><?php echo htmlspecialchars((string)($change['new'] ?? '—'));?></span></td>
                             </tr>
                             <?php endforeach;?>
                         </tbody>
@@ -314,7 +396,7 @@ function pageUrl(int $p, string $search, string $date, string $type): string {
                     <?php endif;?>
 
                     <?php if (!empty($log['notes'])): ?>
-                    <div class="tl-notes"><i class="fas fa-comment-alt" style="margin-right:5px;"></i><?php echo htmlspecialchars($log['notes']);?></div>
+                    <div class="tl-notes"><i class="fas fa-comment-alt" style="margin-right:5px;"></i><?php echo htmlspecialchars((string)$log['notes']);?></div>
                     <?php endif;?>
                 </div>
             </div>

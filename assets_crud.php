@@ -170,7 +170,7 @@ function ensureAssetsSchema($pdo) {
 
 ensureAssetsSchema($pdo);
 
-// Auto-add parent_asset_id column for asset-splitting feature (idempotent: fast no-op if column already exists)
+// Auto-migrate schema updates for utility_assets and asset_status_logs
 try {
     $col = $pdo->query("SHOW COLUMNS FROM utility_assets LIKE 'parent_asset_id'")->fetch();
     if (!$col) {
@@ -181,17 +181,21 @@ try {
     }
 } catch (Throwable $e) {}
 
-// Auto-add audit columns to asset_status_logs if missing
+try {
+    $pdo->exec("ALTER TABLE `utility_assets` MODIFY COLUMN `condition_status` VARCHAR(50) NOT NULL DEFAULT 'Operational'");
+} catch (Throwable $e) {}
+
 try {
     $col = $pdo->query("SHOW COLUMNS FROM asset_status_logs LIKE 'action_type'")->fetch();
     if (!$col) {
         $pdo->exec("ALTER TABLE `asset_status_logs` ADD COLUMN `action_type` VARCHAR(50) NOT NULL DEFAULT 'status_changed' AFTER `utility_asset_id`");
     }
 } catch (Throwable $e) {}
+
 try {
     $col = $pdo->query("SHOW COLUMNS FROM asset_status_logs LIKE 'changed_fields'")->fetch();
     if (!$col) {
-        $pdo->exec("ALTER TABLE `asset_status_logs` ADD COLUMN `changed_fields` JSON NULL AFTER `notes`");
+        $pdo->exec("ALTER TABLE `asset_status_logs` ADD COLUMN `changed_fields` LONGTEXT NULL AFTER `notes`");
     }
 } catch (Throwable $e) {}
 
@@ -528,48 +532,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         $diff = [];
                         foreach ($fieldLabels as $key => [$label, $old, $new]) {
-                            if (strval($old) !== strval($new)) {
+                            if (trim(strval($old)) !== trim(strval($new))) {
                                 $diff[$label] = ['old' => strval($old), 'new' => strval($new)];
                             }
                         }
 
-                        $actionType = ($oldAsset['condition_status'] !== $condition_status)
-                            ? 'status_changed'
-                            : (empty($diff) ? 'asset_edited' : 'asset_edited');
+                        $isStatusChanged = (trim(strval($oldAsset['condition_status'] ?? '')) !== trim(strval($condition_status)));
+                        $actionType = $isStatusChanged ? 'status_changed' : 'asset_edited';
+                        $finalNotes = $status_notes ?: ($isStatusChanged ? "Status changed from {$oldAsset['condition_status']} to {$condition_status}." : (empty($diff) ? "Asset record updated." : "Asset details modified."));
+                        $diffJson = !empty($diff) ? json_encode($diff, JSON_UNESCAPED_UNICODE) : null;
 
-                        if (!empty($diff) || $oldAsset['condition_status'] !== $condition_status) {
-                            // Try full insert with action_type + changed_fields; fall back to basic insert if columns missing
-                            $logged = false;
+                        // Insert audit log (guaranteed execution)
+                        $logged = false;
+                        try {
+                            $pdo->prepare("
+                                INSERT INTO asset_status_logs (utility_asset_id, action_type, old_status, new_status, changed_by, notes, changed_fields)
+                                VALUES (?, ?, ?, ?, ?, ?, ?)
+                            ")->execute([
+                                $id,
+                                $actionType,
+                                $oldAsset['condition_status'] ?? 'Operational',
+                                $condition_status,
+                                $userId,
+                                $finalNotes,
+                                $diffJson
+                            ]);
+                            $logged = true;
+                        } catch (Throwable $e) {}
+
+                        if (!$logged) {
                             try {
                                 $pdo->prepare("
-                                    INSERT INTO asset_status_logs (utility_asset_id, action_type, old_status, new_status, changed_by, notes, changed_fields)
-                                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                                    INSERT INTO asset_status_logs (utility_asset_id, old_status, new_status, changed_by, notes)
+                                    VALUES (?, ?, ?, ?, ?)
                                 ")->execute([
                                     $id,
-                                    $actionType,
-                                    $oldAsset['condition_status'],
+                                    $oldAsset['condition_status'] ?? 'Operational',
                                     $condition_status,
                                     $userId,
-                                    $status_notes ?: (empty($diff) ? 'Status modified.' : 'Asset details updated.'),
-                                    !empty($diff) ? json_encode($diff, JSON_UNESCAPED_UNICODE) : null
+                                    $finalNotes
                                 ]);
-                                $logged = true;
                             } catch (Throwable $ignored) {}
-                            // Fallback: plain insert without new columns (compatibility)
-                            if (!$logged) {
-                                try {
-                                    $pdo->prepare("
-                                        INSERT INTO asset_status_logs (utility_asset_id, old_status, new_status, changed_by, notes)
-                                        VALUES (?, ?, ?, ?, ?)
-                                    ")->execute([
-                                        $id,
-                                        $oldAsset['condition_status'],
-                                        $condition_status,
-                                        $userId,
-                                        $status_notes ?: 'Status or details updated.',
-                                    ]);
-                                } catch (Throwable $ignored) {}
-                            }
                         }
 
                         // Trigger notification only for status changes (non-critical)
