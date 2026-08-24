@@ -116,8 +116,7 @@ if (empty($assetAiRecs)) {
 
 // AI Narrative for assets
 $assetAiNarrative = "<strong>AI Asset Intelligence Report — " . date('F d, Y') . "</strong><br><br>";
-$assetAiNarrative .= "📊 <strong>Health Score:</strong> <span style='font-size:18px;font-weight:700;'>{$assetHealthScore}%</span> of assets operational.<br>";
-$assetAiNarrative .= "🏗️ <strong>Portfolio:</strong> {$totalAssets} total assets — {$operationalAssets} operational, {$damagedAssets} damaged, {$needsInspection} needing inspection, {$underMaintenance} under maintenance.<br><br>";
+$assetAiNarrative .= "📊 <strong>Health Score:</strong> <span style='font-size:18px;font-weight:700;'>{$assetHealthScore}%</span> of assets operational.<br><br>";
 if ($damagedNoMaint > 0) {
     $assetAiNarrative .= "⚠️ <strong>Alert:</strong> {$damagedNoMaint} damaged asset(s) have no maintenance request linked. Immediate attention recommended.";
 } else {

@@ -1473,12 +1473,10 @@ if (!empty($search) || $status_filter) {
                 <h1><i class="fas fa-boxes"></i> Utility Asset CRUD Management</h1>
                 <p style="color: #64748b; font-size: 14px; margin-top: 5px;">Register, edit, view, or remove LGU utility assets records.</p>
             </div>
-            <div class="header-action-group">
+            <div class="header-actions-row" style="display:flex; gap:10px;">
                 <button class="btn btn-primary" onclick="openAddModal()"><i class="fas fa-plus"></i> Register Asset</button>
-                <div class="header-actions-row">
-                    <a href="assets_history.php" class="btn btn-outline"><i class="fas fa-scroll"></i> Activity Log</a>
-                    <a href="assets_dashboard.php" class="btn btn-outline"><i class="fas fa-chevron-left"></i> Dashboard</a>
-                </div>
+                <a href="assets_history.php" class="btn btn-outline"><i class="fas fa-scroll"></i> Activity Log</a>
+                <a href="assets_dashboard.php" class="btn btn-outline"><i class="fas fa-chevron-left"></i> Dashboard</a>
             </div>
         </div>
 
@@ -1570,7 +1568,7 @@ if (!empty($search) || $status_filter) {
                             <th>Total Assets</th>
                             <th>Total Qty</th>
                             <th>Status Summary</th>
-                            <th style="text-align:right;">Actions</th>
+                            <th style="text-align:right;">Activity Logs</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1628,7 +1626,7 @@ if (!empty($search) || $status_filter) {
                                                     <th>Name</th>
                                                     <th>Qty</th>
                                                     <th>Status</th>
-                                                    <th style="text-align:right;">Actions</th>
+                                                    <th style="text-align:right;">Activity Logs</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
