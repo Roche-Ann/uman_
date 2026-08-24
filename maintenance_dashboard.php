@@ -139,6 +139,43 @@ function generateAISummary($requests) {
 
 $aiAnalysisOutput = generateAISummary($allRequests);
 
+// AI Analytics — Maintenance Intelligence
+$completionRate = ($totalRequests > 0) ? round(($completedRequests / $totalRequests) * 100) : 100;
+
+$maintAiRecs = [];
+if ($emergencyRequests > 0) {
+    $maintAiRecs[] = ['icon' => 'fa-exclamation-triangle', 'color' => '#e74c3c', 'priority' => 'High',
+        'title' => 'Emergency Dispatches Active',
+        'text' => "{$emergencyRequests} emergency maintenance request(s) flagged. Verify external dispatch systems have been notified."];
+}
+if ($pendingRequests > 3) {
+    $maintAiRecs[] = ['icon' => 'fa-clock', 'color' => '#f39c12', 'priority' => 'Medium',
+        'title' => 'Growing Request Backlog',
+        'text' => "{$pendingRequests} requests still in Created status. Pipeline may be experiencing delays."];
+} elseif ($pendingRequests > 0) {
+    $maintAiRecs[] = ['icon' => 'fa-clipboard-list', 'color' => '#f39c12', 'priority' => 'Medium',
+        'title' => 'Pending Requests',
+        'text' => "{$pendingRequests} maintenance request(s) awaiting forwarding. Process promptly to prevent service disruption."];
+}
+if ($completionRate < 50 && $totalRequests > 1) {
+    $maintAiRecs[] = ['icon' => 'fa-chart-line', 'color' => '#e74c3c', 'priority' => 'High',
+        'title' => 'Low Completion Rate',
+        'text' => "Only {$completionRate}% of maintenance tasks completed. Review workflow bottlenecks."];
+} elseif ($completionRate >= 80) {
+    $maintAiRecs[] = ['icon' => 'fa-trophy', 'color' => '#27ae60', 'priority' => 'Info',
+        'title' => 'Strong Completion Rate',
+        'text' => "Completion rate at {$completionRate}%. Maintenance coordination pipeline is efficient."];
+}
+if ($forwardedRequests > 0) {
+    $maintAiRecs[] = ['icon' => 'fa-paper-plane', 'color' => '#a55eea', 'priority' => 'Info',
+        'title' => 'Requests Forwarded',
+        'text' => "{$forwardedRequests} request(s) forwarded to external maintenance system for execution."];
+}
+if (empty($maintAiRecs)) {
+    $maintAiRecs[] = ['icon' => 'fa-check-circle', 'color' => '#27ae60', 'priority' => 'Info',
+        'title' => 'All Clear', 'text' => 'Maintenance pipeline is operating within normal parameters.'];
+}
+
 // Retrieve unread notifications count
 $unreadNotifications = $pdo->query("SELECT COUNT(*) FROM maintenance_notifications WHERE read_status = 0")->fetchColumn();
 ?>
@@ -490,6 +527,60 @@ $unreadNotifications = $pdo->query("SELECT COUNT(*) FROM maintenance_notificatio
                             </div>
                         <?php endforeach; ?>
                     <?php endif; ?>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Recommendations Section -->
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:25px; margin-bottom:25px;">
+            <div class="box">
+                <h3><i class="fas fa-brain" style="color:#3762c8;"></i> AI Completion Pipeline
+                    <span style="font-size:11px;font-weight:400;color:#64748b;margin-left:auto;">Completion Rate: <strong style="color:<?php echo $completionRate >= 70 ? '#27ae60' : ($completionRate >= 40 ? '#f39c12' : '#e74c3c'); ?>;"><?php echo $completionRate; ?>%</strong></span>
+                </h3>
+                <div style="margin-bottom:14px;">
+                    <div style="display:flex;justify-content:space-between;font-size:12px;color:#64748b;margin-bottom:6px;"><span>Completed</span><span><?php echo $completedRequests; ?>/<?php echo $totalRequests; ?></span></div>
+                    <div style="height:12px;background:#e2e8f0;border-radius:99px;overflow:hidden;">
+                        <div style="height:100%;width:<?php echo $completionRate; ?>%;background:linear-gradient(90deg,#27ae60,#2ecc71);border-radius:99px;transition:width 1s;"></div>
+                    </div>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;text-align:center;">
+                    <div style="padding:8px;border-radius:8px;background:linear-gradient(135deg,#eff6ff,#dbeafe);">
+                        <div style="font-size:18px;font-weight:700;color:#2c3e50;"><?php echo $pendingRequests; ?></div>
+                        <div style="font-size:8px;text-transform:uppercase;font-weight:600;color:#64748b;">Created</div>
+                    </div>
+                    <div style="padding:8px;border-radius:8px;background:linear-gradient(135deg,#f3e8ff,#e9d5ff);">
+                        <div style="font-size:18px;font-weight:700;color:#2c3e50;"><?php echo $forwardedRequests; ?></div>
+                        <div style="font-size:8px;text-transform:uppercase;font-weight:600;color:#64748b;">Forwarded</div>
+                    </div>
+                    <div style="padding:8px;border-radius:8px;background:linear-gradient(135deg,#e0f2fe,#bae6fd);">
+                        <div style="font-size:18px;font-weight:700;color:#2c3e50;"><?php echo $inProgressRequests; ?></div>
+                        <div style="font-size:8px;text-transform:uppercase;font-weight:600;color:#64748b;">In Progress</div>
+                    </div>
+                    <div style="padding:8px;border-radius:8px;background:linear-gradient(135deg,#dcfce7,#bbf7d0);">
+                        <div style="font-size:18px;font-weight:700;color:#2c3e50;"><?php echo $completedRequests; ?></div>
+                        <div style="font-size:8px;text-transform:uppercase;font-weight:600;color:#64748b;">Completed</div>
+                    </div>
+                    <div style="padding:8px;border-radius:8px;background:linear-gradient(135deg,#fee2e2,#fecaca);">
+                        <div style="font-size:18px;font-weight:700;color:#e74c3c;"><?php echo $emergencyRequests; ?></div>
+                        <div style="font-size:8px;text-transform:uppercase;font-weight:600;color:#64748b;">Emergency</div>
+                    </div>
+                </div>
+            </div>
+            <div class="box">
+                <h3><i class="fas fa-lightbulb" style="color:#f59e0b;"></i> AI Recommendations <span style="background:#3762c8;color:#fff;font-size:10px;padding:2px 8px;border-radius:99px;margin-left:8px;"><?php echo count($maintAiRecs); ?></span></h3>
+                <div style="display:flex; flex-direction:column; gap:10px; max-height:220px; overflow-y:auto;">
+                    <?php foreach ($maintAiRecs as $rec): ?>
+                    <div style="padding:12px 14px; border-radius:10px; background:#f8fafc; border-left:4px solid <?php echo $rec['color']; ?>;">
+                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                            <div style="width:28px;height:28px;border-radius:7px;background:<?php echo $rec['color']; ?>;display:flex;align-items:center;justify-content:center;color:white;font-size:12px;flex-shrink:0;">
+                                <i class="fas <?php echo $rec['icon']; ?>"></i>
+                            </div>
+                            <span style="font-weight:600;font-size:13px;color:#2c3e50;"><?php echo $rec['title']; ?></span>
+                            <span style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;text-transform:uppercase;margin-left:auto;background:<?php echo $rec['color']; ?>20;color:<?php echo $rec['color']; ?>;"><?php echo $rec['priority']; ?></span>
+                        </div>
+                        <div style="font-size:12px;color:#64748b;line-height:1.5;padding-left:36px;"><?php echo $rec['text']; ?></div>
+                    </div>
+                    <?php endforeach; ?>
                 </div>
             </div>
         </div>

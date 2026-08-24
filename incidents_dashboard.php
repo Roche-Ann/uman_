@@ -83,6 +83,47 @@ function generateAISummary($allIncidents) {
 
 $aiAnalysisOutput = generateAISummary($allDescriptions);
 
+// AI Analytics — Incident Intelligence
+$resolutionRate = ($totalIncidents > 0) ? round(($resolvedIncidents / $totalIncidents) * 100) : 100;
+$emergencyIncidentCount = 0;
+try {
+    $emergencyIncidentCount = (int)$pdo->query("SELECT COUNT(*) FROM utility_incidents WHERE priority = 'Emergency'")->fetchColumn();
+} catch (Throwable $e) {}
+
+$incAiRecs = [];
+if ($emergencyIncidentCount > 0) {
+    $incAiRecs[] = ['icon' => 'fa-exclamation-circle', 'color' => '#e74c3c', 'priority' => 'High',
+        'title' => 'Emergency Incidents Active',
+        'text' => "{$emergencyIncidentCount} emergency incident(s) require immediate escalation to department heads."];
+}
+if ($pendingIncidents > 3) {
+    $incAiRecs[] = ['icon' => 'fa-clock', 'color' => '#f39c12', 'priority' => 'Medium',
+        'title' => 'High Pending Backlog',
+        'text' => "{$pendingIncidents} reports are awaiting initial review. Consider allocating more staff for faster processing."];
+} elseif ($pendingIncidents > 0) {
+    $incAiRecs[] = ['icon' => 'fa-clipboard-list', 'color' => '#f39c12', 'priority' => 'Medium',
+        'title' => 'Pending Reviews',
+        'text' => "{$pendingIncidents} incident report(s) need initial review. Timely processing improves citizen satisfaction."];
+}
+if ($resolutionRate < 50 && $totalIncidents > 1) {
+    $incAiRecs[] = ['icon' => 'fa-chart-line', 'color' => '#e74c3c', 'priority' => 'High',
+        'title' => 'Low Resolution Rate',
+        'text' => "Only {$resolutionRate}% of incidents resolved. Review bottlenecks in the resolution pipeline."];
+} elseif ($resolutionRate >= 80) {
+    $incAiRecs[] = ['icon' => 'fa-trophy', 'color' => '#27ae60', 'priority' => 'Info',
+        'title' => 'Strong Resolution Performance',
+        'text' => "Resolution rate is at {$resolutionRate}%. The incident management pipeline is performing well."];
+}
+if ($forwardedIncidents > 0) {
+    $incAiRecs[] = ['icon' => 'fa-share', 'color' => '#a55eea', 'priority' => 'Info',
+        'title' => 'Forwarded to Maintenance',
+        'text' => "{$forwardedIncidents} incident(s) forwarded to the Maintenance System for coordinated repair."];
+}
+if (empty($incAiRecs)) {
+    $incAiRecs[] = ['icon' => 'fa-check-circle', 'color' => '#27ae60', 'priority' => 'Info',
+        'title' => 'All Clear', 'text' => 'No critical incident issues detected. Pipeline is operating normally.'];
+}
+
 // Retrieve all incidents for geolocations
 $mapIncidents = $pdo->query("
     SELECT i.*, c.name as category_name 
@@ -429,6 +470,56 @@ $mapIncidents = $pdo->query("
                 <h3><i class="fas fa-robot"></i> LGU AI Text Complaint Summarizer</h3>
                 <div class="ai-content">
                     <?php echo $aiAnalysisOutput; ?>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Recommendations Row -->
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:25px; margin-bottom:35px;">
+            <div class="box">
+                <h3><i class="fas fa-brain" style="color:#3762c8;"></i> AI Resolution Pipeline
+                    <span style="font-size:11px;font-weight:400;color:#64748b;margin-left:auto;">Resolution Rate: <strong style="color:<?php echo $resolutionRate >= 70 ? '#27ae60' : ($resolutionRate >= 40 ? '#f39c12' : '#e74c3c'); ?>;"><?php echo $resolutionRate; ?>%</strong></span>
+                </h3>
+                <div style="margin-bottom:14px;">
+                    <div style="display:flex;justify-content:space-between;font-size:12px;color:#64748b;margin-bottom:6px;"><span>Resolved</span><span><?php echo $resolvedIncidents; ?>/<?php echo $totalIncidents; ?></span></div>
+                    <div style="height:12px;background:#e2e8f0;border-radius:99px;overflow:hidden;">
+                        <div style="height:100%;width:<?php echo $resolutionRate; ?>%;background:linear-gradient(90deg,#3762c8,#6384d2);border-radius:99px;transition:width 1s;"></div>
+                    </div>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;text-align:center;">
+                    <div style="padding:10px;border-radius:8px;background:linear-gradient(135deg,#eff6ff,#dbeafe);">
+                        <div style="font-size:20px;font-weight:700;color:#2c3e50;"><?php echo $pendingIncidents; ?></div>
+                        <div style="font-size:9px;text-transform:uppercase;font-weight:600;color:#64748b;">Submitted</div>
+                    </div>
+                    <div style="padding:10px;border-radius:8px;background:linear-gradient(135deg,#fef9c3,#fef3c7);">
+                        <div style="font-size:20px;font-weight:700;color:#2c3e50;"><?php echo $reviewingIncidents; ?></div>
+                        <div style="font-size:9px;text-transform:uppercase;font-weight:600;color:#64748b;">Reviewing</div>
+                    </div>
+                    <div style="padding:10px;border-radius:8px;background:linear-gradient(135deg,#fce7f3,#fecdd3);">
+                        <div style="font-size:20px;font-weight:700;color:#2c3e50;"><?php echo $forwardedIncidents; ?></div>
+                        <div style="font-size:9px;text-transform:uppercase;font-weight:600;color:#64748b;">Forwarded</div>
+                    </div>
+                    <div style="padding:10px;border-radius:8px;background:linear-gradient(135deg,#dcfce7,#bbf7d0);">
+                        <div style="font-size:20px;font-weight:700;color:#2c3e50;"><?php echo $resolvedIncidents; ?></div>
+                        <div style="font-size:9px;text-transform:uppercase;font-weight:600;color:#64748b;">Resolved</div>
+                    </div>
+                </div>
+            </div>
+            <div class="box">
+                <h3><i class="fas fa-lightbulb" style="color:#f59e0b;"></i> AI Recommendations <span style="background:#3762c8;color:#fff;font-size:10px;padding:2px 8px;border-radius:99px;margin-left:8px;"><?php echo count($incAiRecs); ?></span></h3>
+                <div style="display:flex; flex-direction:column; gap:10px; max-height:220px; overflow-y:auto;">
+                    <?php foreach ($incAiRecs as $rec): ?>
+                    <div style="padding:12px 14px; border-radius:10px; background:#f8fafc; border-left:4px solid <?php echo $rec['color']; ?>;">
+                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                            <div style="width:28px;height:28px;border-radius:7px;background:<?php echo $rec['color']; ?>;display:flex;align-items:center;justify-content:center;color:white;font-size:12px;flex-shrink:0;">
+                                <i class="fas <?php echo $rec['icon']; ?>"></i>
+                            </div>
+                            <span style="font-weight:600;font-size:13px;color:#2c3e50;"><?php echo $rec['title']; ?></span>
+                            <span style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;text-transform:uppercase;margin-left:auto;background:<?php echo $rec['color']; ?>20;color:<?php echo $rec['color']; ?>;"><?php echo $rec['priority']; ?></span>
+                        </div>
+                        <div style="font-size:12px;color:#64748b;line-height:1.5;padding-left:36px;"><?php echo $rec['text']; ?></div>
+                    </div>
+                    <?php endforeach; ?>
                 </div>
             </div>
         </div>

@@ -189,6 +189,43 @@ function generateAIDigest(array $facilityRows, float $filteredTotal, float $filt
 }
 $aiDigest = generateAIDigest($facilityRows, $filteredTotal, $filteredCost, $fYear, $fMonth, $fType);
 
+// AI Analytics — Energy Intelligence
+$energyScore = max(0, 100 - ($pendingAdvisories * 10));
+$energyScore = min(100, $energyScore);
+
+$energyAiRecs = [];
+if ($pendingAdvisories > 0) {
+    $energyAiRecs[] = ['icon' => 'fa-lightbulb', 'color' => '#f39c12', 'priority' => 'High',
+        'title' => 'Advisories Pending',
+        'text' => "{$pendingAdvisories} energy efficiency recommendation(s) require action. Implementing these could reduce operational costs."];
+}
+if (!empty($facilityRows)) {
+    $topConsumer = $facilityRows[0];
+    if ($filteredTotal > 0 && ($topConsumer['kwh'] / $filteredTotal) > 0.4) {
+        $energyAiRecs[] = ['icon' => 'fa-bolt', 'color' => '#e74c3c', 'priority' => 'Medium',
+            'title' => 'High Concentrated Consumption',
+            'text' => "{$topConsumer['label']} accounts for a massive portion of total energy use. Investigate for efficiency improvements."];
+    }
+}
+if ($energyScore >= 90) {
+    $energyAiRecs[] = ['icon' => 'fa-leaf', 'color' => '#27ae60', 'priority' => 'Info',
+        'title' => 'High Efficiency Rating',
+        'text' => "Energy efficiency score is {$energyScore}%. Infrastructure is highly optimized."];
+} elseif ($energyScore < 60) {
+    $energyAiRecs[] = ['icon' => 'fa-chart-line', 'color' => '#e74c3c', 'priority' => 'High',
+        'title' => 'Low Efficiency Rating',
+        'text' => "Efficiency score dropped to {$energyScore}%. High volume of pending advisories."];
+}
+if ($successfulSyncs > 0) {
+    $energyAiRecs[] = ['icon' => 'fa-sync-alt', 'color' => '#3762c8', 'priority' => 'Info',
+        'title' => 'Data Sync Complete',
+        'text' => "{$successfulSyncs} successful data exports to the external Energy Efficiency System."];
+}
+if (empty($energyAiRecs)) {
+    $energyAiRecs[] = ['icon' => 'fa-check-circle', 'color' => '#27ae60', 'priority' => 'Info',
+        'title' => 'All Clear', 'text' => 'Energy consumption parameters are nominal. No pending advisories.'];
+}
+
 // ============================================================
 // ADVISORIES (recent 6)
 // ============================================================
@@ -899,6 +936,53 @@ $locationsAvail = $pdo->query("
             <div class="ai-disclaimer">
                 <i class="fas fa-info-circle"></i>
                 This AI digest describes recorded consumption data only. Energy efficiency recommendations are received separately from the external Energy Efficiency System.
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Recommendations Row -->
+    <div class="row-2col" style="margin-bottom:30px;">
+        <div class="box">
+            <div class="box-header">
+                <div>
+                    <div class="box-title"><i class="fas fa-chart-pie"></i> AI Efficiency Score</div>
+                    <div class="box-subtitle">Derived from pending advisories and consumption anomalies</div>
+                </div>
+            </div>
+            <div style="display:flex; align-items:center; justify-content:center; flex-direction:column; padding:20px;">
+                <div style="width:140px; height:140px; border-radius:50%; background:conic-gradient(<?php echo $energyScore >= 80 ? '#27ae60' : ($energyScore >= 50 ? '#f1c40f' : '#e74c3c'); ?> <?php echo $energyScore * 3.6; ?>deg, #f1f5f9 <?php echo $energyScore * 3.6; ?>deg); display:flex; align-items:center; justify-content:center; position:relative;">
+                    <div style="width:110px; height:110px; border-radius:50%; background:white; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+                        <span style="font-size:32px; font-weight:700; color:#1e293b; line-height:1;"><?php echo $energyScore; ?></span>
+                        <span style="font-size:10px; text-transform:uppercase; font-weight:700; color:#94a3b8; margin-top:2px;">Score</span>
+                    </div>
+                </div>
+                <div style="margin-top:20px; text-align:center;">
+                    <span style="font-size:12px; font-weight:600; padding:4px 12px; border-radius:99px; background:<?php echo $energyScore >= 80 ? '#dcfce7; color:#166534' : ($energyScore >= 50 ? '#fef9c3; color:#854d0e' : '#fee2e2; color:#991b1b'); ?>;">
+                        <?php echo $energyScore >= 80 ? 'Optimal Efficiency' : ($energyScore >= 50 ? 'Moderate Efficiency' : 'Needs Improvement'); ?>
+                    </span>
+                </div>
+            </div>
+        </div>
+        <div class="box">
+            <div class="box-header">
+                <div>
+                    <div class="box-title"><i class="fas fa-lightbulb" style="color:#f59e0b;"></i> AI Recommendations <span style="background:#3762c8;color:#fff;font-size:10px;padding:2px 8px;border-radius:99px;margin-left:8px;"><?php echo count($energyAiRecs); ?></span></div>
+                    <div class="box-subtitle">Prioritized actions to optimize energy usage</div>
+                </div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:10px; max-height:220px; overflow-y:auto;">
+                <?php foreach ($energyAiRecs as $rec): ?>
+                <div style="padding:12px 14px; border-radius:10px; background:#f8fafc; border-left:4px solid <?php echo $rec['color']; ?>;">
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                        <div style="width:28px;height:28px;border-radius:7px;background:<?php echo $rec['color']; ?>;display:flex;align-items:center;justify-content:center;color:white;font-size:12px;flex-shrink:0;">
+                            <i class="fas <?php echo $rec['icon']; ?>"></i>
+                        </div>
+                        <span style="font-weight:600;font-size:13px;color:#2c3e50;"><?php echo $rec['title']; ?></span>
+                        <span style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;text-transform:uppercase;margin-left:auto;background:<?php echo $rec['color']; ?>20;color:<?php echo $rec['color']; ?>;"><?php echo $rec['priority']; ?></span>
+                    </div>
+                    <div style="font-size:12px;color:#64748b;line-height:1.5;padding-left:36px;"><?php echo $rec['text']; ?></div>
+                </div>
+                <?php endforeach; ?>
             </div>
         </div>
     </div>
