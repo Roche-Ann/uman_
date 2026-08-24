@@ -1183,6 +1183,12 @@ function sidebarActive(string $page, string $current): string {
                 </a>
             </li>
 
+            <li>
+                <a href="<?php echo $sidebarBase; ?>ai_analytics.php" class="nav-link<?php echo sidebarActive('ai_analytics.php', $currentPage); ?>">
+                    <i class="fas fa-brain"></i>
+                    <span class="link-label">AI Analytics</span>
+                </a>
+            </li>
 
             <li>
                 <a href="<?php echo $sidebarBase; ?>upad_integration.php" class="nav-link<?php echo sidebarActive('upad_integration.php', $currentPage); ?>">
