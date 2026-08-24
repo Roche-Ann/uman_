@@ -279,7 +279,7 @@ unset($u);
             </div>
             <div class="header-action-group" style="display:flex; gap:10px;">
                 <button class="btn btn-primary" onclick="openAddModal()"><i class="fas fa-plus"></i> Register User</button>
-                <a href="#" class="btn btn-outline"><i class="fas fa-scroll"></i> Activity Log</a>
+                <a href="activity_logs.php" class="btn btn-outline"><i class="fas fa-scroll"></i> Activity Log</a>
                 <a href="../utilities_dashboard.php" class="btn btn-outline"><i class="fas fa-chevron-left"></i> Dashboard</a>
             </div>
         </div>
@@ -322,7 +322,6 @@ unset($u);
                             <th>Status</th>
                             <th>Registered</th>
                             <th>Last Login</th>
-                            <th>Activity Logs</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -337,26 +336,6 @@ unset($u);
                                 <td><span class="badge badge-<?php echo $u['is_active'] ? 'active' : 'inactive'; ?>"><?php echo $u['is_active'] ? 'Active' : 'Inactive'; ?></span><?php if ($isSelf) echo ' <span style="font-size:10px; color:#94a3b8;">(You)</span>'; ?></td>
                                 <td><?php echo date('M d, Y h:i:s A', strtotime($u['created_at'])); ?></td>
                                 <td><?php echo $u['last_login'] ? date('M d, Y h:i:s A', strtotime($u['last_login'])) : '<span style="color:#94a3b8;">Never</span>'; ?></td>
-                                <td>
-                                    <?php
-                                    $userActions = [];
-                                    if ($u['user_type'] === 'employee') {
-                                        $userActions[] = '<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd;"><i class="fas fa-search"></i> Inspect Records</span>';
-                                        $userActions[] = '<span class="badge" style="background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0;"><i class="fas fa-file-export"></i> Generate Reports</span>';
-                                        $userActions[] = '<span class="badge" style="background:#fef3c7; color:#b45309; border:1px solid #fde68a;"><i class="fas fa-check-double"></i> Approval Requests</span>';
-                                    } else {
-                                        if ($u['service_requests_count'] > 0) {
-                                            $userActions[] = '<span class="badge" style="background:#f5f3ff; color:#6d28d9; border:1px solid #ddd6fe;"><i class="fas fa-file-signature"></i> Submit Service Requests</span>';
-                                        } else {
-                                            $userActions[] = '<span class="badge" style="background:#f8fafc; color:#64748b; border:1px solid #cbd5e1;"><i class="fas fa-globe"></i> Browse Portal</span>';
-                                        }
-                                        if ($u['otp_count'] > 0) {
-                                            $userActions[] = '<span class="badge" style="background:#fff1f2; color:#be123c; border:1px solid #fecdd3;"><i class="fas fa-key"></i> OTP Verifications</span>';
-                                        }
-                                    }
-                                    echo implode(' ', $userActions);
-                                    ?>
-                                </td>
                             </tr>
                         <?php endforeach; endif; ?>
                     </tbody>
