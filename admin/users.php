@@ -277,7 +277,9 @@ unset($u);
                 <h1><i class="fas fa-users-cog"></i> User Management</h1>
                 <p style="color:#64748b; font-size:14px;">Monitor LGU user accounts and their activities on the website.</p>
             </div>
-            <div>
+            <div class="header-action-group" style="display:flex; gap:10px;">
+                <button class="btn btn-primary" onclick="openAddModal()"><i class="fas fa-plus"></i> Register User</button>
+                <a href="#" class="btn btn-outline"><i class="fas fa-scroll"></i> Activity Log</a>
                 <a href="../utilities_dashboard.php" class="btn btn-outline"><i class="fas fa-chevron-left"></i> Dashboard</a>
             </div>
         </div>
@@ -320,7 +322,7 @@ unset($u);
                             <th>Status</th>
                             <th>Registered</th>
                             <th>Last Login</th>
-                            <th>Actions on Website</th>
+                            <th>Activity Logs</th>
                         </tr>
                     </thead>
                     <tbody>
