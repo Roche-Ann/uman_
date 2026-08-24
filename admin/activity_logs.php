@@ -26,7 +26,7 @@ if ($search) {
 $queries = [];
 
 // 1. Service Requests (Citizens)
-$q1 = "SELECT sr.created_at as log_date, u.id as user_id, u.full_name, u.user_type, 'Service Request Submitted' as activity_type, CONCAT('Submitted a ', sr.utility_type, ' request (Status: ', sr.status, ')') as log_details
+$q1 = "SELECT sr.created_at as log_date, u.id as user_id, CAST(u.full_name AS CHAR) as full_name, CAST(u.user_type AS CHAR) as user_type, CAST('Service Request Submitted' AS CHAR) as activity_type, CAST(CONCAT('Submitted a ', sr.utility_type, ' request (Status: ', sr.status, ')') AS CHAR) as log_details
 FROM service_requests sr
 JOIN users u ON sr.user_id = u.id
 WHERE 1=1";
@@ -35,7 +35,7 @@ if ($search) { $q1 .= " AND (u.full_name LIKE ? OR CONCAT('Submitted a ', sr.uti
 $queries[] = $q1;
 
 // 2. OTP Verifications (Citizens)
-$q2 = "SELECT o.created_at as log_date, u.id as user_id, u.full_name, u.user_type, 'OTP Generated' as activity_type, CONCAT('Generated OTP (Used: ', IF(o.used=1, 'Yes', 'No'), ')') as log_details
+$q2 = "SELECT o.created_at as log_date, u.id as user_id, CAST(u.full_name AS CHAR) as full_name, CAST(u.user_type AS CHAR) as user_type, CAST('OTP Generated' AS CHAR) as activity_type, CAST(CONCAT('Generated OTP (Used: ', IF(o.used=1, 'Yes', 'No'), ')') AS CHAR) as log_details
 FROM otps o
 JOIN users u ON o.user_id = u.id
 WHERE 1=1";
@@ -44,7 +44,7 @@ if ($search) { $q2 .= " AND (u.full_name LIKE ? OR CONCAT('Generated OTP (Used: 
 $queries[] = $q2;
 
 // 3. User Registrations (Both)
-$q3 = "SELECT u.created_at as log_date, u.id as user_id, u.full_name, u.user_type, 'Account Registered' as activity_type, 'User account was created in the system.' as log_details
+$q3 = "SELECT u.created_at as log_date, u.id as user_id, CAST(u.full_name AS CHAR) as full_name, CAST(u.user_type AS CHAR) as user_type, CAST('Account Registered' AS CHAR) as activity_type, CAST('User account was created in the system.' AS CHAR) as log_details
 FROM users u
 WHERE 1=1";
 if ($role_filter) { $q3 .= " AND u.user_type = '$role_filter'"; }
@@ -52,7 +52,7 @@ if ($search) { $q3 .= " AND (u.full_name LIKE ? OR 'User account was created in 
 $queries[] = $q3;
 
 // 4. Asset Status Changes (Employees)
-$q4 = "SELECT asl.changed_at as log_date, u.id as user_id, u.full_name, u.user_type, 'Asset Status Changed' as activity_type, CONCAT('Changed asset ', asl.utility_asset_id, ' from ', COALESCE(asl.old_status, 'None'), ' to ', asl.new_status) as log_details
+$q4 = "SELECT asl.changed_at as log_date, u.id as user_id, CAST(u.full_name AS CHAR) as full_name, CAST(u.user_type AS CHAR) as user_type, CAST('Asset Status Changed' AS CHAR) as activity_type, CAST(CONCAT('Changed asset ', asl.utility_asset_id, ' from ', COALESCE(asl.old_status, 'None'), ' to ', asl.new_status) AS CHAR) as log_details
 FROM asset_status_logs asl
 JOIN users u ON asl.changed_by = u.id
 WHERE 1=1";
