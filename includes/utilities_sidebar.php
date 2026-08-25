@@ -356,6 +356,57 @@ function sidebarActive(string $page, string $current): string {
     .main-content > .card { flex: 1; }
     .main-content.collapsed { margin-left: 90px; }
 
+    /* ===== SMOOTH VIEW TRANSITIONS & MODULE SWITCHING ===== */
+    @view-transition {
+        navigation: auto;
+    }
+
+    ::view-transition-group(root) {
+        animation-duration: 0.22s;
+    }
+
+    .sidebar-nav {
+        view-transition-name: sidebar-navigation;
+    }
+
+    body::before {
+        view-transition-name: background-overlay;
+    }
+
+    .main-content {
+        view-transition-name: page-main-content;
+    }
+
+    /* Content Entrance Animation for all module pages */
+    @keyframes moduleFadeEnter {
+        0% {
+            opacity: 0;
+            transform: translateY(8px);
+        }
+        100% {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .main-content > .card,
+    .main-content > .dashboard-container,
+    .main-content > .container,
+    .main-content > .container-fluid {
+        animation: moduleFadeEnter 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        will-change: opacity, transform;
+    }
+
+    /* Smooth page exit transition */
+    .page-nav-exiting .main-content > .card,
+    .page-nav-exiting .main-content > .dashboard-container,
+    .page-nav-exiting .main-content > .container,
+    .page-nav-exiting .main-content > .container-fluid {
+        opacity: 0 !important;
+        transform: translateY(-6px) !important;
+        transition: opacity 0.14s ease-out, transform 0.14s ease-out !important;
+    }
+
     @media (max-width: 992px) {
         .sidebar-nav {
             transform: translateX(-100%);
@@ -1505,6 +1556,52 @@ window.addEventListener('click', function(event) {
         if (e.key === 'Escape' && sidebar && sidebar.classList.contains('mobile-open')) {
             closeMobileSidebar();
         }
+    });
+
+    // Restore and persist sidebar menu scroll position so it never jumps on page transitions
+    const menuScroll = document.querySelector('.sidebar-menu-scrollable');
+    if (menuScroll) {
+        const savedScroll = sessionStorage.getItem('sidebar_menu_scroll');
+        if (savedScroll !== null) {
+            menuScroll.scrollTop = parseInt(savedScroll, 10);
+        }
+        menuScroll.addEventListener('scroll', () => {
+            sessionStorage.setItem('sidebar_menu_scroll', menuScroll.scrollTop);
+        }, { passive: true });
+    }
+
+    // Seamless instant prefetching and smooth exit transitions on module link clicks
+    navLinks.forEach(link => {
+        const href = link.getAttribute('href');
+        if (!href || href.startsWith('#') || href.startsWith('javascript:') || href.includes('logout.php')) return;
+
+        // Hover prefetch for instant loading
+        link.addEventListener('mouseenter', () => {
+            if (!link._prefetched) {
+                const prefetch = document.createElement('link');
+                prefetch.rel = 'prefetch';
+                prefetch.href = href;
+                document.head.appendChild(prefetch);
+                link._prefetched = true;
+            }
+        }, { once: true });
+
+        // Smooth exit transition before navigating
+        link.addEventListener('click', (e) => {
+            if (e.metaKey || e.ctrlKey || e.shiftKey || link.getAttribute('target') === '_blank') return;
+            if (link.classList.contains('active')) return;
+
+            // If browser natively supports View Transitions, allow native cross-fade
+            if ('startViewTransition' in document) {
+                return;
+            }
+
+            e.preventDefault();
+            document.body.classList.add('page-nav-exiting');
+            setTimeout(() => {
+                window.location.href = href;
+            }, 120);
+        });
     });
 })();
 </script>
