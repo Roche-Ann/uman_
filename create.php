@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // create.php - REMOVE session_start() from here too
 require_once 'includes/auth.php';
 
@@ -89,7 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
         html { scroll-behavior: smooth; scroll-padding-top: 80px; }
         body { font-family: var(--font-primary); min-height: 100vh; display: flex; flex-direction: column; background: url("assets/images/cityhall.jpeg") center/cover no-repeat fixed; position: relative; }
-        body::before { content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%; backdrop-filter: blur(6px); background: rgba(0, 0, 0, 0.35); z-index: 0; }
+        body::before { content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%; backdrop-filter: blur(6px); background: rgba(0, 0, 0, 0.35); z-index: 0; }
         .civic-navigation, .register-section, .civic-footer { position: relative; z-index: 1; }
 
         /* ---------- GLASS NAVIGATION ---------- */

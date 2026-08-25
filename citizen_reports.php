@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // citizen_reports.php
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
@@ -160,7 +160,7 @@ $assets = $pdo->query("SELECT id, name, asset_id FROM utility_assets ORDER BY as
 
         body::before {
             content: "";
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;

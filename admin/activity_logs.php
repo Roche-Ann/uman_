@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // admin/activity_logs.php - User Activity Logs
 require_once '../includes/auth.php';
 require_once '../includes/db.php';
@@ -94,7 +94,7 @@ $logs = $stmt->fetchAll();
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
         * { margin:0; padding:0; box-sizing:border-box; font-family:'Poppins',sans-serif; }
         body { min-height:100vh; display:flex; background:url("../assets/images/cityhall.jpeg") center/cover no-repeat fixed; position:relative; }
-        body::before { content:""; position:absolute; top:0; left:0; width:100%; height:100%; backdrop-filter:blur(6px); background:rgba(0,0,0,0.35); z-index:0; }
+        body::before { content:""; position: fixed; top:0; left:0; width:100%; height:100%; backdrop-filter:blur(6px); background:rgba(0,0,0,0.35); z-index:0; }
         .main-content { flex:1; margin-left:280px; padding:30px 40px; z-index:1; position:relative; }
         .card { width:100%; max-width:1700px; background:rgba(255,255,255,0.85); backdrop-filter:blur(15px); border-radius:18px; padding:40px; box-shadow:0 6px 20px rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.25); }
         .dashboard-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:30px; flex-wrap:wrap; gap:20px; }

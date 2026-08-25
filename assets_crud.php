@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // assets_crud.php
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
@@ -893,7 +893,7 @@ if (!empty($search) || $status_filter) {
 
         body::before {
             content: "";
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;

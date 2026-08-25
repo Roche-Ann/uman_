@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // ai_analytics.php — AI Analytics Dashboard (Employee Only)
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
@@ -458,7 +458,7 @@ $pipelineData = json_encode([
 
         body::before {
             content: "";
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;

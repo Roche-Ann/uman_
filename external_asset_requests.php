@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * UMAN staff: CPRF Integration Hub (tabs).
  *
@@ -700,7 +700,7 @@ foreach ($requests as $r) {
             position: relative;
         }
         body::before {
-            content:""; position:absolute; inset:0;
+            content:""; position: fixed; inset:0;
             backdrop-filter: blur(6px);
             background: rgba(0,0,0,0.35); z-index:0;
         }

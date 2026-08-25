@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // water_sync.php — Outbound Integration & Sync Logs
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
@@ -86,7 +86,7 @@ if (isset($_GET['fetch_payload_id'])) {
         }
         body::before {
             content: "";
-            position: absolute; inset: 0;
+            position: fixed; inset: 0;
             backdrop-filter: blur(6px);
             background: rgba(0, 0, 0, 0.35);
             z-index: 0;

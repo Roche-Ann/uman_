@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // maintenance_assets_view.php
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
@@ -72,7 +72,7 @@ $assetsList = $stmt->fetchAll();
 
         body::before {
             content: "";
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;

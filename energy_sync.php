@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // energy_sync.php
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
@@ -90,7 +90,7 @@ if (isset($_GET['fetch_payload_id'])) {
 
         body::before {
             content: "";
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // energy_dashboard.php — Redesigned Energy Management Dashboard
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
@@ -318,7 +318,7 @@ $locationsAvail = $pdo->query("
         }
         body::before {
             content: "";
-            position: absolute; inset: 0;
+            position: fixed; inset: 0;
             backdrop-filter: blur(6px);
             background: rgba(0, 0, 0, 0.35);
             z-index: 0;

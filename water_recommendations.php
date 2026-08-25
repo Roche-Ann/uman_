@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // water_recommendations.php — Water Efficiency Recommendations
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
@@ -118,7 +118,7 @@ $recommendations = $recordsStmt->fetchAll();
         }
         body::before {
             content: "";
-            position: absolute; inset: 0;
+            position: fixed; inset: 0;
             backdrop-filter: blur(6px);
             background: rgba(0, 0, 0, 0.35);
             z-index: 0;

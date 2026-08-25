@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // forgot.php 
 require_once 'includes/auth.php';          // provides $pdo and session handling
 require_once __DIR__ . '/includes/mailer.php';
@@ -184,7 +184,7 @@ if ($status === 'sent') {
 
         body::before {
             content: "";
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;

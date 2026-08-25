@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // assets_history.php — Asset Audit Activity Timeline
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
@@ -187,7 +187,7 @@ function pageUrl(int $p, string $search, string $date, string $type): string {
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
         body, input, select, textarea, button { font-family: 'Poppins', sans-serif; }
         body { min-height: 100vh; display: flex; background: url("assets/images/cityhall.jpeg") center/cover no-repeat fixed; position: relative; }
-        body::before { content: ""; position: absolute; inset: 0; backdrop-filter: blur(6px); background: rgba(0,0,0,.35); z-index: 0; }
+        body::before { content: ""; position: fixed; inset: 0; backdrop-filter: blur(6px); background: rgba(0,0,0,.35); z-index: 0; }
         .main-content { flex: 1; margin-left: 280px; padding: 30px 36px; transition: margin-left .25s ease; z-index: 1; position: relative; }
         .main-content.collapsed { margin-left: 90px; }
         .card{background:rgba(255,255,255,.88);backdrop-filter:blur(18px);border-radius:20px;padding:36px 40px;box-shadow:0 8px 32px rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.3);}

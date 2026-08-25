@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // incidents_dashboard.php
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
@@ -167,7 +167,7 @@ $mapIncidents = $pdo->query("
 
         body::before {
             content: "";
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;

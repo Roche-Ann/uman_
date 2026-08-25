@@ -261,7 +261,8 @@ function sidebarActive(string $page, string $current): string {
     .sidebar-nav.collapsed .nav-link i { margin-right: 0; width: auto; }
 
     /* Sync main-content margin with sidebar */
-    .main-content { margin-left: 280px; transition: margin-left 0.25s ease; }
+    .main-content { margin-left: 280px; transition: margin-left 0.25s ease; min-height: 100vh; display: flex; flex-direction: column; }
+    .main-content > .card { flex: 1; }
     .main-content.collapsed { margin-left: 90px; }
 
     @media (max-width: 992px) {

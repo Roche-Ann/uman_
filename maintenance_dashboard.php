@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // maintenance_dashboard.php
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
@@ -210,7 +210,7 @@ $unreadNotifications = $pdo->query("SELECT COUNT(*) FROM maintenance_notificatio
 
         body::before {
             content: "";
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;

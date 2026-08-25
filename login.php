@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
@@ -209,7 +209,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         /* Background overlay with blur */
         body::before {
             content: "";
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;

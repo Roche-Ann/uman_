@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // assets_map.php
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
@@ -60,7 +60,7 @@ $assetTypes = $pdo->query("SELECT * FROM asset_types ORDER BY name ASC")->fetchA
 
         body::before {
             content: "";
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;

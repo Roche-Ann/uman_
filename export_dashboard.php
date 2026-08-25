@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // export_dashboard.php - Export Management Page
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
@@ -28,7 +28,7 @@ $userName = $_SESSION['user_name'] ?? $_SESSION['full_name'] ?? 'LGU Coordinator
     <style>
         * { font-family:'Poppins',sans-serif; margin:0; padding:0; box-sizing:border-box; }
         body { min-height:100vh; display:flex; background:url("assets/images/cityhall.jpeg") center/cover no-repeat fixed; position:relative; }
-        body::before { content:""; position:absolute; top:0; left:0; width:100%; height:100%; backdrop-filter:blur(6px); background:rgba(0,0,0,0.35); z-index:0; }
+        body::before { content:""; position: fixed; top:0; left:0; width:100%; height:100%; backdrop-filter:blur(6px); background:rgba(0,0,0,0.35); z-index:0; }
         .main-content { flex:1; margin-left:280px; padding:30px 40px; z-index:1; position:relative; }
         .card { max-width:1700px; background:rgba(255,255,255,0.85); backdrop-filter:blur(15px); border-radius:18px; padding:40px; box-shadow:0 6px 20px rgba(0,0,0,0.2); }
         .dashboard-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:30px; flex-wrap:wrap; gap:20px; }

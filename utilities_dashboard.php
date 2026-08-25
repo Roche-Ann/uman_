@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // utilities_dashboard.php
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
@@ -129,7 +129,7 @@ $incidentData = json_encode([$incidents['submitted_incidents'] ?? 0, $incidents[
 
         body::before {
             content: "";
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;

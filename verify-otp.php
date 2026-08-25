@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // Ensure auth.php is loaded so we have database connection and session handling
 require_once 'includes/auth.php';
 require_once __DIR__ . '/includes/mailer.php';
@@ -233,7 +233,7 @@ $expiryTimestamp = $otpData ? strtotime($otpData['expires_at']) : 0; // 0 means 
 
         body::before {
             content: "";
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
