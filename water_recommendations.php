@@ -2,6 +2,7 @@
 // water_recommendations.php — Water Efficiency Recommendations
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
+ensureWaterSchema();
 
 if (!isLoggedIn()) {
     header('Location: login.php');

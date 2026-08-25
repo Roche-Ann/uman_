@@ -2,6 +2,7 @@
 // water_sync.php — Outbound Integration & Sync Logs
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
+ensureWaterSchema();
 
 if (!isLoggedIn()) {
     header('Location: login.php');

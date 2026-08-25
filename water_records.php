@@ -2,6 +2,7 @@
 // water_records.php — Water Consumption Readings & Logs
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
+ensureWaterSchema();
 
 if (!isLoggedIn()) {
     header('Location: login.php');

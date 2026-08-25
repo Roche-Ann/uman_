@@ -2,6 +2,7 @@
 // water_dashboard.php — Redesigned Water Management Dashboard
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
+ensureWaterSchema();
 
 if (!isLoggedIn()) {
     header('Location: login.php');

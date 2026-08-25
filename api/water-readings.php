@@ -14,6 +14,7 @@ uman_require_api_key($UMAN_INTEGRATION_API_KEY);
 
 try {
     $pdo = uman_integration_pdo();
+    ensureWaterSchema();
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $facilityId = isset($_GET['cprf_facility_id']) ? (int)$_GET['cprf_facility_id'] : 0;
