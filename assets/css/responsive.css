@@ -728,4 +728,34 @@ body {
     }
 }
 
+/* Global Modern Scrollbar Styling */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.4);
+    border-radius: 99px;
+    transition: background 0.2s ease;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #3762c8;
+}
 
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
+}
+
+.dark-theme ::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.25);
+}
+.dark-theme ::-webkit-scrollbar-thumb:hover {
+    background: #6384d2;
+}
+.dark-theme * {
+    scrollbar-color: rgba(148, 163, 184, 0.25) transparent;
+}

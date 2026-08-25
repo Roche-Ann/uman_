@@ -54,15 +54,90 @@ function sidebarActive(string $page, string $current): string {
         justify-content: space-between;
         z-index: 1000;
         transition: transform 0.3s ease, width 0.25s ease;
-        overflow-y: auto;
+        overflow: hidden; /* Main container stays fixed */
         font-family: 'Poppins', sans-serif;
     }
 
-    .sidebar-top {
+    /* Fixed top header */
+    .sidebar-header {
         display: flex;
         flex-direction: column;
-        flex-grow: 1;
-        padding: 20px 0;
+        flex-shrink: 0;
+        padding-top: 16px;
+    }
+
+    /* Scrollable module navigation */
+    .sidebar-menu-scrollable {
+        flex: 1 1 auto;
+        overflow-y: auto;
+        overflow-x: hidden;
+        min-height: 0;
+        padding: 4px 0 10px 0;
+        overscroll-behavior: contain;
+    }
+
+    /* Fixed bottom user info & logout */
+    .sidebar-bottom {
+        flex-shrink: 0;
+        margin-top: auto;
+        background: inherit;
+        z-index: 2;
+    }
+
+    /* ===== MODERN SLEEK SCROLLBAR STYLES ===== */
+    /* Webkit (Chrome, Edge, Safari, Opera) */
+    ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: rgba(148, 163, 184, 0.4);
+        border-radius: 99px;
+        transition: background 0.2s ease;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+        background: #3762c8;
+    }
+
+    /* Firefox */
+    * {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
+    }
+
+    /* Dark Theme Scrollbars */
+    .dark-theme ::-webkit-scrollbar-thumb {
+        background: rgba(148, 163, 184, 0.25);
+    }
+    .dark-theme ::-webkit-scrollbar-thumb:hover {
+        background: #6384d2;
+    }
+    .dark-theme * {
+        scrollbar-color: rgba(148, 163, 184, 0.25) transparent;
+    }
+
+    /* Sidebar specific scrollbar */
+    .sidebar-menu-scrollable::-webkit-scrollbar {
+        width: 5px;
+    }
+    .sidebar-menu-scrollable::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .sidebar-menu-scrollable::-webkit-scrollbar-thumb {
+        background: rgba(99, 132, 210, 0.3);
+        border-radius: 99px;
+    }
+    .sidebar-menu-scrollable::-webkit-scrollbar-thumb:hover {
+        background: #3762c8;
+    }
+    .dark-theme .sidebar-menu-scrollable::-webkit-scrollbar-thumb {
+        background: rgba(148, 163, 184, 0.25);
+    }
+    .dark-theme .sidebar-menu-scrollable::-webkit-scrollbar-thumb:hover {
+        background: #6384d2;
     }
 
     /* Collapse/toggle button */
@@ -252,13 +327,29 @@ function sidebarActive(string $page, string $current): string {
     .sidebar-nav.collapsed .site-logo .logo-text,
     .sidebar-nav.collapsed .nav-section-header,
     .sidebar-nav.collapsed .link-label,
-    .sidebar-nav.collapsed .user-info,
+    .sidebar-nav.collapsed .user-welcome,
+    .sidebar-nav.collapsed .theme-toggle-btn span,
+    .sidebar-nav.collapsed .logout-btn .logout-text,
     .sidebar-nav.collapsed .back-link { display: none; }
     .sidebar-nav.collapsed .nav-link {
         justify-content: center;
         padding: 12px 0;
     }
     .sidebar-nav.collapsed .nav-link i { margin-right: 0; width: auto; }
+    .sidebar-nav.collapsed .user-info {
+        padding: 10px 0 16px;
+    }
+    .sidebar-nav.collapsed .theme-toggle-btn,
+    .sidebar-nav.collapsed .logout-btn {
+        width: 44px;
+        height: 44px;
+        padding: 0;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 8px auto;
+    }
 
     /* Sync main-content margin with sidebar */
     .main-content { margin-left: 280px; transition: margin-left 0.25s ease; min-height: 100vh; display: flex; flex-direction: column; }
@@ -1137,7 +1228,7 @@ function sidebarActive(string $page, string $current): string {
 
 <!-- ===== SIDEBAR HTML ===== -->
 <nav class="sidebar-nav" id="sidebar-nav" role="navigation" aria-label="Utilities Navigation">
-    <div class="sidebar-top">
+    <div class="sidebar-header">
         <button class="collapse-btn" id="collapse-btn" aria-label="Toggle sidebar" aria-pressed="false">&#8249;</button>
 
         <div class="site-logo">
@@ -1154,7 +1245,9 @@ function sidebarActive(string $page, string $current): string {
         </div>
 
         <div class="sidebar-divider"></div>
+    </div>
 
+    <div class="sidebar-menu-scrollable">
         <ul class="nav-list">
             <li class="nav-section-header">MAIN NAVIGATION</li>
             <?php if ($userType === 'employee'): ?>
@@ -1274,15 +1367,15 @@ function sidebarActive(string $page, string $current): string {
         </ul>
     </div>
 
-    <div>
+    <div class="sidebar-bottom">
         <div class="sidebar-divider"></div>
         <div class="user-info">
             <div class="user-welcome"><i class="fas fa-user-circle" style="margin-right:6px; color:#6384d2;"></i><?php echo $userName; ?></div>
-            <button class="theme-toggle-btn" onclick="toggleTheme()" style="margin-bottom: 8px;">
+            <button class="theme-toggle-btn" onclick="toggleTheme()" style="margin-bottom: 8px;" title="Toggle Dark/Light Mode">
                 <i class="fas fa-moon" id="theme-toggle-icon"></i> <span id="theme-toggle-text">Dark Mode</span>
             </button>
-            <button class="logout-btn" onclick="confirmLogout()">
-                <i class="fas fa-sign-out-alt"></i> Logout
+            <button class="logout-btn" onclick="confirmLogout()" title="Logout">
+                <i class="fas fa-sign-out-alt"></i> <span class="logout-text">Logout</span>
             </button>
         </div>
     </div>
