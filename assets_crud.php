@@ -756,10 +756,11 @@ if (!empty($search) || $status_filter) {
         .main-content {
             flex: 1;
             margin-left: 280px;
-            padding: 30px 40px;
+            padding: 24px 32px;
             transition: margin-left 0.25s ease;
             z-index: 1;
             position: relative;
+            min-height: 100vh;
         }
 
         .main-content.collapsed {
@@ -772,7 +773,7 @@ if (!empty($search) || $status_filter) {
             background: rgba(255, 255, 255, 0.85);
             backdrop-filter: blur(15px);
             border-radius: 18px;
-            padding: 40px;
+            padding: 30px 32px;
             color: #000;
             box-shadow: 0 6px 20px rgba(0,0,0,0.2);
             border: 1px solid rgba(255,255,255,0.25);

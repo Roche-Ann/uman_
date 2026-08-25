@@ -87,15 +87,16 @@ function sidebarActive(string $page, string $current): string {
     /* ===== MODERN SLEEK SCROLLBAR STYLES ===== */
     /* Webkit (Chrome, Edge, Safari, Opera) */
     ::-webkit-scrollbar {
-        width: 6px;
-        height: 6px;
+        width: 8px;
+        height: 8px;
     }
     ::-webkit-scrollbar-track {
-        background: transparent;
+        background: rgba(0, 0, 0, 0.15);
     }
     ::-webkit-scrollbar-thumb {
-        background: rgba(148, 163, 184, 0.4);
+        background: rgba(148, 163, 184, 0.5);
         border-radius: 99px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
         transition: background 0.2s ease;
     }
     ::-webkit-scrollbar-thumb:hover {
@@ -105,18 +106,22 @@ function sidebarActive(string $page, string $current): string {
     /* Firefox */
     * {
         scrollbar-width: thin;
-        scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
+        scrollbar-color: rgba(148, 163, 184, 0.5) rgba(0, 0, 0, 0.15);
     }
 
     /* Dark Theme Scrollbars */
+    .dark-theme ::-webkit-scrollbar-track {
+        background: rgba(15, 23, 42, 0.5);
+    }
     .dark-theme ::-webkit-scrollbar-thumb {
-        background: rgba(148, 163, 184, 0.25);
+        background: rgba(148, 163, 184, 0.35);
+        border: 1px solid rgba(255, 255, 255, 0.05);
     }
     .dark-theme ::-webkit-scrollbar-thumb:hover {
         background: #6384d2;
     }
     .dark-theme * {
-        scrollbar-color: rgba(148, 163, 184, 0.25) transparent;
+        scrollbar-color: rgba(148, 163, 184, 0.35) rgba(15, 23, 42, 0.5);
     }
 
     /* Sidebar specific scrollbar */
