@@ -656,7 +656,7 @@ $locationsAvail = $pdo->query("
                 <p>Monitor water distribution parameters, costs, and optimization recommendations.</p>
             </div>
             <div class="header-actions">
-                <a href="water_records.php" class="btn btn-primary"><i class="fas fa-plus"></i> Water Readings</a>
+                <a href="water_records.php" class="btn btn-primary"><i class="fas fa-list"></i> Water Readings</a>
                 <a href="water_sync.php" class="btn btn-outline"><i class="fas fa-sync"></i> Sync Status</a>
             </div>
         </header>

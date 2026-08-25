@@ -12,115 +12,11 @@ if (!isLoggedIn()) {
 $error = '';
 $success = '';
 
-// AJAX endpoint to get last reading for locked check
-if (isset($_GET['action']) && $_GET['action'] === 'get_last_reading') {
-    header('Content-Type: application/json');
-    $assetId = isset($_GET['asset_id']) ? intval($_GET['asset_id']) : 0;
-    $facName = trim($_GET['facility_name'] ?? '');
-    
-    $lastReading = 0.00;
-    $hasPrior = false;
-    
-    if ($assetId > 0) {
-        $stmt = $pdo->prepare("SELECT current_reading FROM water_consumption_records WHERE utility_asset_id = ? ORDER BY month_year DESC, date_recorded DESC LIMIT 1");
-        $stmt->execute([$assetId]);
-        $val = $stmt->fetchColumn();
-        if ($val !== false) {
-            $lastReading = (float)$val;
-            $hasPrior = true;
-        }
-    } elseif ($facName !== '') {
-        $stmt = $pdo->prepare("SELECT current_reading FROM water_consumption_records WHERE facility_name = ? ORDER BY month_year DESC, date_recorded DESC LIMIT 1");
-        $stmt->execute([$facName]);
-        $val = $stmt->fetchColumn();
-        if ($val !== false) {
-            $lastReading = (float)$val;
-            $hasPrior = true;
-        }
-    }
-    
-    echo json_encode(['success' => true, 'last_reading' => $lastReading, 'has_prior' => $hasPrior]);
-    exit();
-}
-
 // Handle POST actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     
-    if ($action === 'create') {
-        $assetSelection = $_POST['asset_selection'] ?? '';
-        $asset_id = null;
-        $facility_name = null;
-        $location = '';
-        
-        if (strpos($assetSelection, 'asset_') === 0) {
-            $asset_id = intval(substr($assetSelection, 6));
-            // Fetch asset details
-            $stmt = $pdo->prepare("SELECT name, location FROM utility_assets WHERE id = ?");
-            $stmt->execute([$asset_id]);
-            $asset = $stmt->fetch();
-            if ($asset) {
-                $location = $asset['location'];
-                $asset_name = $asset['name'];
-            }
-        } else {
-            $facility_name = trim($_POST['facility_name'] ?? '');
-            $location = trim($_POST['location'] ?? '');
-        }
-        
-        $month_year = trim($_POST['month_year'] ?? '');
-        $previous_reading = floatval($_POST['previous_reading'] ?? 0);
-        $current_reading = floatval($_POST['current_reading'] ?? 0);
-        $rate_per_m3 = floatval($_POST['rate_per_m3'] ?? 68.02);
-        $notes = trim($_POST['notes'] ?? '');
-        
-        $consumption_m3 = $current_reading - $previous_reading;
-        $cost = $consumption_m3 * $rate_per_m3;
-        
-        if (($asset_id === null && empty($facility_name)) || empty($location) || empty($month_year)) {
-            $error = 'Please fill in all required fields (Asset/Facility, Location, Month-Year).';
-        } elseif ($current_reading < $previous_reading) {
-            $error = 'Current reading must be greater than or equal to the previous reading.';
-        } else {
-            try {
-                // Generate Unique ID
-                $prefix = 'WTR-' . date('Ym') . '-';
-                $stmt = $pdo->prepare("SELECT COUNT(*) FROM water_consumption_records WHERE record_id LIKE ?");
-                $stmt->execute([$prefix . '%']);
-                $count = $stmt->fetchColumn() + 1;
-                $record_id = $prefix . str_pad($count, 4, '0', STR_PAD_LEFT);
-                
-                $stmt = $pdo->prepare("
-                    INSERT INTO water_consumption_records 
-                    (record_id, utility_asset_id, facility_name, location, month_year, previous_reading, current_reading, consumption_m3, rate_per_m3, cost, data_source, notes) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Manual Input', ?)
-                ");
-                $stmt->execute([
-                    $record_id, 
-                    $asset_id, 
-                    $facility_name ?: null, 
-                    $location, 
-                    $month_year, 
-                    $previous_reading, 
-                    $current_reading, 
-                    $consumption_m3, 
-                    $rate_per_m3, 
-                    $cost, 
-                    $notes
-                ]);
-                
-                // Create alert notification
-                $pdo->prepare("
-                    INSERT INTO water_notifications (message) 
-                    VALUES (?)
-                ")->execute(["New water reading {$record_id} registered (Consumption: {$consumption_m3} m³)."]);
-                
-                $success = "Water Reading {$record_id} successfully created!";
-            } catch (PDOException $e) {
-                $error = "Failed to save record: " . $e->getMessage();
-            }
-        }
-    } elseif ($action === 'delete') {
+    if ($action === 'delete') {
         $id = intval($_POST['id'] ?? 0);
         if ($id > 0) {
             try {
@@ -176,9 +72,6 @@ $recordsStmt = $pdo->prepare("
 ");
 $recordsStmt->execute($params);
 $records = $recordsStmt->fetchAll();
-
-// Fetch utility assets for dropdown listing
-$utilityAssets = $pdo->query("SELECT id, name, location FROM utility_assets ORDER BY name ASC")->fetchAll();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -250,60 +143,7 @@ $utilityAssets = $pdo->query("SELECT id, name, location FROM utility_assets ORDE
         .dashboard-header p { color: #64748b; font-size: 13px; margin-top: 6px; }
 
         /* ── Grid Layouts ── */
-        .layout-grid { display: grid; grid-template-columns: 1fr 450px; gap: 30px; align-items: start; }
-        @media (max-width: 1200px) { .layout-grid { grid-template-columns: 1fr; } }
-
-        /* ── Form Card ── */
-        .form-card {
-            background: #fff;
-            border: 1px solid #e2e8f0;
-            border-radius: 16px;
-            padding: 30px;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
-        }
-        .form-card-title {
-            font-size: 16px;
-            font-weight: 600;
-            color: #1e293b;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            border-bottom: 1.5px solid #f1f5f9;
-            padding-bottom: 12px;
-        }
-        .form-card-title i { color: #0284c7; }
-
-        .form-group { margin-bottom: 18px; display: flex; flex-direction: column; gap: 6px; }
-        .form-group label { font-size: 12.5px; font-weight: 600; color: #475569; }
-        .form-control {
-            padding: 10px 14px;
-            border-radius: 8px;
-            border: 1px solid #cbd5e1;
-            font-size: 13.5px;
-            background: #fff;
-            color: #1e293b;
-            outline: none;
-            transition: all 0.2s;
-        }
-        .form-control:focus { border-color: #0284c7; box-shadow: 0 0 0 3px rgba(2,132,199,0.15); }
-        .form-control:disabled, .form-control[readonly] { background: #f8fafc; color: #64748b; cursor: not-allowed; }
-        .form-hint { font-size: 11px; color: #94a3b8; margin-top: 3px; }
-
-        .btn-save {
-            width: 100%;
-            padding: 12px;
-            background: #0b3d91;
-            color: #fff;
-            font-size: 14px;
-            font-weight: 600;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background 0.2s;
-            box-shadow: 0 4px 6px rgba(11, 61, 145, 0.15);
-        }
-        .btn-save:hover { background: #082d6c; }
+        .layout-grid { display: block; }
 
         /* ── Alert banners ── */
         .flash { padding: 12px 18px; border-radius: 8px; font-size: 13.5px; font-weight: 500; margin-bottom: 24px; border-left: 4px solid; }
@@ -508,144 +348,10 @@ $utilityAssets = $pdo->query("SELECT id, name, location FROM utility_assets ORDE
                 <?php endif; ?>
             </div>
 
-            <!-- RIGHT PANEL: SAVE READING FORM (MIRRORS ATTACHED IMAGE) -->
-            <div class="form-card">
-                <div class="form-card-title">
-                    <i class="fas fa-droplet"></i> Water (optional)
-                </div>
-                
-                <form action="" method="POST" id="waterReadingForm">
-                    <input type="hidden" name="action" value="create">
-                    
-                    <div class="form-group">
-                        <label for="asset_selection">Asset / Facility</label>
-                        <select name="asset_selection" id="asset_selection" class="form-control" required>
-                            <option value="">-- Select Utility Asset / Facility --</option>
-                            <?php foreach ($utilityAssets as $a): ?>
-                                <option value="asset_<?php echo $a['id']; ?>"><?php echo htmlspecialchars($a['name']); ?></option>
-                            <?php endforeach; ?>
-                            <option value="custom_facility">-- Custom Facility (specify below) --</option>
-                        </select>
-                    </div>
-
-                    <div id="customFacilityGroup" style="display: none;">
-                        <div class="form-group">
-                            <label for="facility_name">Facility Name</label>
-                            <input type="text" name="facility_name" id="facility_name" class="form-control" placeholder="e.g. Quiapo Municipal Hall Annex">
-                        </div>
-                        <div class="form-group">
-                            <label for="location">Location / Sector Address</label>
-                            <input type="text" name="location" id="location" class="form-control" placeholder="e.g. Quezon Blvd, Quiapo, Manila">
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="month_year">Month-Year Period</label>
-                        <input type="month" name="month_year" id="month_year" class="form-control" value="<?php echo date('Y-m'); ?>" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="previous_reading">Previous Reading (m³)</label>
-                        <input type="text" name="previous_reading" id="previous_reading" class="form-control" value="0.00" required>
-                        <span class="form-hint">Auto-filled and locked when the facility already has a water reading.</span>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="current_reading">Current Reading (m³)</label>
-                        <input type="text" name="current_reading" id="current_reading" class="form-control" placeholder="Enter current reading" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="rate_per_m3">Rate per m³ (PHP)</label>
-                        <input type="text" name="rate_per_m3" id="rate_per_m3" class="form-control" value="68.02" required>
-                        <span class="form-hint">Manila Water East Zone (Quezon City), Q2 2026 tier — adjust to the current tariff.</span>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="notes">Notes (optional)</label>
-                        <textarea name="notes" id="notes" class="form-control" rows="3" placeholder="Enter any extra comments..."></textarea>
-                    </div>
-
-                    <button type="submit" class="btn-save">Save Reading</button>
-                </form>
-            </div>
-
         </div>
 
     </div>
 </main>
-
-<!-- JS FOR LOCKED READINGS & CALCULATIONS -->
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const assetSelect = document.getElementById('asset_selection');
-    const customFacGroup = document.getElementById('customFacilityGroup');
-    const facNameInput = document.getElementById('facility_name');
-    const locInput = document.getElementById('location');
-    const prevReadingInput = document.getElementById('previous_reading');
-    const monthYearInput = document.getElementById('month_year');
-    
-    function toggleCustomInputs() {
-        if (assetSelect.value === 'custom_facility') {
-            customFacGroup.style.display = 'block';
-            facNameInput.required = true;
-            locInput.required = true;
-        } else {
-            customFacGroup.style.display = 'none';
-            facNameInput.required = false;
-            locInput.required = false;
-        }
-    }
-    
-    function checkLastReading() {
-        const val = assetSelect.value;
-        let queryStr = '';
-        
-        if (val === 'custom_facility') {
-            const facName = facNameInput.value.trim();
-            if (facName) {
-                queryStr = `facility_name=${encodeURIComponent(facName)}`;
-            }
-        } else if (val !== '') {
-            const assetId = val.substring(6); // remove 'asset_'
-            queryStr = `asset_id=${assetId}`;
-        }
-        
-        if (queryStr) {
-            fetch(`water_records.php?action=get_last_reading&${queryStr}`)
-                .then(r => r.json())
-                .then(data => {
-                    if (data.success && data.has_prior) {
-                        prevReadingInput.value = Number(data.last_reading).toFixed(2);
-                        prevReadingInput.setAttribute('readonly', 'true');
-                    } else {
-                        prevReadingInput.value = '0.00';
-                        prevReadingInput.removeAttribute('readonly');
-                    }
-                })
-                .catch(err => console.error('Error fetching last reading:', err));
-        } else {
-            prevReadingInput.value = '0.00';
-            prevReadingInput.removeAttribute('readonly');
-        }
-    }
-    
-    assetSelect.addEventListener('change', () => {
-        toggleCustomInputs();
-        checkLastReading();
-    });
-    
-    facNameInput.addEventListener('change', checkLastReading);
-    
-    // Auto-clean inputs for numeric only
-    const numericInputs = [document.getElementById('previous_reading'), document.getElementById('current_reading'), document.getElementById('rate_per_m3')];
-    numericInputs.forEach(input => {
-        input.addEventListener('input', function() {
-            this.value = this.value.replace(/[^0-9.]/g, '');
-        });
-    });
-});
-</script>
 
 </body>
 </html>
