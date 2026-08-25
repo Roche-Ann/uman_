@@ -47,6 +47,43 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             if ($userId) {
                 ensureAuthSchema();
 
+                // Check if device is trusted
+                $deviceToken = $_COOKIE['remember_device_token'] ?? '';
+                $deviceTrusted = false;
+                if (!empty($deviceToken)) {
+                    $tokenHash = hash('sha256', $deviceToken);
+                    global $pdo;
+                    $stmt = $pdo->prepare('SELECT id FROM trusted_devices WHERE user_id = :uid AND device_token = :token AND expires_at > UTC_TIMESTAMP()');
+                    $stmt->execute([
+                        ':uid' => $userId,
+                        ':token' => $tokenHash
+                    ]);
+                    if ($stmt->fetch()) {
+                        $deviceTrusted = true;
+                    }
+                }
+
+                if ($deviceTrusted) {
+                    // Log the user in officially, bypassing OTP
+                    $_SESSION['user_id']   = $userId;
+                    $_SESSION['user_type'] = $userType;
+                    $_SESSION['user_name'] = $fullName;
+                    $_SESSION['full_name'] = $fullName;
+                    $_SESSION['user_email']= $email;
+                    $_SESSION['logged_in'] = true;
+
+                    $stmt = $pdo->prepare("UPDATE users SET last_login = NOW() WHERE id = ?");
+                    $stmt->execute([$userId]);
+
+                    // Redirect based on user_type (role)
+                    if ($userType === 'employee') {
+                        header('Location: utilities_dashboard.php');
+                    } else {
+                        header('Location: citizen.php');
+                    }
+                    exit();
+                }
+
                 // 2. Generate OTP and Expiry
                 $otp = str_pad((string)mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
                 $otpHash = password_hash($otp, PASSWORD_DEFAULT);
