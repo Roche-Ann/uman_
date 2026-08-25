@@ -1,9 +1,9 @@
-﻿<?php
+<?php
 // assets_crud.php
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
 
-// Self-healing database repair for missing PRIMARY KEY or AUTO_INCREMENT on assets tables
+// Self-healing database repair for missing PRIMARY KEY or AUTO_INCREMENT on assets tables (ran on-demand)
 function ensureAssetsSchema($pdo) {
     $repairTable = function($pdo, $tableName) {
         try {
@@ -20,184 +20,15 @@ function ensureAssetsSchema($pdo) {
         } catch (Throwable $e) {}
     };
 
-    $needsTypeRepair = false;
-    try {
-        $col = $pdo->query("SHOW COLUMNS FROM asset_types LIKE 'id'")->fetch(PDO::FETCH_ASSOC);
-        if ($col && stripos((string)($col['Extra'] ?? ''), 'auto_increment') === false) {
-            $needsTypeRepair = true;
-        }
-    } catch (Throwable $e) {
-        $needsTypeRepair = true;
-    }
-
-    $needsAssetRepair = false;
-    try {
-        $col = $pdo->query("SHOW COLUMNS FROM utility_assets LIKE 'id'")->fetch(PDO::FETCH_ASSOC);
-        if ($col && stripos((string)($col['Extra'] ?? ''), 'auto_increment') === false) {
-            $needsAssetRepair = true;
-        }
-    } catch (Throwable $e) {
-        $needsAssetRepair = true;
-    }
-
-    // Repair secondary tables if they are missing auto_increment
     $repairTable($pdo, 'asset_status_logs');
     $repairTable($pdo, 'asset_notifications');
     $repairTable($pdo, 'asset_images');
     $repairTable($pdo, 'asset_locations');
-
-    if (!$needsTypeRepair && !$needsAssetRepair) {
-        return; // Schema is already correct
-    }
-
-    $pdo->exec("SET FOREIGN_KEY_CHECKS = 0");
-    $pdo->exec("SET SESSION sql_mode = REPLACE(@@sql_mode, 'NO_AUTO_VALUE_ON_ZERO', '')");
-
-    if ($needsTypeRepair) {
-        $types = $pdo->query("SELECT * FROM asset_types")->fetchAll();
-        $pdo->exec("TRUNCATE TABLE asset_types");
-        
-        $typeIdMap = [];
-        $nextId = 1;
-        foreach ($types as $t) {
-            $name = trim($t['name']);
-            if (isset($typeIdMap[$name])) {
-                continue;
-            }
-            $pdo->prepare("INSERT INTO asset_types (id, name, description, created_at) VALUES (?, ?, ?, ?)")
-                ->execute([$nextId, $name, $t['description'] ?? null, $t['created_at'] ?? date('Y-m-d H:i:s')]);
-            $typeIdMap[$name] = $nextId;
-            $nextId++;
-        }
-        
-        try {
-            $pdo->exec("ALTER TABLE asset_types ADD PRIMARY KEY (id)");
-        } catch (Throwable $ignored) {}
-        
-        try {
-            $pdo->exec("ALTER TABLE asset_types MODIFY id INT NOT NULL AUTO_INCREMENT");
-        } catch (Throwable $ignored) {}
-    } else {
-        $typeIdMap = $pdo->query("SELECT name, id FROM asset_types")->fetchAll(PDO::FETCH_KEY_PAIR);
-    }
-
-    if ($needsAssetRepair) {
-        $assets = $pdo->query("SELECT * FROM utility_assets")->fetchAll();
-        $pdo->exec("TRUNCATE TABLE utility_assets");
-        
-        try {
-            $pdo->exec("ALTER TABLE utility_assets ADD PRIMARY KEY (id)");
-        } catch (Throwable $ignored) {}
-        
-        try {
-            $pdo->exec("ALTER TABLE utility_assets MODIFY id INT NOT NULL AUTO_INCREMENT");
-        } catch (Throwable $ignored) {}
-        
-        $assetIdMap = [];
-        $nextAssetId = 1;
-        foreach ($assets as $idx => $a) {
-            $matchedTypeId = 1;
-            $assetName = $a['name'];
-            foreach ($typeIdMap as $typeName => $typeId) {
-                if (stripos($assetName, $typeName) !== false) {
-                    $matchedTypeId = $typeId;
-                    break;
-                }
-            }
-            if ($matchedTypeId === 1) {
-                if (stripos($assetName, 'Drainage') !== false) {
-                    $matchedTypeId = $typeIdMap['Drainage System'] ?? 1;
-                } elseif (stripos($assetName, 'Pipeline') !== false || stripos($assetName, 'Water') !== false) {
-                    $matchedTypeId = $typeIdMap['Water Pipeline'] ?? 1;
-                } elseif (stripos($assetName, 'Pole') !== false || stripos($assetName, 'Electrical') !== false) {
-                    $matchedTypeId = $typeIdMap['Electrical Utility Pole'] ?? 1;
-                } elseif (stripos($assetName, 'Pump') !== false || stripos($assetName, 'Reservoir') !== false) {
-                    $matchedTypeId = $typeIdMap['Public Utility Infrastructure'] ?? 1;
-                }
-            }
-            
-            $stmt = $pdo->prepare("
-                INSERT INTO utility_assets (id, asset_id, name, asset_type_id, quantity, location, latitude, longitude, date_installed, condition_status, description, responsible_office, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ");
-            $stmt->execute([
-                $nextAssetId,
-                $a['asset_id'],
-                $a['name'],
-                $matchedTypeId,
-                $a['quantity'] ?? 1,
-                $a['location'],
-                $a['latitude'] ?? null,
-                $a['longitude'] ?? null,
-                $a['date_installed'],
-                $a['condition_status'],
-                $a['description'] ?? null,
-                $a['responsible_office'] ?? null,
-                $a['created_at'] ?? date('Y-m-d H:i:s'),
-                $a['updated_at'] ?? date('Y-m-d H:i:s')
-            ]);
-            
-            $assetIdMap[$idx] = $nextAssetId;
-            $nextAssetId++;
-        }
-        
-        try {
-            $logs = $pdo->query("SELECT id, utility_asset_id FROM asset_status_logs ORDER BY id ASC")->fetchAll();
-            if (count($logs) === count($assetIdMap)) {
-                $i = 0;
-                foreach ($assetIdMap as $idx => $newId) {
-                    if (isset($logs[$i])) {
-                        $pdo->prepare("UPDATE asset_status_logs SET utility_asset_id = ? WHERE id = ?")
-                            ->execute([$newId, $logs[$i]['id']]);
-                    }
-                    $i++;
-                }
-            } else {
-                $pdo->prepare("UPDATE asset_status_logs SET utility_asset_id = 1 WHERE utility_asset_id = 0")->execute();
-            }
-        } catch (Throwable $e) {}
-        
-        try { $pdo->exec("UPDATE asset_locations SET utility_asset_id = 1 WHERE utility_asset_id = 0"); } catch (Throwable $e) {}
-        try { $pdo->exec("UPDATE asset_images SET utility_asset_id = 1 WHERE utility_asset_id = 0"); } catch (Throwable $e) {}
-        try { $pdo->exec("UPDATE incident_asset_links SET utility_asset_id = 1 WHERE utility_asset_id = 0"); } catch (Throwable $e) {}
-        try { $pdo->exec("UPDATE maintenance_asset_links SET utility_asset_id = 1 WHERE utility_asset_id = 0"); } catch (Throwable $e) {}
-        try { $pdo->exec("UPDATE maintenance_requests SET utility_asset_id = 1 WHERE utility_asset_id = 0"); } catch (Throwable $e) {}
-        try { $pdo->exec("UPDATE energy_consumption_records SET utility_asset_id = 1 WHERE utility_asset_id = 0"); } catch (Throwable $e) {}
-    }
-
-    $pdo->exec("SET FOREIGN_KEY_CHECKS = 1");
 }
 
-ensureAssetsSchema($pdo);
-
-// Auto-migrate schema updates for utility_assets and asset_status_logs
-try {
-    $col = $pdo->query("SHOW COLUMNS FROM utility_assets LIKE 'parent_asset_id'")->fetch();
-    if (!$col) {
-        $pdo->exec("ALTER TABLE `utility_assets` ADD COLUMN `parent_asset_id` INT NULL DEFAULT NULL AFTER `asset_id`");
-        try {
-            $pdo->exec("ALTER TABLE `utility_assets` ADD CONSTRAINT `fk_parent_asset` FOREIGN KEY (`parent_asset_id`) REFERENCES `utility_assets`(`id`) ON DELETE SET NULL");
-        } catch (Throwable $ignored) {}
-    }
-} catch (Throwable $e) {}
-
-try {
-    $pdo->exec("ALTER TABLE `utility_assets` MODIFY COLUMN `condition_status` VARCHAR(50) NOT NULL DEFAULT 'Operational'");
-} catch (Throwable $e) {}
-
-try {
-    $col = $pdo->query("SHOW COLUMNS FROM asset_status_logs LIKE 'action_type'")->fetch();
-    if (!$col) {
-        $pdo->exec("ALTER TABLE `asset_status_logs` ADD COLUMN `action_type` VARCHAR(50) NOT NULL DEFAULT 'status_changed' AFTER `utility_asset_id`");
-    }
-} catch (Throwable $e) {}
-
-try {
-    $col = $pdo->query("SHOW COLUMNS FROM asset_status_logs LIKE 'changed_fields'")->fetch();
-    if (!$col) {
-        $pdo->exec("ALTER TABLE `asset_status_logs` ADD COLUMN `changed_fields` LONGTEXT NULL AFTER `notes`");
-    }
-} catch (Throwable $e) {}
+if (isset($_GET['repair_schema'])) {
+    ensureAssetsSchema($pdo);
+}
 
 if (!isLoggedIn()) {
     header('Location: login.php');
@@ -775,10 +606,29 @@ if (!empty($search) || $status_filter) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manage Utility Assets</title>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark-theme');
+            }
+        })();
+    </script>
     <link rel="icon" type="image/png" href="assets/images/logocityhall.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/responsive.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+        .dark-theme body::before {
+            background: rgba(15, 23, 42, 0.85) !important;
+        }
+        .dark-theme .card {
+            background: rgba(30, 41, 59, 0.9) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            color: #f8fafc !important;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+        }
 
         /* Review changes modal and comparison table CSS */
         .review-table {
