@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // incidents_dashboard.php
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
@@ -404,6 +404,136 @@ $mapIncidents = $pdo->query("
         .badge-medium { background: #e0f2fe; color: #0284c7; }
         .badge-high { background: #fff4e5; color: #b45309; }
         .badge-emergency { background: #fde8e8; color: #bd2130; }
+
+        /* Pipeline Boxes */
+        .pipeline-box {
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+        .pipeline-box.submitted { background: linear-gradient(135deg, #eff6ff, #dbeafe); }
+        .pipeline-box.reviewing { background: linear-gradient(135deg, #fef9c3, #fef3c7); }
+        .pipeline-box.forwarded { background: linear-gradient(135deg, #fce7f3, #fecdd3); }
+        .pipeline-box.resolved  { background: linear-gradient(135deg, #dcfce7, #bbf7d0); }
+        .pipeline-box .num { font-size: 20px; font-weight: 700; color: #2c3e50; }
+        .pipeline-box .label { font-size: 9px; text-transform: uppercase; font-weight: 600; color: #64748b; }
+
+        .rec-card {
+            padding: 12px 14px;
+            border-radius: 10px;
+            background: #f8fafc;
+            transition: all 0.2s ease;
+        }
+        .rec-card .rec-title { font-weight: 600; font-size: 13px; color: #2c3e50; }
+        .rec-card .rec-desc  { font-size: 12px; color: #64748b; line-height: 1.5; padding-left: 36px; }
+
+        .recent-report-card {
+            padding: 10px 15px;
+            border-radius: 8px;
+            background: #f8fafc;
+            border-left: 3px solid #cbd5e1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s ease;
+        }
+        .recent-report-card .rep-cat { font-weight: 600; font-size: 13px; color: #2c3e50; }
+        .recent-report-card .rep-loc { font-size: 11px; color: #64748b; }
+
+        /* ===== DARK THEME OVERRIDES ===== */
+        .dark-theme .card {
+            background: rgba(30, 41, 59, 0.9) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            color: #f8fafc !important;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+        }
+        .dark-theme .dashboard-header h1 {
+            color: #f8fafc !important;
+        }
+        .dark-theme .stat-card {
+            background: #1e293b !important;
+            border-color: #334155 !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+        }
+        .dark-theme .stat-info h3 {
+            color: #f8fafc !important;
+        }
+        .dark-theme .stat-info p {
+            color: #94a3b8 !important;
+        }
+        .dark-theme .box {
+            background: #1e293b !important;
+            border: 1px solid #334155 !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+            color: #f8fafc !important;
+        }
+        .dark-theme .box h3 {
+            color: #f8fafc !important;
+            border-bottom-color: #334155 !important;
+        }
+        .dark-theme .pipeline-box.submitted {
+            background: rgba(59, 130, 246, 0.15) !important;
+            border: 1px solid rgba(59, 130, 246, 0.3) !important;
+        }
+        .dark-theme .pipeline-box.reviewing {
+            background: rgba(245, 158, 11, 0.15) !important;
+            border: 1px solid rgba(245, 158, 11, 0.3) !important;
+        }
+        .dark-theme .pipeline-box.forwarded {
+            background: rgba(168, 85, 247, 0.15) !important;
+            border: 1px solid rgba(168, 85, 247, 0.3) !important;
+        }
+        .dark-theme .pipeline-box.resolved {
+            background: rgba(16, 185, 129, 0.15) !important;
+            border: 1px solid rgba(16, 185, 129, 0.3) !important;
+        }
+        .dark-theme .pipeline-box .num {
+            color: #f8fafc !important;
+        }
+        .dark-theme .pipeline-box .label {
+            color: #94a3b8 !important;
+        }
+        .dark-theme .rec-card {
+            background: #0f172a !important;
+            border: 1px solid #334155 !important;
+        }
+        .dark-theme .rec-card .rec-title {
+            color: #f8fafc !important;
+        }
+        .dark-theme .rec-card .rec-desc {
+            color: #cbd5e1 !important;
+        }
+        .dark-theme .recent-report-card {
+            background: #0f172a !important;
+            border-color: #334155 !important;
+        }
+        .dark-theme .recent-report-card .rep-cat {
+            color: #f8fafc !important;
+        }
+        .dark-theme .recent-report-card .rep-loc {
+            color: #94a3b8 !important;
+        }
+        .dark-theme .badge-low {
+            background: rgba(16, 185, 129, 0.2) !important;
+            color: #34d399 !important;
+            border: 1px solid rgba(16, 185, 129, 0.4) !important;
+        }
+        .dark-theme .badge-medium {
+            background: rgba(14, 165, 233, 0.2) !important;
+            color: #38bdf8 !important;
+            border: 1px solid rgba(14, 165, 233, 0.4) !important;
+        }
+        .dark-theme .badge-high {
+            background: rgba(245, 158, 11, 0.2) !important;
+            color: #fbbf24 !important;
+            border: 1px solid rgba(245, 158, 11, 0.4) !important;
+        }
+        .dark-theme .badge-emergency {
+            background: rgba(239, 68, 68, 0.2) !important;
+            color: #f87171 !important;
+            border: 1px solid rgba(239, 68, 68, 0.4) !important;
+        }
     </style>
 </head>
 <body>
@@ -495,21 +625,21 @@ $mapIncidents = $pdo->query("
                     </div>
                 </div>
                 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;text-align:center;">
-                    <div style="padding:10px;border-radius:8px;background:linear-gradient(135deg,#eff6ff,#dbeafe);">
-                        <div style="font-size:20px;font-weight:700;color:#2c3e50;"><?php echo $pendingIncidents; ?></div>
-                        <div style="font-size:9px;text-transform:uppercase;font-weight:600;color:#64748b;">Submitted</div>
+                    <div class="pipeline-box submitted">
+                        <div class="num"><?php echo $pendingIncidents; ?></div>
+                        <div class="label">Submitted</div>
                     </div>
-                    <div style="padding:10px;border-radius:8px;background:linear-gradient(135deg,#fef9c3,#fef3c7);">
-                        <div style="font-size:20px;font-weight:700;color:#2c3e50;"><?php echo $reviewingIncidents; ?></div>
-                        <div style="font-size:9px;text-transform:uppercase;font-weight:600;color:#64748b;">Reviewing</div>
+                    <div class="pipeline-box reviewing">
+                        <div class="num"><?php echo $reviewingIncidents; ?></div>
+                        <div class="label">Reviewing</div>
                     </div>
-                    <div style="padding:10px;border-radius:8px;background:linear-gradient(135deg,#fce7f3,#fecdd3);">
-                        <div style="font-size:20px;font-weight:700;color:#2c3e50;"><?php echo $forwardedIncidents; ?></div>
-                        <div style="font-size:9px;text-transform:uppercase;font-weight:600;color:#64748b;">Forwarded</div>
+                    <div class="pipeline-box forwarded">
+                        <div class="num"><?php echo $forwardedIncidents; ?></div>
+                        <div class="label">Forwarded</div>
                     </div>
-                    <div style="padding:10px;border-radius:8px;background:linear-gradient(135deg,#dcfce7,#bbf7d0);">
-                        <div style="font-size:20px;font-weight:700;color:#2c3e50;"><?php echo $resolvedIncidents; ?></div>
-                        <div style="font-size:9px;text-transform:uppercase;font-weight:600;color:#64748b;">Resolved</div>
+                    <div class="pipeline-box resolved">
+                        <div class="num"><?php echo $resolvedIncidents; ?></div>
+                        <div class="label">Resolved</div>
                     </div>
                 </div>
             </div>
@@ -517,15 +647,15 @@ $mapIncidents = $pdo->query("
                 <h3><i class="fas fa-lightbulb" style="color:#f59e0b;"></i> AI Recommendations <span style="background:#3762c8;color:#fff;font-size:10px;padding:2px 8px;border-radius:99px;margin-left:8px;"><?php echo count($incAiRecs); ?></span></h3>
                 <div style="display:flex; flex-direction:column; gap:10px; max-height:220px; overflow-y:auto;">
                     <?php foreach ($incAiRecs as $rec): ?>
-                    <div style="padding:12px 14px; border-radius:10px; background:#f8fafc; border-left:4px solid <?php echo $rec['color']; ?>;">
+                    <div class="rec-card" style="border-left:4px solid <?php echo $rec['color']; ?>;">
                         <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
                             <div style="width:28px;height:28px;border-radius:7px;background:<?php echo $rec['color']; ?>;display:flex;align-items:center;justify-content:center;color:white;font-size:12px;flex-shrink:0;">
                                 <i class="fas <?php echo $rec['icon']; ?>"></i>
                             </div>
-                            <span style="font-weight:600;font-size:13px;color:#2c3e50;"><?php echo $rec['title']; ?></span>
+                            <span class="rec-title"><?php echo $rec['title']; ?></span>
                             <span style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;text-transform:uppercase;margin-left:auto;background:<?php echo $rec['color']; ?>20;color:<?php echo $rec['color']; ?>;"><?php echo $rec['priority']; ?></span>
                         </div>
-                        <div style="font-size:12px;color:#64748b;line-height:1.5;padding-left:36px;"><?php echo $rec['text']; ?></div>
+                        <div class="rec-desc"><?php echo $rec['text']; ?></div>
                     </div>
                     <?php endforeach; ?>
                 </div>
@@ -548,10 +678,10 @@ $mapIncidents = $pdo->query("
                         <div style="color: #64748b; font-size: 13px;">No recent incident reports.</div>
                     <?php else: ?>
                         <?php foreach ($recentIncidents as $inc): ?>
-                            <div style="padding: 10px 15px; border-radius: 8px; background: #f8fafc; border-left: 3px solid #cbd5e1; display:flex; justify-content:space-between; align-items:center;">
+                            <div class="recent-report-card">
                                 <div>
-                                    <div style="font-weight:600; font-size:13px; color:#2c3e50;"><?php echo htmlspecialchars($inc['category_name']); ?></div>
-                                    <div style="font-size:11px; color:#64748b;"><?php echo htmlspecialchars($inc['location']); ?></div>
+                                    <div class="rep-cat"><?php echo htmlspecialchars($inc['category_name']); ?></div>
+                                    <div class="rep-loc"><?php echo htmlspecialchars($inc['location']); ?></div>
                                 </div>
                                 <span class="badge badge-<?php echo strtolower($inc['priority']); ?>"><?php echo htmlspecialchars($inc['priority']); ?></span>
                             </div>

@@ -723,12 +723,68 @@ function sidebarActive(string $page, string $current): string {
     .dark-theme [style*="color:#2c3e50"],
     .dark-theme [style*="color: #2c3e50"],
     .dark-theme [style*="color:rgb(44, 62, 80)"],
-    .dark-theme [style*="color: rgb(44, 62, 80)"] {
+    .dark-theme [style*="color: rgb(44, 62, 80)"],
+    .dark-theme [style*="color:#1e293b"],
+    .dark-theme [style*="color: #1e293b"],
+    .dark-theme [style*="color:#000"],
+    .dark-theme [style*="color: #000"] {
         color: #f8fafc !important;
     }
     .dark-theme [style*="color:#64748b"],
-    .dark-theme [style*="color: #64748b"] {
-        color: #cbd5e1 !important;
+    .dark-theme [style*="color: #64748b"],
+    .dark-theme [style*="color:#475569"],
+    .dark-theme [style*="color: #475569"] {
+        color: #94a3b8 !important;
+    }
+    .dark-theme [style*="background:#f8fafc"],
+    .dark-theme [style*="background: #f8fafc"],
+    .dark-theme [style*="background:#f1f5f9"],
+    .dark-theme [style*="background: #f1f5f9"],
+    .dark-theme [style*="background:#f8f9fa"],
+    .dark-theme [style*="background: #f8f9fa"] {
+        background: #0f172a !important;
+    }
+
+    /* Badges in dark mode */
+    .dark-theme .badge-citizen {
+        background: rgba(14, 165, 233, 0.2) !important;
+        color: #38bdf8 !important;
+        border: 1px solid rgba(14, 165, 233, 0.4) !important;
+    }
+    .dark-theme .badge-employee {
+        background: rgba(99, 102, 241, 0.2) !important;
+        color: #a5b4fc !important;
+        border: 1px solid rgba(99, 102, 241, 0.4) !important;
+    }
+    .dark-theme .badge-active {
+        background: rgba(16, 185, 129, 0.2) !important;
+        color: #34d399 !important;
+        border: 1px solid rgba(16, 185, 129, 0.4) !important;
+    }
+    .dark-theme .badge-inactive {
+        background: rgba(239, 68, 68, 0.2) !important;
+        color: #f87171 !important;
+        border: 1px solid rgba(239, 68, 68, 0.4) !important;
+    }
+    .dark-theme .badge-low {
+        background: rgba(16, 185, 129, 0.2) !important;
+        color: #34d399 !important;
+        border: 1px solid rgba(16, 185, 129, 0.4) !important;
+    }
+    .dark-theme .badge-medium {
+        background: rgba(14, 165, 233, 0.2) !important;
+        color: #38bdf8 !important;
+        border: 1px solid rgba(14, 165, 233, 0.4) !important;
+    }
+    .dark-theme .badge-high {
+        background: rgba(245, 158, 11, 0.2) !important;
+        color: #fbbf24 !important;
+        border: 1px solid rgba(245, 158, 11, 0.4) !important;
+    }
+    .dark-theme .badge-emergency {
+        background: rgba(239, 68, 68, 0.2) !important;
+        color: #f87171 !important;
+        border: 1px solid rgba(239, 68, 68, 0.4) !important;
     }
 
     /* Tab button overrides in dark theme */
@@ -749,6 +805,7 @@ function sidebarActive(string $page, string $current): string {
 
     /* CRUD and Asset Dashboard specific components */
     .dark-theme .filter-container,
+    .dark-theme .filter-panel,
     .dark-theme .table-section,
     .dark-theme .chart-box,
     .dark-theme .list-section {

@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // ai_analytics.php — AI Analytics Dashboard (Employee Only)
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
@@ -986,6 +986,87 @@ $pipelineData = json_encode([
                 border-bottom: none;
             }
         }
+
+        /* ===== DARK THEME OVERRIDES ===== */
+        .dark-theme .card {
+            background: rgba(30, 41, 59, 0.9) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            color: #f8fafc !important;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+        }
+        .dark-theme .dashboard-header h1 {
+            color: #f8fafc !important;
+        }
+        .dark-theme .stat-card {
+            background: #1e293b !important;
+            border-color: #334155 !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+        }
+        .dark-theme .stat-info h3 {
+            color: #f8fafc !important;
+        }
+        .dark-theme .stat-info p {
+            color: #94a3b8 !important;
+        }
+        .dark-theme .box {
+            background: #1e293b !important;
+            border: 1px solid #334155 !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+            color: #f8fafc !important;
+        }
+        .dark-theme .box h3 {
+            color: #f8fafc !important;
+            border-bottom-color: #334155 !important;
+        }
+        .dark-theme .tab-buttons {
+            border-bottom-color: #334155 !important;
+        }
+        .dark-theme .tab-btn {
+            color: #94a3b8 !important;
+        }
+        .dark-theme .tab-btn:hover {
+            background: #151f32 !important;
+            color: #f8fafc !important;
+        }
+        .dark-theme .tab-btn.active {
+            background: #3762c8 !important;
+            color: #ffffff !important;
+        }
+        .dark-theme .rec-item {
+            background: #0f172a !important;
+            border: 1px solid #334155 !important;
+        }
+        .dark-theme .rec-item .rec-title {
+            color: #f8fafc !important;
+        }
+        .dark-theme .rec-item .rec-text {
+            color: #cbd5e1 !important;
+        }
+        .dark-theme .risk-table th {
+            background: #0f172a !important;
+            color: #94a3b8 !important;
+            border-bottom-color: #334155 !important;
+        }
+        .dark-theme .risk-table td {
+            color: #cbd5e1 !important;
+            border-bottom-color: #334155 !important;
+        }
+        .dark-theme .pipeline-step {
+            background: #0f172a !important;
+            border: 1px solid #334155 !important;
+        }
+        .dark-theme .pipeline-step .step-num {
+            color: #f8fafc !important;
+        }
+        .dark-theme .pipeline-step .step-label {
+            color: #94a3b8 !important;
+        }
+        .dark-theme .pipeline-arrow {
+            border-left-color: #334155 !important;
+        }
+        .dark-theme .prog-bar {
+            background: #0f172a !important;
+        }
     </style>
 </head>
 <body>
@@ -1411,8 +1492,12 @@ $pipelineData = json_encode([
 
     const palette = ['#3762c8','#e74c3c','#f1c40f','#27ae60','#a55eea','#1abc9c','#f39c12','#e84393','#95a5a6','#2c3e50'];
 
+    const isDark = document.documentElement.classList.contains('dark-theme');
     Chart.defaults.font.family = "'Poppins', sans-serif";
     Chart.defaults.font.size = 12;
+    if (isDark) {
+        Chart.defaults.color = '#94a3b8';
+    }
 
     // ===== 1. RADAR CHART =====
     new Chart(document.getElementById('radarChart'), {
@@ -1422,7 +1507,7 @@ $pipelineData = json_encode([
             datasets: [{
                 label: 'Module Score',
                 data: <?php echo $radarData; ?>,
-                backgroundColor: 'rgba(55, 98, 200, 0.15)',
+                backgroundColor: isDark ? 'rgba(55, 98, 200, 0.25)' : 'rgba(55, 98, 200, 0.15)',
                 borderColor: '#3762c8',
                 borderWidth: 2,
                 pointBackgroundColor: '#3762c8',
@@ -1439,9 +1524,18 @@ $pipelineData = json_encode([
                 r: {
                     beginAtZero: true,
                     max: 100,
-                    ticks: { stepSize: 25, font: { size: 10 } },
-                    grid: { color: 'rgba(0,0,0,0.06)' },
-                    angleLines: { color: 'rgba(0,0,0,0.06)' }
+                    ticks: { 
+                        stepSize: 25, 
+                        font: { size: 10 },
+                        color: isDark ? '#94a3b8' : '#64748b',
+                        backdropColor: 'transparent'
+                    },
+                    pointLabels: {
+                        color: isDark ? '#f8fafc' : '#2c3e50',
+                        font: { size: 12, weight: '600' }
+                    },
+                    grid: { color: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' },
+                    angleLines: { color: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }
                 }
             },
             plugins: { legend: { display: false } }

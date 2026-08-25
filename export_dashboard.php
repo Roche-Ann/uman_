@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // export_dashboard.php - Export Management Page
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
@@ -57,6 +57,58 @@ $userName = $_SESSION['user_name'] ?? $_SESSION['full_name'] ?? 'LGU Coordinator
         .export-actions { display:flex; gap:10px; flex-wrap:wrap; }
         .export-actions .btn { flex:1; justify-content:center; padding:8px 12px; font-size:12px; min-width:70px; }
         .icon-assets { color:#4b7bec; } .icon-incidents { color:#f1c40f; } .icon-maintenance { color:#e74c3c; } .icon-energy { color:#a55eea; } .icon-facilities { color:#45aaf2; } .icon-users { color:#2ecc71; }
+
+        .instructions-card {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8fafc;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+        }
+
+        /* ===== DARK THEME OVERRIDES ===== */
+        .dark-theme .card {
+            background: rgba(30, 41, 59, 0.9) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            color: #f8fafc !important;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+        }
+        .dark-theme .dashboard-header h1 {
+            color: #f8fafc !important;
+        }
+        .dark-theme .export-card {
+            background: #1e293b !important;
+            border: 1px solid #334155 !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+        }
+        .dark-theme .export-card:hover {
+            border-color: #3b82f6 !important;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
+        }
+        .dark-theme .export-card h3 {
+            color: #f8fafc !important;
+        }
+        .dark-theme .export-card p {
+            color: #94a3b8 !important;
+        }
+        .dark-theme .export-card .count {
+            background: #0f172a !important;
+            color: #93c5fd !important;
+            border: 1px solid #334155 !important;
+        }
+        .dark-theme .instructions-card {
+            background: #0f172a !important;
+            border: 1px solid #334155 !important;
+        }
+        .dark-theme .instructions-card h4 {
+            color: #f8fafc !important;
+        }
+        .dark-theme .instructions-card ul {
+            color: #94a3b8 !important;
+        }
+        .dark-theme .instructions-card strong {
+            color: #f8fafc !important;
+        }
     </style>
 </head>
 <body>
@@ -75,7 +127,7 @@ $userName = $_SESSION['user_name'] ?? $_SESSION['full_name'] ?? 'LGU Coordinator
             <div class="export-card"><div class="icon icon-facilities"><i class="fas fa-warehouse"></i></div><h3>Facilities</h3><p>Export public facilities</p><span class="count"><?php echo number_format($counts['facilities']); ?> records</span><div class="export-actions"><a href="export.php?type=facilities&format=csv" class="btn btn-success"><i class="fas fa-file-csv"></i> CSV</a><a href="export.php?type=facilities&format=pdf" class="btn btn-danger"><i class="fas fa-file-pdf"></i> PDF</a></div></div>
             <div class="export-card"><div class="icon icon-users"><i class="fas fa-users"></i></div><h3>Users</h3><p>Export user accounts</p><span class="count"><?php echo number_format($counts['users']); ?> records</span><div class="export-actions"><a href="export.php?type=users&format=csv" class="btn btn-success"><i class="fas fa-file-csv"></i> CSV</a><a href="export.php?type=users&format=pdf" class="btn btn-danger"><i class="fas fa-file-pdf"></i> PDF</a></div></div>
         </div>
-        <div style="margin-top:30px; padding:20px; background:#f8fafc; border-radius:12px; border:1px solid #e2e8f0;">
+        <div class="instructions-card">
             <h4><i class="fas fa-info-circle"></i> Instructions</h4>
             <ul style="color:#64748b; font-size:13px; line-height:2; padding-left:20px;">
                 <li><strong>CSV</strong> – Opens in Excel / Google Sheets</li>

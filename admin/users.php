@@ -1,5 +1,5 @@
-﻿<?php
-// admin/users.php - User Management (FIXED EDIT MODAL)
+<?php
+// admin/users.php - User Management
 require_once '../includes/auth.php';
 require_once '../includes/db.php';
 
@@ -12,132 +12,12 @@ $error = $success = '';
 $search = trim($_GET['search'] ?? '');
 $role_filter = trim($_GET['role'] ?? '');
 
-// ============================================================
-// HANDLE POST ACTIONS
-// ============================================================
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $action = $_POST['action'] ?? '';
-    
-    // ----- ADD USER -----
-    if ($action === 'add') {
-        $full_name = trim($_POST['full_name'] ?? '');
-        $email = filter_var($_POST['email'] ?? '', FILTER_SANITIZE_EMAIL);
-        $password = $_POST['password'] ?? '';
-        $user_type = $_POST['user_type'] ?? 'citizen';
-        $is_active = isset($_POST['is_active']) ? 1 : 0;
-        
-        if (empty($full_name) || empty($email) || empty($password)) {
-            $_SESSION['flash_error'] = 'All fields are required.';
-        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $_SESSION['flash_error'] = 'Invalid email.';
-        } elseif (strlen($password) < 6) {
-            $_SESSION['flash_error'] = 'Password must be at least 6 characters.';
-        } else {
-            try {
-                $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
-                $stmt->execute([$email]);
-                if ($stmt->fetch()) {
-                    $_SESSION['flash_error'] = 'Email already exists.';
-                } else {
-                    $hashed = password_hash($password, PASSWORD_DEFAULT);
-                    $stmt = $pdo->prepare("INSERT INTO users (full_name, email, password, user_type, is_active, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
-                    $stmt->execute([$full_name, $email, $hashed, $user_type, $is_active]);
-                    $_SESSION['flash_success'] = "User '$full_name' added.";
-                }
-            } catch (PDOException $e) {
-                $_SESSION['flash_error'] = 'DB error: ' . $e->getMessage();
-            }
-        }
-        header('Location: users.php' . ($search ? '?search=' . urlencode($search) : ''));
-        exit();
-    }
-    
-    // ----- EDIT USER (FIXED) -----
-    if ($action === 'edit') {
-        $id = intval($_POST['id'] ?? 0);
-        $full_name = trim($_POST['full_name'] ?? '');
-        $email = filter_var($_POST['email'] ?? '', FILTER_SANITIZE_EMAIL);
-        $user_type = $_POST['user_type'] ?? 'citizen';
-        $is_active = isset($_POST['is_active']) ? 1 : 0;
-        $new_password = trim($_POST['new_password'] ?? '');
-        
-        // Debug: log the received data
-        error_log("Edit User - ID: $id, Name: $full_name, Email: $email, Role: $user_type, Active: $is_active");
-        
-        if ($id <= 0 || empty($full_name) || empty($email)) {
-            $_SESSION['flash_error'] = 'Name and email are required.';
-        } else {
-            try {
-                // Check email not used by other users
-                $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ? AND id != ?");
-                $stmt->execute([$email, $id]);
-                if ($stmt->fetch()) {
-                    $_SESSION['flash_error'] = 'Email already used by another user.';
-                } else {
-                    $sql = "UPDATE users SET full_name = ?, email = ?, user_type = ?, is_active = ?";
-                    $params = [$full_name, $email, $user_type, $is_active];
-                    if (!empty($new_password)) {
-                        $sql .= ", password = ?";
-                        $params[] = password_hash($new_password, PASSWORD_DEFAULT);
-                    }
-                    $sql .= " WHERE id = ?";
-                    $params[] = $id;
-                    $stmt = $pdo->prepare($sql);
-                    $stmt->execute($params);
-                    
-                    if ($stmt->rowCount() > 0) {
-                        $_SESSION['flash_success'] = "User updated successfully.";
-                    } else {
-                        $_SESSION['flash_success'] = "No changes made or user not found.";
-                    }
-                }
-            } catch (PDOException $e) {
-                $_SESSION['flash_error'] = 'DB error: ' . $e->getMessage();
-            }
-        }
-        header('Location: users.php' . ($search ? '?search=' . urlencode($search) : ''));
-        exit();
-    }
-    
-    // ----- TOGGLE -----
-    if ($action === 'toggle') {
-        $id = intval($_POST['id'] ?? 0);
-        if ($id > 0 && $id != $_SESSION['user_id']) {
-            $stmt = $pdo->prepare("UPDATE users SET is_active = NOT is_active WHERE id = ?");
-            $stmt->execute([$id]);
-            $_SESSION['flash_success'] = "User status toggled.";
-        } else {
-            $_SESSION['flash_error'] = "Cannot change your own status.";
-        }
-        header('Location: users.php' . ($search ? '?search=' . urlencode($search) : ''));
-        exit();
-    }
-    
-    // ----- DELETE -----
-    if ($action === 'delete') {
-        $id = intval($_POST['id'] ?? 0);
-        if ($id > 0 && $id != $_SESSION['user_id']) {
-            $stmt = $pdo->prepare("DELETE FROM users WHERE id = ?");
-            $stmt->execute([$id]);
-            $_SESSION['flash_success'] = "User deleted.";
-        } else {
-            $_SESSION['flash_error'] = "Cannot delete your own account.";
-        }
-        header('Location: users.php' . ($search ? '?search=' . urlencode($search) : ''));
-        exit();
-    }
-}
-
-// ============================================================
-// FLASH MESSAGES
-// ============================================================
+// Flash messages
 $error = $_SESSION['flash_error'] ?? '';
 $success = $_SESSION['flash_success'] ?? '';
 unset($_SESSION['flash_error'], $_SESSION['flash_success']);
 
-// ============================================================
-// BUILD QUERY
-// ============================================================
+// Build query
 $conditions = [];
 $params = [];
 if ($search) {
@@ -164,34 +44,6 @@ $totalPages = ceil($total / $limit);
 $stmt = $pdo->prepare("SELECT *, last_login, created_at FROM users $where ORDER BY id DESC LIMIT $limit OFFSET $offset");
 $stmt->execute($params);
 $users = $stmt->fetchAll();
-
-// Fetch user activity details for each user
-foreach ($users as &$u) {
-    $userId = $u['id'];
-    $u['service_requests'] = [];
-    $u['service_requests_count'] = 0;
-    $u['otps'] = [];
-    $u['otp_count'] = 0;
-    
-    try {
-        $srStmt = $pdo->prepare("SELECT id, request_type, utility_type, status, created_at FROM service_requests WHERE user_id = ? ORDER BY created_at DESC LIMIT 10");
-        $srStmt->execute([$userId]);
-        $u['service_requests'] = $srStmt->fetchAll(PDO::FETCH_ASSOC);
-        $u['service_requests_count'] = count($u['service_requests']);
-    } catch (Exception $e) {
-        // Fallback if table/schema differs
-    }
-    
-    try {
-        $otpStmt = $pdo->prepare("SELECT id, created_at, used FROM otps WHERE user_id = ? ORDER BY created_at DESC LIMIT 5");
-        $otpStmt->execute([$userId]);
-        $u['otps'] = $otpStmt->fetchAll(PDO::FETCH_ASSOC);
-        $u['otp_count'] = count($u['otps']);
-    } catch (Exception $e) {
-        // Fallback
-    }
-}
-unset($u);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -224,9 +76,6 @@ unset($u);
         .btn-primary:hover { background:#2851b0; }
         .btn-outline { background:transparent; border:1px solid #cbd5e1; color:#64748b; }
         .btn-outline:hover { background:#f8f9fa; }
-        .btn-danger { background:#dc3545; color:#fff; }
-        .btn-warning { background:#ffc107; color:#212529; }
-        .btn-sm { padding:5px 10px; font-size:12px; }
         .alert { padding:15px 20px; border-radius:8px; margin-bottom:25px; font-size:14px; font-weight:500; display:flex; align-items:center; gap:10px; }
         .alert-error { background:#fde8e8; color:#c0392b; border:1px solid #f8b4b4; }
         .alert-success { background:#e2fbe8; color:#1e7e34; border:1px solid #b8f0c5; }
@@ -246,34 +95,86 @@ unset($u);
         .badge-employee { background:#dbeafe; color:#1e40af; }
         .badge-active { background:#e2fbe8; color:#1e7e34; }
         .badge-inactive { background:#fde8e8; color:#bd2130; }
-        .btn-icon { width:32px; height:32px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center; border:none; cursor:pointer; font-size:13px; transition:all 0.2s; }
-        .btn-icon-activity { background:#e0e7ff; color:#4338ca; }
-        .btn-icon-activity:hover { background:#c7d2fe; }
-        .btn-icon-edit { background:#fef9e7; color:#d39e00; }
-        .btn-icon-edit:hover { background:#fce8b2; }
-        .btn-icon-toggle { background:#e0f2fe; color:#0284c7; }
-        .btn-icon-toggle:hover { background:#bae6fd; }
-        .btn-icon-delete { background:#fde8e8; color:#bd2130; }
-        .btn-icon-delete:hover { background:#f8b4b4; }
         .pagination-container { display:flex; justify-content:space-between; align-items:center; margin-top:20px; }
         .pagination-info { font-size:13px; color:#64748b; }
         .pagination-links { display:flex; gap:6px; }
         .page-link { padding:6px 12px; border-radius:6px; border:1px solid #cbd5e1; text-decoration:none; color:#64748b; font-size:13px; font-weight:500; }
         .page-link:hover { border-color:#3762c8; color:#3762c8; background:#f8fafc; }
         .page-link.active { background:#3762c8; color:#fff; border-color:#3762c8; }
-        .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:2000; justify-content:center; align-items:center; backdrop-filter:blur(4px); }
-        .modal.open { display:flex; }
-        .modal-content { background:white; width:90%; max-width:550px; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,0.15); overflow:hidden; animation:modalFadeIn 0.3s ease; }
-        @keyframes modalFadeIn { from { opacity:0; transform:translateY(-20px); } to { opacity:1; transform:translateY(0); } }
-        .modal-header { padding:20px 24px; background:#f8f9fa; border-bottom:1px solid #edf2f7; display:flex; justify-content:space-between; align-items:center; }
-        .modal-header h3 { font-size:18px; color:#2c3e50; }
-        .modal-close { background:transparent; border:none; font-size:18px; cursor:pointer; color:#64748b; }
-        .modal-body { padding:24px; max-height:70vh; overflow-y:auto; }
-        .modal-footer { padding:16px 24px; background:#f8f9fa; border-top:1px solid #edf2f7; display:flex; justify-content:flex-end; gap:12px; }
-        .form-row { display:flex; gap:15px; margin-bottom:15px; }
-        .form-row .form-group { flex:1; }
-        .checkbox-group { display:flex; align-items:center; gap:10px; margin-top:5px; }
-        .checkbox-group input[type="checkbox"] { width:18px; height:18px; accent-color:#3762c8; }
+
+        /* ===== DARK THEME OVERRIDES ===== */
+        .dark-theme .card {
+            background: rgba(30, 41, 59, 0.9) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            color: #f8fafc !important;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+        }
+        .dark-theme .dashboard-header h1 {
+            color: #f8fafc !important;
+        }
+        .dark-theme .filter-panel {
+            background: #1e293b !important;
+            border: 1px solid #334155 !important;
+            box-shadow: none !important;
+        }
+        .dark-theme .table-section {
+            background: #1e293b !important;
+            border: 1px solid #334155 !important;
+            box-shadow: none !important;
+        }
+        .dark-theme .form-control {
+            background: #0f172a !important;
+            color: #f8fafc !important;
+            border-color: #334155 !important;
+        }
+        .dark-theme .form-control:focus {
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25) !important;
+        }
+        .dark-theme .form-group label {
+            color: #94a3b8 !important;
+        }
+        .dark-theme th {
+            background: #0f172a !important;
+            color: #94a3b8 !important;
+            border-bottom-color: #334155 !important;
+        }
+        .dark-theme td {
+            border-bottom-color: #334155 !important;
+            color: #cbd5e1 !important;
+        }
+        .dark-theme tr:hover td {
+            background: rgba(255, 255, 255, 0.04) !important;
+        }
+        .dark-theme .badge-citizen {
+            background: rgba(14, 165, 233, 0.2) !important;
+            color: #38bdf8 !important;
+            border: 1px solid rgba(14, 165, 233, 0.4) !important;
+        }
+        .dark-theme .badge-employee {
+            background: rgba(99, 102, 241, 0.2) !important;
+            color: #a5b4fc !important;
+            border: 1px solid rgba(99, 102, 241, 0.4) !important;
+        }
+        .dark-theme .badge-active {
+            background: rgba(16, 185, 129, 0.2) !important;
+            color: #34d399 !important;
+            border: 1px solid rgba(16, 185, 129, 0.4) !important;
+        }
+        .dark-theme .badge-inactive {
+            background: rgba(239, 68, 68, 0.2) !important;
+            color: #f87171 !important;
+            border: 1px solid rgba(239, 68, 68, 0.4) !important;
+        }
+        .dark-theme .btn-outline {
+            color: #cbd5e1 !important;
+            border-color: #475569 !important;
+            background: transparent !important;
+        }
+        .dark-theme .btn-outline:hover {
+            background: #334155 !important;
+            color: #ffffff !important;
+        }
     </style>
 </head>
 <body>
@@ -286,16 +187,15 @@ unset($u);
                 <p style="color:#64748b; font-size:14px;">Monitor LGU user accounts and their activities on the website.</p>
             </div>
             <div class="header-action-group" style="display:flex; gap:10px;">
-                <button class="btn btn-primary" onclick="openAddModal()"><i class="fas fa-plus"></i> Register User</button>
                 <a href="activity_logs.php" class="btn btn-outline"><i class="fas fa-scroll"></i> Activity Log</a>
                 <a href="../utilities_dashboard.php" class="btn btn-outline"><i class="fas fa-chevron-left"></i> Dashboard</a>
             </div>
         </div>
 
-        <?php if ($error): ?>
+        <?php if (!empty($error)): ?>
             <div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> <?php echo htmlspecialchars($error); ?></div>
         <?php endif; ?>
-        <?php if ($success): ?>
+        <?php if (!empty($success)): ?>
             <div class="alert alert-success"><i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($success); ?></div>
         <?php endif; ?>
 
@@ -334,7 +234,7 @@ unset($u);
                     </thead>
                     <tbody>
                         <?php if (empty($users)): ?>
-                            <tr><td colspan="8" style="text-align:center; padding:30px; color:#94a3b8;">No users found.</td></tr>
+                            <tr><td colspan="7" style="text-align:center; padding:30px; color:#94a3b8;">No users found.</td></tr>
                         <?php else: foreach ($users as $u): $isSelf = ($u['id'] == $_SESSION['user_id']); ?>
                             <tr>
                                 <td><strong><?php echo $u['id']; ?></strong></td>
