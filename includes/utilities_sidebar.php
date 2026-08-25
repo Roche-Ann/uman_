@@ -1184,6 +1184,13 @@ function sidebarActive(string $page, string $current): string {
             </li>
 
             <li>
+                <a href="<?php echo $sidebarBase; ?>water_dashboard.php" class="nav-link<?php echo (strpos($currentPage, 'water_') === 0) ? ' active' : ''; ?>">
+                    <i class="fas fa-tint"></i>
+                    <span class="link-label">Water Management</span>
+                </a>
+            </li>
+
+            <li>
                 <a href="<?php echo $sidebarBase; ?>ai_analytics.php" class="nav-link<?php echo sidebarActive('ai_analytics.php', $currentPage); ?>">
                     <i class="fas fa-brain"></i>
                     <span class="link-label">AI Analytics</span>
