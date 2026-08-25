@@ -1246,47 +1246,73 @@ if (!empty($search) || $status_filter) {
         /* =========== ACCORDION TABLE STYLES =========== */
         .group-header-row {
             cursor: pointer;
-            background: #f8faff;
-            border-left: 4px solid transparent;
-            transition: background 0.15s, border-color 0.15s;
+            background: #ffffff;
+            border-left: 3px solid transparent;
+            transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
         }
         .group-header-row:hover {
-            background: #eef2ff;
-            border-left-color: #6366f1;
+            background: #f5f7ff;
+            border-left-color: #3762c8;
         }
         .group-header-row.expanded {
-            background: #eef2ff;
-            border-left-color: #6366f1;
+            background: #f0f4ff;
+            border-left-color: #3762c8;
+            box-shadow: inset 0 -1px 0 #dbeafe;
         }
         .accordion-icon {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            background: #e0e7ff;
-            color: #6366f1;
+            width: 26px;
+            height: 26px;
+            border-radius: 8px;
+            background: #e8eeff;
+            color: #3762c8;
             font-size: 10px;
-            transition: transform 0.25s ease;
+            transition: transform 0.22s ease, background 0.18s ease;
+            border: 1px solid #c7d7fb;
+        }
+        .group-header-row:hover .accordion-icon {
+            background: #dbeafe;
         }
         .group-header-row.expanded .accordion-icon {
             transform: rotate(90deg);
+            background: #3762c8;
+            color: #ffffff;
+            border-color: #3762c8;
         }
         .category-label {
             font-size: 14px;
+            font-weight: 600;
             color: #1e293b;
             letter-spacing: 0.01em;
         }
         .asset-count-badge {
-            display: inline-block;
-            background: #6366f1;
-            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #eff6ff;
+            color: #3762c8;
+            border: 1px solid #bfdbfe;
             border-radius: 20px;
-            padding: 2px 10px;
+            padding: 3px 11px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+        }
+        /* expand hint */
+        .expand-hint {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
             font-size: 12px;
-            font-weight: 600;
-            letter-spacing: 0.02em;
+            color: #94a3b8;
+            font-weight: 500;
+            transition: color 0.15s;
+        }
+        .group-header-row:hover .expand-hint,
+        .group-header-row.expanded .expand-hint {
+            color: #3762c8;
         }
         /* Child row container */
         .group-child-row {
@@ -1297,20 +1323,22 @@ if (!empty($search) || $status_filter) {
         }
         /* Child table inside expanded row */
         .child-table-wrapper {
-            padding: 0 0 8px 40px;
-            background: #f9fafb;
+            padding: 0 12px 12px 52px;
+            background: #fafbff;
             border-top: 1px solid #e2e8f0;
-            border-bottom: 2px solid #e0e7ff;
+            border-bottom: 2px solid #dbeafe;
         }
         .child-table {
             width: 100%;
             border-collapse: collapse;
+            border-radius: 8px;
+            overflow: hidden;
         }
         .child-table thead tr {
             background: #f1f5f9;
         }
         .child-table thead th {
-            padding: 9px 12px;
+            padding: 10px 14px;
             font-size: 11px;
             font-weight: 700;
             text-transform: uppercase;
@@ -1323,10 +1351,10 @@ if (!empty($search) || $status_filter) {
             transition: background 0.1s;
         }
         .child-table tbody tr:hover {
-            background: #f0f4ff;
+            background: #eff6ff;
         }
         .child-table td {
-            padding: 9px 12px;
+            padding: 11px 14px;
             font-size: 13px;
             color: #334155;
         }
@@ -1601,18 +1629,18 @@ if (!empty($search) || $status_filter) {
                                     </strong>
                                 </td>
                                 <td>
-                                    <span class="asset-count-badge"><?php echo $totalAssets; ?> Asset<?php echo $totalAssets !== 1 ? 's' : ''; ?></span>
+                                    <span class="asset-count-badge"><i class="fas fa-layer-group" style="font-size:9px;"></i> <?php echo $totalAssets; ?> Asset<?php echo $totalAssets !== 1 ? 's' : ''; ?></span>
                                 </td>
-                                <td><strong><?php echo $group['total_qty']; ?></strong></td>
+                                <td><strong style="color:#1e293b;"><?php echo $group['total_qty']; ?></strong></td>
                                 <td>
                                     <?php foreach ($statusCounts as $status => $count): ?>
-                                    <span class="badge badge-<?php echo strtolower(str_replace([' ','_'],'', $status)); ?>" style="margin-right:3px; font-size:10px;">
+                                    <span class="badge badge-<?php echo strtolower(str_replace([' ','_'],'', $status)); ?>" style="margin-right:4px; font-size:10px;">
                                         <?php echo htmlspecialchars($status); ?> (<?php echo $count; ?>)
                                     </span>
                                     <?php endforeach; ?>
                                 </td>
-                                <td style="text-align:right; color:#94a3b8; font-size:12px;">
-                                    <span style="pointer-events:none;">Click to expand</span>
+                                <td style="text-align:right;">
+                                    <span class="expand-hint"><i class="fas fa-chevron-down" style="font-size:10px;"></i> Expand</span>
                                 </td>
                             </tr>
                             <!-- Expanded Child Rows -->

@@ -946,19 +946,37 @@ function sidebarActive(string $page, string $current): string {
     .dark-theme .group-header-row:hover,
     .dark-theme .group-header-row.expanded {
         background: #1e2d52 !important;
-        border-left-color: #818cf8 !important;
+        border-left-color: #3b82f6 !important;
     }
     .dark-theme .category-label {
-        color: #f8fafc !important;
+        color: #f1f5f9 !important;
     }
     .dark-theme .accordion-icon {
-        background: #312e81 !important;
-        color: #a5b4fc !important;
+        background: #1e3a6e !important;
+        color: #93c5fd !important;
+        border-color: #2d5099 !important;
+    }
+    .dark-theme .group-header-row.expanded .accordion-icon {
+        background: #3762c8 !important;
+        color: #ffffff !important;
+        border-color: #3762c8 !important;
+    }
+    .dark-theme .asset-count-badge {
+        background: #1e3a6e !important;
+        color: #93c5fd !important;
+        border-color: #2d5099 !important;
+    }
+    .dark-theme .expand-hint {
+        color: #64748b !important;
+    }
+    .dark-theme .group-header-row:hover .expand-hint,
+    .dark-theme .group-header-row.expanded .expand-hint {
+        color: #93c5fd !important;
     }
     .dark-theme .child-table-wrapper {
         background: #151f32 !important;
         border-top-color: #334155 !important;
-        border-bottom-color: #312e81 !important;
+        border-bottom-color: #2d5099 !important;
     }
     .dark-theme .child-table thead tr {
         background: #1a2540 !important;
@@ -1210,12 +1228,6 @@ function sidebarActive(string $page, string $current): string {
     <a href="<?php echo $sidebarBase; ?>export_dashboard.php" class="nav-link<?php echo $currentPage === 'export_dashboard.php' ? ' active' : ''; ?>">
         <i class="fas fa-file-export"></i>
         <span class="link-label">Export Data</span>
-    </a>
-</li>
-<li>
-    <a href="<?php echo $sidebarBase; ?>assets_reports.php" class="nav-link<?php echo $currentPage === 'assets_reports.php' ? ' active' : ''; ?>">
-        <i class="fas fa-file-alt"></i>
-        <span class="link-label">Asset Reports</span>
     </a>
 </li>
 <li>

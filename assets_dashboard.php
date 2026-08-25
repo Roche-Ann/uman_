@@ -561,7 +561,6 @@ if ($damagedNoMaint > 0) {
                     <?php endif; ?>
                 </a>
                 <a href="assets_crud.php" class="btn-action btn-primary"><i class="fas fa-boxes"></i> Asset Inventory</a>
-                <a href="assets_reports.php" class="btn-action btn-secondary"><i class="fas fa-file-invoice"></i> Reports</a>
             </div>
         </div>
 
