@@ -337,3 +337,100 @@ function runInspectionAIValidation(string $referenceId, PDO $pdo): array {
         'callback_error'     => $errText
     ];
 }
+
+/**
+ * Dispatch signed webhook callback payload to UPAD system
+ */
+function dispatchUPADCallback(string $referenceId, PDO $pdo, string $decision, float $score, string $overallCondition, string $recommendation, array $req = []): array {
+    if (empty($req)) {
+        $stmt = $pdo->prepare("SELECT * FROM upad_inspection_requests WHERE reference_id = ?");
+        $stmt->execute([$referenceId]);
+        $req = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    $appId = (int)($req['application_id'] ?? 0);
+    $lat   = !empty($req['latitude']) ? (float)$req['latitude'] : null;
+    $lng   = !empty($req['longitude']) ? (float)$req['longitude'] : null;
+
+    $callbackPayload = [
+        'application_id'           => $appId,
+        'grid_id'                  => $referenceId,
+        'inspection_date'          => date('Y-m-d'),
+        'engineer_assigned'        => 'Engr. Juan Dela Cruz (AI Verified)',
+        'grid_capacity_condition'  => $overallCondition,
+        'transformer_condition'    => 'Good',
+        'line_condition'           => 'Good',
+        'load_forecast_condition'  => 'Good',
+        'overall_condition'        => $overallCondition,
+        'severity'                 => ($score >= 80 ? 'Low' : ($score >= 50 ? 'Medium' : 'High')),
+        'recommendation'           => $recommendation,
+        'gps_latitude'             => $lat,
+        'gps_longitude'            => $lng,
+        'remarks'                  => "Manual check decision: {$decision} (Score: {$score}%). {$recommendation}",
+        'photo_urls'               => [],
+    ];
+
+    $callbackJson = json_encode($callbackPayload, JSON_UNESCAPED_UNICODE);
+    
+    $rawCallback = trim((string)($req['callback_url'] ?? ''));
+    if (empty($rawCallback) || str_contains($rawCallback, 'example.com') || str_contains($rawCallback, '/api/webhooks/')) {
+        $callbackUrl = 'https://upad.infragovservices.com/uman-integration/uman_inspection_result.php';
+    } else {
+        $callbackUrl = $rawCallback;
+    }
+    
+    $signature = hash_hmac('sha256', $callbackJson, UPAD_WEBHOOK_SECRET);
+
+    $sendCurl = function($targetUrl) use ($callbackJson, $signature) {
+        $ch = curl_init($targetUrl);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $callbackJson,
+            CURLOPT_HTTPHEADER     => [
+                'Content-Type: application/json',
+                'X-UMAN-Signature: ' . $signature,
+            ],
+            CURLOPT_TIMEOUT        => 10,
+            CURLOPT_SSL_VERIFYPEER => false,
+        ]);
+        $responseBody = curl_exec($ch);
+        $httpCode     = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlErr      = curl_error($ch);
+        return [$httpCode, $curlErr, $responseBody];
+    };
+
+    [$httpCode, $curlErr, $responseBody] = $sendCurl($callbackUrl);
+    $callbackSuccess = !$curlErr && $httpCode >= 200 && $httpCode < 300;
+
+    if (!$callbackSuccess && defined('UPAD_DEFAULT_CALLBACK_URL') && UPAD_DEFAULT_CALLBACK_URL !== $callbackUrl) {
+        [$httpCode, $curlErr, $responseBody] = $sendCurl(UPAD_DEFAULT_CALLBACK_URL);
+        $callbackSuccess = !$curlErr && $httpCode >= 200 && $httpCode < 300;
+    }
+
+    $errText = $curlErr ?: ($callbackSuccess ? null : "HTTP $httpCode: " . mb_substr(strip_tags($responseBody ?: ''), 0, 150));
+
+    try {
+        $updateStmt = $pdo->prepare("
+            UPDATE upad_inspection_requests
+            SET status = ?, ai_decision = ?, result_payload = ?, callback_sent_at = NOW(), callback_http_code = ?, callback_error = ?
+            WHERE reference_id = ?
+        ");
+        $updateStmt->execute([
+            $callbackSuccess ? 'completed' : 'failed',
+            $decision,
+            json_encode(['sent' => $callbackPayload, 'http_code' => $httpCode, 'response' => mb_substr($responseBody ?: '', 0, 1000)]),
+            $httpCode ?: null,
+            $errText,
+            $referenceId
+        ]);
+    } catch (Throwable $e) {
+        error_log("Failed to update inspection request status: " . $e->getMessage());
+    }
+
+    return [
+        'success'           => $callbackSuccess,
+        'http_code'         => $httpCode,
+        'error'             => $errText
+    ];
+}
