@@ -304,41 +304,68 @@ $unreadNotifications = $pdo->query("SELECT COUNT(*) FROM maintenance_notificatio
         }
 
         .stat-card {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            border-radius: 16px;
+            padding: 20px 18px;
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            border-left: 5px solid #cbd5e1;
+            gap: 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+            color: #fff;
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(135deg, #1a3e7a, #2a5fc2);
         }
 
-        .stat-card.total { border-left-color: #3762c8; }
-        .stat-card.pending { border-left-color: #f1c40f; }
-        .stat-card.forwarded { border-left-color: #a55eea; }
-        .stat-card.progress { border-left-color: #45aaf2; }
-        .stat-card.completed { border-left-color: #2ecc71; }
-        .stat-card.emergency { border-left-color: #e74c3c; }
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: -20px; right: -20px;
+            width: 90px; height: 90px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.08);
+            pointer-events: none;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 14px 32px rgba(0,0,0,0.25);
+        }
+
+        .stat-card.total     { background: linear-gradient(135deg, #1a3e7a, #2a5fc2); }
+        .stat-card.pending   { background: linear-gradient(135deg, #7a5c0d, #c4920e); }
+        .stat-card.forwarded { background: linear-gradient(135deg, #4c1d7a, #7c3dbf); }
+        .stat-card.progress  { background: linear-gradient(135deg, #0d4a7a, #1580cc); }
+        .stat-card.completed { background: linear-gradient(135deg, #1a6b38, #25a259); }
+        .stat-card.emergency { background: linear-gradient(135deg, #7a1a1a, #c22a2a); }
+
+        .stat-card-icon {
+            width: 52px; height: 52px;
+            border-radius: 14px;
+            background: rgba(255,255,255,0.18);
+            display: grid;
+            place-items: center;
+            font-size: 22px;
+            flex-shrink: 0;
+        }
 
         .stat-info h3 {
-            font-size: 26px;
+            font-size: 28px;
             font-weight: 700;
-            color: #2c3e50;
+            color: #fff;
+            line-height: 1;
         }
 
         .stat-info p {
             font-size: 11px;
-            color: #64748b;
+            color: rgba(255,255,255,0.8);
             text-transform: uppercase;
             font-weight: 600;
-            margin-top: 3px;
+            margin-top: 4px;
+            letter-spacing: 0.6px;
         }
 
-        .stat-icon {
-            font-size: 26px;
-            color: #cbd5e1;
-        }
+        .stat-icon { display: none; }
 
         .dashboard-layout {
             display: grid;
@@ -446,46 +473,28 @@ $unreadNotifications = $pdo->query("SELECT COUNT(*) FROM maintenance_notificatio
         <!-- Summary Cards Grid -->
         <div class="stats-grid">
             <div class="stat-card total">
-                <div class="stat-info">
-                    <h3><?php echo number_format($totalRequests); ?></h3>
-                    <p>Total Requests</p>
-                </div>
-                <div class="stat-icon"><i class="fas fa-clipboard-list"></i></div>
+                <div class="stat-card-icon"><i class="fas fa-clipboard-list"></i></div>
+                <div class="stat-info"><h3><?php echo number_format($totalRequests); ?></h3><p>Total Requests</p></div>
             </div>
             <div class="stat-card pending">
-                <div class="stat-info">
-                    <h3><?php echo number_format($pendingRequests); ?></h3>
-                    <p>Created</p>
-                </div>
-                <div class="stat-icon"><i class="fas fa-clock"></i></div>
+                <div class="stat-card-icon"><i class="fas fa-clock"></i></div>
+                <div class="stat-info"><h3><?php echo number_format($pendingRequests); ?></h3><p>Created</p></div>
             </div>
             <div class="stat-card forwarded">
-                <div class="stat-info">
-                    <h3><?php echo number_format($forwardedRequests); ?></h3>
-                    <p>Forwarded</p>
-                </div>
-                <div class="stat-icon"><i class="fas fa-paper-plane"></i></div>
+                <div class="stat-card-icon"><i class="fas fa-paper-plane"></i></div>
+                <div class="stat-info"><h3><?php echo number_format($forwardedRequests); ?></h3><p>Forwarded</p></div>
             </div>
             <div class="stat-card progress">
-                <div class="stat-info">
-                    <h3><?php echo number_format($inProgressRequests); ?></h3>
-                    <p>In Progress</p>
-                </div>
-                <div class="stat-icon"><i class="fas fa-cogs"></i></div>
+                <div class="stat-card-icon"><i class="fas fa-cogs"></i></div>
+                <div class="stat-info"><h3><?php echo number_format($inProgressRequests); ?></h3><p>In Progress</p></div>
             </div>
             <div class="stat-card completed">
-                <div class="stat-info">
-                    <h3><?php echo number_format($completedRequests); ?></h3>
-                    <p>Completed</p>
-                </div>
-                <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+                <div class="stat-card-icon"><i class="fas fa-check-circle"></i></div>
+                <div class="stat-info"><h3><?php echo number_format($completedRequests); ?></h3><p>Completed</p></div>
             </div>
             <div class="stat-card emergency">
-                <div class="stat-info">
-                    <h3><?php echo number_format($emergencyRequests); ?></h3>
-                    <p>Emergencies</p>
-                </div>
-                <div class="stat-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                <div class="stat-card-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                <div class="stat-info"><h3><?php echo number_format($emergencyRequests); ?></h3><p>Emergencies</p></div>
             </div>
         </div>
 

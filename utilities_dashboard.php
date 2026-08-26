@@ -221,30 +221,62 @@ $incidentData = json_encode([$incidents['submitted_incidents'] ?? 0, $incidents[
         }
 
         .stat-card {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-            border-left: 5px solid #cbd5e1;
+            border-radius: 16px;
+            padding: 22px 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+            color: #fff;
+            position: relative;
+            overflow: hidden;
         }
 
-        .stat-card.assets { border-left-color: #3762c8; }
-        .stat-card.incidents { border-left-color: #f1c40f; }
-        .stat-card.maintenance { border-left-color: #e74c3c; }
-        .stat-card.energy { border-left-color: #a55eea; }
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: -20px; right: -20px;
+            width: 90px; height: 90px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.08);
+            pointer-events: none;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 14px 32px rgba(0,0,0,0.25);
+        }
+
+        .stat-card.assets      { background: linear-gradient(135deg, #1a6b38, #25a259); }
+        .stat-card.incidents   { background: linear-gradient(135deg, #7a2f0d, #c0440f); }
+        .stat-card.maintenance { background: linear-gradient(135deg, #1a3e7a, #2a5fc2); }
+        .stat-card.energy      { background: linear-gradient(135deg, #4c1d7a, #7c3dbf); }
+
+        .stat-card-icon {
+            width: 52px; height: 52px;
+            border-radius: 14px;
+            background: rgba(255,255,255,0.18);
+            display: grid;
+            place-items: center;
+            font-size: 22px;
+            flex-shrink: 0;
+        }
 
         .stat-info h3 {
-            font-size: 24px;
+            font-size: 30px;
             font-weight: 700;
-            color: #2c3e50;
+            color: #fff;
+            line-height: 1;
         }
 
         .stat-info p {
             font-size: 11px;
-            color: #64748b;
+            color: rgba(255,255,255,0.8);
             text-transform: uppercase;
             font-weight: 600;
-            margin-top: 3px;
+            margin-top: 4px;
+            letter-spacing: 0.6px;
         }
 
         /* Tab Layout */
@@ -453,26 +485,30 @@ $incidentData = json_encode([$incidents['submitted_incidents'] ?? 0, $incidents[
         <!-- Central Summary Metrics Cards -->
         <div class="stats-grid">
             <div class="stat-card assets">
+                <div class="stat-card-icon"><i class="fas fa-boxes"></i></div>
                 <div class="stat-info">
                     <h3><?php echo number_format($assets['total_assets'] ?? 0); ?></h3>
                     <p>Total Assets</p>
                 </div>
             </div>
             <div class="stat-card incidents">
+                <div class="stat-card-icon"><i class="fas fa-bullhorn"></i></div>
                 <div class="stat-info">
                     <h3><?php echo number_format($incidents['total_incidents'] ?? 0); ?></h3>
                     <p>Total Incidents</p>
                 </div>
             </div>
             <div class="stat-card maintenance">
+                <div class="stat-card-icon"><i class="fas fa-tools"></i></div>
                 <div class="stat-info">
                     <h3><?php echo number_format($maintenance['total_requests'] ?? 0); ?></h3>
                     <p>Total Maintenance</p>
                 </div>
             </div>
             <div class="stat-card energy">
+                <div class="stat-card-icon"><i class="fas fa-bolt"></i></div>
                 <div class="stat-info">
-                    <h3><?php echo number_format($energy['total_consumption'] ?? 0, 1); ?> <span style="font-size:11px;">kWh</span></h3>
+                    <h3><?php echo number_format($energy['total_consumption'] ?? 0, 1); ?> <span style="font-size:12px;">kWh</span></h3>
                     <p>Energy Consumption</p>
                 </div>
             </div>

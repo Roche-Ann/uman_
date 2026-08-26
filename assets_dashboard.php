@@ -303,72 +303,59 @@ if ($damagedNoMaint > 0) {
         }
 
         .stat-card {
-            border-radius: 12px;
-            padding: 22px 20px 18px;
-            background: #ffffff;
-            border: 1px solid #e9edf5;
-            border-left: 5px solid #3762c8;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+            border-radius: 16px;
+            padding: 22px 18px;
             display: flex;
-            flex-direction: column;
-            gap: 6px;
-            transition: transform 0.25s, box-shadow 0.25s;
+            align-items: center;
+            gap: 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+            color: #fff;
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(135deg, #1a3e7a, #2a5fc2);
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: -20px; right: -20px;
+            width: 90px; height: 90px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.08);
+            pointer-events: none;
         }
 
         .stat-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.11);
+            transform: translateY(-4px);
+            box-shadow: 0 14px 32px rgba(0,0,0,0.25);
         }
 
-        .stat-card.operational  { border-left-color: #27ae60; }
-        .stat-card.needs-inspection { border-left-color: #f39c12; }
-        .stat-card.damaged      { border-left-color: #e74c3c; }
-        .stat-card.maintenance  { border-left-color: #9b59b6; }
+        .stat-card.operational      { background: linear-gradient(135deg, #1a6b38, #25a259); }
+        .stat-card.needs-inspection { background: linear-gradient(135deg, #7a5c0d, #c4920e); }
+        .stat-card.damaged          { background: linear-gradient(135deg, #7a1a1a, #c22a2a); }
+        .stat-card.maintenance      { background: linear-gradient(135deg, #4c1d7a, #7c3dbf); }
+
+        .stat-card-icon {
+            width: 52px; height: 52px;
+            border-radius: 14px;
+            background: rgba(255,255,255,0.18);
+            display: grid;
+            place-items: center;
+            font-size: 22px;
+            flex-shrink: 0;
+        }
 
         .stat-info h3 {
-            font-size: 34px;
+            font-size: 30px;
             font-weight: 700;
             line-height: 1;
-            color: #1e293b;
+            color: #fff;
         }
 
         .stat-footer {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            margin-top: 4px;
+            display: none;
         }
-
-        .stat-footer .stat-icon {
-            font-size: 13px;
-        }
-
-        .stat-footer .stat-label {
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.6px;
-        }
-
-        /* Default (total) — blue */
-        .stat-card .stat-footer .stat-icon,
-        .stat-card .stat-footer .stat-label { color: #3762c8; }
-
-        /* Operational — green */
-        .stat-card.operational .stat-footer .stat-icon,
-        .stat-card.operational .stat-footer .stat-label { color: #27ae60; }
-
-        /* Needs Inspection — amber */
-        .stat-card.needs-inspection .stat-footer .stat-icon,
-        .stat-card.needs-inspection .stat-footer .stat-label { color: #f39c12; }
-
-        /* Damaged — red */
-        .stat-card.damaged .stat-footer .stat-icon,
-        .stat-card.damaged .stat-footer .stat-label { color: #e74c3c; }
-
-        /* Maintenance — purple */
-        .stat-card.maintenance .stat-footer .stat-icon,
-        .stat-card.maintenance .stat-footer .stat-label { color: #9b59b6; }
 
         /* Charts Section */
         .dashboard-layout {
@@ -575,39 +562,24 @@ if ($damagedNoMaint > 0) {
         <!-- Stats Overview Cards -->
         <div class="stats-grid">
             <div class="stat-card">
-                <div class="stat-info"><h3><?php echo number_format($totalAssets); ?></h3></div>
-                <div class="stat-footer">
-                    <i class="fas fa-boxes stat-icon"></i>
-                    <span class="stat-label">Total Assets</span>
-                </div>
+                <div class="stat-card-icon"><i class="fas fa-boxes"></i></div>
+                <div class="stat-info"><h3><?php echo number_format($totalAssets); ?></h3><p style="color:rgba(255,255,255,0.8);font-size:11px;text-transform:uppercase;font-weight:600;margin-top:4px;letter-spacing:.6px;">Total Assets</p></div>
             </div>
             <div class="stat-card operational">
-                <div class="stat-info"><h3><?php echo number_format($operationalAssets); ?></h3></div>
-                <div class="stat-footer">
-                    <i class="fas fa-check-circle stat-icon"></i>
-                    <span class="stat-label">Operational</span>
-                </div>
+                <div class="stat-card-icon"><i class="fas fa-check-circle"></i></div>
+                <div class="stat-info"><h3><?php echo number_format($operationalAssets); ?></h3><p style="color:rgba(255,255,255,0.8);font-size:11px;text-transform:uppercase;font-weight:600;margin-top:4px;letter-spacing:.6px;">Operational</p></div>
             </div>
             <div class="stat-card needs-inspection">
-                <div class="stat-info"><h3><?php echo number_format($needsInspection); ?></h3></div>
-                <div class="stat-footer">
-                    <i class="fas fa-search stat-icon"></i>
-                    <span class="stat-label">Needs Inspection</span>
-                </div>
+                <div class="stat-card-icon"><i class="fas fa-search"></i></div>
+                <div class="stat-info"><h3><?php echo number_format($needsInspection); ?></h3><p style="color:rgba(255,255,255,0.8);font-size:11px;text-transform:uppercase;font-weight:600;margin-top:4px;letter-spacing:.6px;">Needs Inspection</p></div>
             </div>
             <div class="stat-card damaged">
-                <div class="stat-info"><h3><?php echo number_format($damagedAssets); ?></h3></div>
-                <div class="stat-footer">
-                    <i class="fas fa-exclamation-triangle stat-icon"></i>
-                    <span class="stat-label">Damaged</span>
-                </div>
+                <div class="stat-card-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                <div class="stat-info"><h3><?php echo number_format($damagedAssets); ?></h3><p style="color:rgba(255,255,255,0.8);font-size:11px;text-transform:uppercase;font-weight:600;margin-top:4px;letter-spacing:.6px;">Damaged</p></div>
             </div>
             <div class="stat-card maintenance">
-                <div class="stat-info"><h3><?php echo number_format($underMaintenance); ?></h3></div>
-                <div class="stat-footer">
-                    <i class="fas fa-tools stat-icon"></i>
-                    <span class="stat-label">Under Maintenance</span>
-                </div>
+                <div class="stat-card-icon"><i class="fas fa-tools"></i></div>
+                <div class="stat-info"><h3><?php echo number_format($underMaintenance); ?></h3><p style="color:rgba(255,255,255,0.8);font-size:11px;text-transform:uppercase;font-weight:600;margin-top:4px;letter-spacing:.6px;">Under Maintenance</p></div>
             </div>
         </div>
 
