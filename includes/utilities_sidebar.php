@@ -1642,6 +1642,145 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
         border-color: #7f1d1d !important;
     }
 
+    /* ===== SIDEBAR DROPDOWN SYSTEM ===== */
+    .sidebar-dropdown-wrapper {
+        list-style: none;
+        width: 100%;
+        margin: 2px 0;
+    }
+    .sidebar-dropdown-toggle {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        background: transparent;
+        border: none;
+        outline: none;
+        text-align: left;
+        gap: 12px;
+        color: #1e293b;
+        padding: 10px 20px;
+        font-family: 'Poppins', sans-serif;
+        font-weight: 500;
+        font-size: 14px;
+        cursor: pointer;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+    }
+    .sidebar-dropdown-toggle i.icon-main {
+        width: 20px;
+        font-size: 15px;
+        color: #6384d2;
+        flex-shrink: 0;
+        text-align: center;
+    }
+    .sidebar-dropdown-toggle .chevron-icon {
+        margin-left: auto;
+        font-size: 11px;
+        color: #94a3b8;
+        transition: transform 0.3s ease;
+    }
+    .sidebar-dropdown-toggle .chevron-icon.rotate {
+        transform: rotate(90deg);
+    }
+    .sidebar-dropdown-toggle:hover {
+        background: rgba(151, 164, 194, 0.25);
+        color: #3762c8;
+    }
+    .sidebar-dropdown-toggle.active {
+        color: #3762c8;
+        font-weight: 600;
+    }
+    .sidebar-dropdown-menu {
+        list-style: none;
+        padding: 0 0 0 16px;
+        margin: 0;
+        max-height: 0;
+        overflow: hidden;
+        opacity: 0;
+        transition: max-height 0.35s cubic-bezier(0, 1, 0, 1), opacity 0.35s ease;
+    }
+    .sidebar-dropdown-menu.open {
+        max-height: 500px;
+        opacity: 1;
+        transition: max-height 0.35s cubic-bezier(1, 0, 1, 0), opacity 0.35s ease;
+        padding-bottom: 6px;
+    }
+    .sidebar-dropdown-menu li {
+        width: 100%;
+        margin: 2px 0;
+    }
+    .dropdown-link {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #475569;
+        text-decoration: none;
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        transition: all 0.25s ease;
+    }
+    .dropdown-link i {
+        font-size: 12px;
+        color: #94a3b8;
+        width: 14px;
+        text-align: center;
+    }
+    .dropdown-link:hover {
+        background: rgba(151, 164, 194, 0.15);
+        color: #3762c8;
+    }
+    .dropdown-link.active {
+        background: rgba(55, 98, 200, 0.1);
+        color: #3762c8;
+        font-weight: 600;
+    }
+    .dropdown-link.active i {
+        color: #3762c8;
+    }
+
+    /* Dark Theme Support */
+    .dark-theme .sidebar-dropdown-toggle {
+        color: #cbd5e1;
+    }
+    .dark-theme .sidebar-dropdown-toggle:hover {
+        background: rgba(255, 255, 255, 0.08);
+        color: #ffffff;
+    }
+    .dark-theme .sidebar-dropdown-toggle.active {
+        color: #6384d2;
+    }
+    .dark-theme .dropdown-link {
+        color: #94a3b8;
+    }
+    .dark-theme .dropdown-link:hover {
+        background: rgba(255, 255, 255, 0.05);
+        color: #ffffff;
+    }
+    .dark-theme .dropdown-link.active {
+        background: rgba(99, 132, 210, 0.15);
+        color: #6384d2;
+    }
+    .dark-theme .dropdown-link.active i {
+        color: #6384d2;
+    }
+
+    /* Collapsed Sidebar overrides for dropdowns */
+    .sidebar-nav.collapsed .sidebar-dropdown-toggle span,
+    .sidebar-nav.collapsed .sidebar-dropdown-toggle .chevron-icon,
+    .sidebar-nav.collapsed .sidebar-dropdown-menu {
+        display: none !important;
+    }
+    .sidebar-nav.collapsed .sidebar-dropdown-toggle {
+        justify-content: center;
+        padding: 12px 0;
+    }
+    .sidebar-nav.collapsed .sidebar-dropdown-toggle i.icon-main {
+        margin-right: 0;
+        width: auto;
+    }
+
     /* ── body overlay in dark mode ── */
     .dark-theme body::before {
         background: rgba(5, 10, 22, 0.75) !important;
@@ -1701,77 +1840,127 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
                     <span class="link-label">Dashboard</span>
                 </a>
             </li>
-            <li>
-                <a href="<?php echo $sidebarBase; ?>assets_dashboard.php" class="nav-link<?php echo $currentPage === 'assets_dashboard.php' ? ' active' : ''; ?>">
-                    <i class="fas fa-chart-line"></i>
-                    <span class="link-label">Asset Dashboard</span>
-                </a>
-            </li>
-            <li>
-                <a href="<?php echo $sidebarBase; ?>assets_crud.php" class="nav-link<?php echo ($currentPage === 'assets_crud.php') ? ' active' : ''; ?>">
-                    <i class="fas fa-warehouse"></i>
-                    <span class="link-label">Asset Inventory</span>
-                </a>
-            </li>
-            <li>
-                <a href="<?php echo $sidebarBase; ?>cprf_integration.php" class="nav-link<?php echo sidebarActive('cprf_integration.php', $currentPage); ?>">
-                    <i class="fas fa-exchange-alt"></i>
-                    <span class="link-label">Asset Requests</span>
-                </a>
-            </li>
-            <li>
-                <a href="<?php echo $sidebarBase; ?>incidents_dashboard.php" class="nav-link<?php echo (strpos($currentPage, 'incidents_') === 0) ? ' active' : ''; ?>">
-                    <i class="fas fa-bullhorn"></i>
-                    <span class="link-label">Incident Reports</span>
-                </a>
-            </li>
-            <li>
-                <a href="<?php echo $sidebarBase; ?>maintenance_dashboard.php" class="nav-link<?php echo (strpos($currentPage, 'maintenance_') === 0) ? ' active' : ''; ?>">
-                    <i class="fas fa-tools"></i>
-                    <span class="link-label">Maintenance Coordination</span>
-                </a>
+
+            <!-- Asset Management Dropdown -->
+            <?php 
+            $isAssetActive = in_array($currentPage, ['assets_dashboard.php', 'assets_crud.php', 'cprf_integration.php']);
+            ?>
+            <li class="sidebar-dropdown-wrapper">
+                <button type="button" class="sidebar-dropdown-toggle<?php echo $isAssetActive ? ' active' : ''; ?>" onclick="toggleSidebarDropdown(this)">
+                    <i class="fas fa-boxes icon-main"></i>
+                    <span class="link-label">Asset Management</span>
+                    <i class="fas fa-chevron-right chevron-icon<?php echo $isAssetActive ? ' rotate' : ''; ?>"></i>
+                </button>
+                <ul class="sidebar-dropdown-menu<?php echo $isAssetActive ? ' open' : ''; ?>">
+                    <li>
+                        <a href="<?php echo $sidebarBase; ?>assets_dashboard.php" class="dropdown-link<?php echo $currentPage === 'assets_dashboard.php' ? ' active' : ''; ?>">
+                            <i class="fas fa-chart-line"></i>
+                            <span>Asset Dashboard</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="<?php echo $sidebarBase; ?>assets_crud.php" class="dropdown-link<?php echo ($currentPage === 'assets_crud.php') ? ' active' : ''; ?>">
+                            <i class="fas fa-warehouse"></i>
+                            <span>Asset Inventory</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="<?php echo $sidebarBase; ?>cprf_integration.php" class="dropdown-link<?php echo sidebarActive('cprf_integration.php', $currentPage); ?>">
+                            <i class="fas fa-exchange-alt"></i>
+                            <span>Asset Requests</span>
+                        </a>
+                    </li>
+                </ul>
             </li>
 
-            <li>
-                <a href="<?php echo $sidebarBase; ?>energy_dashboard.php" class="nav-link<?php echo (strpos($currentPage, 'energy_') === 0) ? ' active' : ''; ?>">
-                    <i class="fas fa-bolt"></i>
-                    <span class="link-label">Energy Management</span>
-                </a>
+            <!-- Operations Dropdown -->
+            <?php 
+            $isOpsActive = (strpos($currentPage, 'incidents_') === 0) || (strpos($currentPage, 'maintenance_') === 0) || $currentPage === 'upad_integration.php';
+            ?>
+            <li class="sidebar-dropdown-wrapper">
+                <button type="button" class="sidebar-dropdown-toggle<?php echo $isOpsActive ? ' active' : ''; ?>" onclick="toggleSidebarDropdown(this)">
+                    <i class="fas fa-tasks icon-main"></i>
+                    <span class="link-label">Operations</span>
+                    <i class="fas fa-chevron-right chevron-icon<?php echo $isOpsActive ? ' rotate' : ''; ?>"></i>
+                </button>
+                <ul class="sidebar-dropdown-menu<?php echo $isOpsActive ? ' open' : ''; ?>">
+                    <li>
+                        <a href="<?php echo $sidebarBase; ?>incidents_dashboard.php" class="dropdown-link<?php echo (strpos($currentPage, 'incidents_') === 0) ? ' active' : ''; ?>">
+                            <i class="fas fa-bullhorn"></i>
+                            <span>Incident Reports</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="<?php echo $sidebarBase; ?>maintenance_dashboard.php" class="dropdown-link<?php echo (strpos($currentPage, 'maintenance_') === 0) ? ' active' : ''; ?>">
+                            <i class="fas fa-tools"></i>
+                            <span>Maintenance</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="<?php echo $sidebarBase; ?>upad_integration.php" class="dropdown-link<?php echo sidebarActive('upad_integration.php', $currentPage); ?>">
+                            <i class="fas fa-city"></i>
+                            <span>Inspection Requests</span>
+                        </a>
+                    </li>
+                </ul>
             </li>
 
-            <li>
-                <a href="<?php echo $sidebarBase; ?>water_dashboard.php" class="nav-link<?php echo (strpos($currentPage, 'water_') === 0) ? ' active' : ''; ?>">
-                    <i class="fas fa-tint"></i>
-                    <span class="link-label">Water Management</span>
-                </a>
+            <!-- Utilities Dropdown -->
+            <?php 
+            $isUtilsActive = (strpos($currentPage, 'energy_') === 0) || (strpos($currentPage, 'water_') === 0);
+            ?>
+            <li class="sidebar-dropdown-wrapper">
+                <button type="button" class="sidebar-dropdown-toggle<?php echo $isUtilsActive ? ' active' : ''; ?>" onclick="toggleSidebarDropdown(this)">
+                    <i class="fas fa-tint icon-main"></i>
+                    <span class="link-label">Utilities</span>
+                    <i class="fas fa-chevron-right chevron-icon<?php echo $isUtilsActive ? ' rotate' : ''; ?>"></i>
+                </button>
+                <ul class="sidebar-dropdown-menu<?php echo $isUtilsActive ? ' open' : ''; ?>">
+                    <li>
+                        <a href="<?php echo $sidebarBase; ?>energy_dashboard.php" class="dropdown-link<?php echo (strpos($currentPage, 'energy_') === 0) ? ' active' : ''; ?>">
+                            <i class="fas fa-bolt"></i>
+                            <span>Energy Management</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="<?php echo $sidebarBase; ?>water_dashboard.php" class="dropdown-link<?php echo (strpos($currentPage, 'water_') === 0) ? ' active' : ''; ?>">
+                            <i class="fas fa-tint"></i>
+                            <span>Water Management</span>
+                        </a>
+                    </li>
+                </ul>
             </li>
 
-            <li>
-                <a href="<?php echo $sidebarBase; ?>ai_analytics.php" class="nav-link<?php echo sidebarActive('ai_analytics.php', $currentPage); ?>">
-                    <i class="fas fa-brain"></i>
-                    <span class="link-label">AI Analytics</span>
-                </a>
-            </li>
-
-            <li>
-                <a href="<?php echo $sidebarBase; ?>upad_integration.php" class="nav-link<?php echo sidebarActive('upad_integration.php', $currentPage); ?>">
-                    <i class="fas fa-city"></i>
-                    <span class="link-label">Inspection Requests</span>
-                </a>
-            </li>
-
-            <li>
-                <a href="<?php echo $sidebarBase; ?>ai_weights_dashboard.php" class="nav-link<?php echo sidebarActive('ai_weights_dashboard.php', $currentPage); ?>">
-                    <i class="fas fa-sliders-h"></i>
-                    <span class="link-label">AI Weights Config</span>
-                </a>
-            </li>
-
-            <li>
-                <a href="<?php echo $sidebarBase; ?>ai_feedback_loop.php" class="nav-link<?php echo sidebarActive('ai_feedback_loop.php', $currentPage); ?>">
-                    <i class="fas fa-history"></i>
-                    <span class="link-label">AI Feedback & Audit</span>
-                </a>
+            <!-- AI Tools Dropdown -->
+            <?php 
+            $isAIActive = in_array($currentPage, ['ai_analytics.php', 'ai_weights_dashboard.php', 'ai_feedback_loop.php']);
+            ?>
+            <li class="sidebar-dropdown-wrapper">
+                <button type="button" class="sidebar-dropdown-toggle<?php echo $isAIActive ? ' active' : ''; ?>" onclick="toggleSidebarDropdown(this)">
+                    <i class="fas fa-brain icon-main"></i>
+                    <span class="link-label">AI Tools</span>
+                    <i class="fas fa-chevron-right chevron-icon<?php echo $isAIActive ? ' rotate' : ''; ?>"></i>
+                </button>
+                <ul class="sidebar-dropdown-menu<?php echo $isAIActive ? ' open' : ''; ?>">
+                    <li>
+                        <a href="<?php echo $sidebarBase; ?>ai_analytics.php" class="dropdown-link<?php echo sidebarActive('ai_analytics.php', $currentPage); ?>">
+                            <i class="fas fa-brain"></i>
+                            <span>AI Analytics</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="<?php echo $sidebarBase; ?>ai_weights_dashboard.php" class="dropdown-link<?php echo sidebarActive('ai_weights_dashboard.php', $currentPage); ?>">
+                            <i class="fas fa-sliders-h"></i>
+                            <span>AI Weights Config</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="<?php echo $sidebarBase; ?>ai_feedback_loop.php" class="dropdown-link<?php echo sidebarActive('ai_feedback_loop.php', $currentPage); ?>">
+                            <i class="fas fa-history"></i>
+                            <span>AI Feedback & Audit</span>
+                        </a>
+                    </li>
+                </ul>
             </li>
 
 <!-- ===== REPORTS & EXPORTS SECTION ===== -->
@@ -1945,6 +2134,17 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
 </div>
 
 <script>
+function toggleSidebarDropdown(button) {
+    const menu = button.nextElementSibling;
+    const chevron = button.querySelector('.chevron-icon');
+    if (!menu) return;
+    
+    const isOpen = menu.classList.toggle('open');
+    if (chevron) {
+        chevron.classList.toggle('rotate', isOpen);
+    }
+}
+
 function openCitizenMenuSheet() {
     const sheet = document.getElementById('citizenMenuSheet');
     const backdrop = document.getElementById('citizenSheetBackdrop');
