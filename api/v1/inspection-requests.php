@@ -61,7 +61,7 @@ if (!is_array($input) || empty($input)) {
 try {
     $pdo = uman_integration_pdo();
 
-    // Self-healing: Ensure inspection_ai_logs schema exists
+    // Self-healing: Ensure inspection_ai_logs table and all columns exist
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS `inspection_ai_logs` (
           `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -70,11 +70,11 @@ try {
           `location` VARCHAR(255) NULL,
           `utility_type` VARCHAR(80) NOT NULL DEFAULT 'Electrical',
           `source_system` VARCHAR(100) NOT NULL DEFAULT 'Urban Planning',
-          `coverage_value` VARCHAR(50) NOT NULL,
+          `coverage_value` VARCHAR(50) NOT NULL DEFAULT 'Fully Covered',
           `coverage_score` DECIMAL(5,2) NOT NULL DEFAULT 0.00,
           `asset_health` DECIMAL(5,2) NOT NULL DEFAULT 0.00,
           `asset_score` DECIMAL(5,2) NOT NULL DEFAULT 0.00,
-          `capacity_value` VARCHAR(50) NOT NULL,
+          `capacity_value` VARCHAR(50) NOT NULL DEFAULT 'Normal',
           `capacity_score` DECIMAL(5,2) NOT NULL DEFAULT 0.00,
           `incident_count` INT NOT NULL DEFAULT 0,
           `incident_score` DECIMAL(5,2) NOT NULL DEFAULT 0.00,
@@ -100,6 +100,26 @@ try {
           INDEX `idx_created_at` (`created_at`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     ");
+
+    // Self-healing column migrations for existing databases
+    $colsToEnsure = [
+        'inspection_id'      => "VARCHAR(100) NOT NULL DEFAULT ''",
+        'source_system'      => "VARCHAR(100) NOT NULL DEFAULT 'Urban Planning'",
+        'coverage_value'     => "VARCHAR(50) NOT NULL DEFAULT 'Fully Covered'",
+        'capacity_value'     => "VARCHAR(50) NOT NULL DEFAULT 'Normal'",
+        'incident_count'     => "INT NOT NULL DEFAULT 0",
+        'processing_time_ms' => "DECIMAL(8,2) NULL",
+        'response_status'    => "SMALLINT NOT NULL DEFAULT 200",
+        'callback_attempted' => "TINYINT(1) NOT NULL DEFAULT 0",
+        'callback_url'       => "TEXT NULL",
+        'callback_http_code' => "SMALLINT NULL",
+        'callback_error'     => "TEXT NULL"
+    ];
+    foreach ($colsToEnsure as $col => $definition) {
+        try {
+            $pdo->exec("ALTER TABLE `inspection_ai_logs` ADD COLUMN `$col` $definition");
+        } catch (Throwable) {}
+    }
 
     // ── 4. Input Validation ─────────────────────────────────────────────────
     
@@ -281,39 +301,43 @@ try {
     $processingTimeMs = round((microtime(true) - $startTime) * 1000, 2);
 
     // ── 7. Audit & Database Logging ─────────────────────────────────────────
-    $logStmt = $pdo->prepare("
-        INSERT INTO inspection_ai_logs 
-            (request_id, inspection_id, location, utility_type, source_system,
-             coverage_value, coverage_score, asset_health, asset_score,
-             capacity_value, capacity_score, incident_count, incident_score,
-             weights_applied, final_ai_score, ai_decision, factors_breakdown,
-             processing_time_ms, response_status, created_at)
-        VALUES (?, ?, ?, 'Electrical', 'Urban Planning',
-                ?, ?, ?, ?,
-                ?, ?, ?, ?,
-                ?, ?, ?, ?,
-                ?, 200, NOW())
-    ");
+    try {
+        $logStmt = $pdo->prepare("
+            INSERT INTO inspection_ai_logs 
+                (request_id, inspection_id, location, utility_type, source_system,
+                 coverage_value, coverage_score, asset_health, asset_score,
+                 capacity_value, capacity_score, incident_count, incident_score,
+                 weights_applied, final_ai_score, ai_decision, factors_breakdown,
+                 processing_time_ms, response_status, created_at)
+            VALUES (?, ?, ?, 'Electrical', 'Urban Planning',
+                    ?, ?, ?, ?,
+                    ?, ?, ?, ?,
+                    ?, ?, ?, ?,
+                    ?, 200, NOW())
+        ");
 
-    $locationInfo = trim((string)($input['location'] ?? $input['project_name'] ?? $input['barangay'] ?? 'Urban Planning Zone'));
-    $logStmt->execute([
-        $inspectionId,
-        $inspectionId,
-        $locationInfo,
-        $coverageRaw,
-        $coverageScore,
-        $assetHealth,
-        $assetHealthScore,
-        $capacityRaw,
-        $capacityScore,
-        $incidentCount,
-        $incidentScore,
-        json_encode($weightsSnapshot),
-        $finalScore,
-        $decision,
-        json_encode($factorsBreakdown),
-        $processingTimeMs
-    ]);
+        $locationInfo = trim((string)($input['location'] ?? $input['project_name'] ?? $input['barangay'] ?? 'Urban Planning Zone'));
+        $logStmt->execute([
+            $inspectionId,
+            $inspectionId,
+            $locationInfo,
+            $coverageRaw,
+            $coverageScore,
+            $assetHealth,
+            $assetHealthScore,
+            $capacityRaw,
+            $capacityScore,
+            $incidentCount,
+            $incidentScore,
+            json_encode($weightsSnapshot),
+            $finalScore,
+            $decision,
+            json_encode($factorsBreakdown),
+            $processingTimeMs
+        ]);
+    } catch (Throwable $e) {
+        error_log('[Inspection API Log Error] ' . $e->getMessage());
+    }
 
     // Optional mirror in upad_inspection_requests
     try {
