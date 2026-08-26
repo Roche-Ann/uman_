@@ -36,6 +36,8 @@ Submit inspection requests using a JSON payload:
 ```json
 {
   "inspection_id": "UP-2026-001",
+  "request_type": "Utility Inspection",
+  "location": "Project Site A",
   "coverage": "Fully Covered",
   "asset_health": 90,
   "capacity": "Normal",
@@ -48,6 +50,8 @@ Submit inspection requests using a JSON payload:
 | Field | Type | Required | Allowed / Expected Values | Scoring Mapping |
 | :--- | :--- | :--- | :--- | :--- |
 | `inspection_id` | String | Yes | Unique string identifier | Primary Idempotency Key |
+| `request_type` | String | Recommended | `Utility Inspection` | Verified for inspection type |
+| `location` | String / Object | Recommended | Location string or `{ address, latitude, longitude }` | Location site identifier |
 | `coverage` | String | Yes | `Fully Covered`<br/>`Partially Covered`<br/>`Not Covered` | `Fully Covered` = 100<br/>`Partially Covered` = 50<br/>`Not Covered` = 0 |
 | `asset_health` | Numeric | Yes | `0` to `100` | Direct percentage score ($0–100$) |
 | `capacity` | String | Yes | `Normal`<br/>`Near Capacity`<br/>`Overloaded` | `Normal` = 100<br/>`Near Capacity` = 60<br/>`Overloaded` = 20 |
@@ -63,11 +67,12 @@ $$\text{Score} = \text{round}\left( (\text{coverage\_score} \times 0.30) + (\tex
 
 ### Decision Matrix
 
-| Score Range | Decision | Description |
-| :--- | :--- | :--- |
-| $\ge 80$ | `Approved` | High grid feasibility and infrastructure readiness. |
-| $50 \le \text{Score} < 80$ | `Conditional` | Moderate feasibility; grid monitoring or minor upgrade required. |
-| $< 50$ | `Rejected` | High infrastructure risk or overloaded grid capacity. |
+| Score Range | Decision | Status | Description |
+| :--- | :--- | :--- | :--- |
+| $\ge 80$ | `Approved` | `Evaluated` | High grid feasibility and infrastructure readiness. |
+| $50 \le \text{Score} < 80$ | `Conditional` | `Evaluated` | Moderate feasibility; grid monitoring required. |
+| $< 50$ | `Rejected` | `Evaluated` | High infrastructure risk or overloaded capacity. |
+| *Scoring Error* | `null` | `Pending Review` | Requires human administrator review. |
 
 ---
 
@@ -83,6 +88,7 @@ $$\text{Score} = \text{round}\left( (\text{coverage\_score} \times 0.30) + (\tex
     "inspection_id": "UP-2026-001",
     "score": 97,
     "decision": "Approved",
+    "status": "Evaluated",
     "factors": {
       "coverage": 100,
       "asset_health": 90,

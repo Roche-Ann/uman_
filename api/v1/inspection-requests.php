@@ -420,6 +420,7 @@ try {
             'inspection_id' => $inspectionId,
             'score'         => $finalScore,
             'decision'      => $decision,
+            'status'        => 'Evaluated',
             'factors'       => [
                 'coverage'     => (int)$coverageScore,
                 'asset_health' => (int)$assetHealthScore,
@@ -433,6 +434,39 @@ try {
 
 } catch (Throwable $e) {
     error_log('[UMAN API Error] ' . $e->getMessage());
+    $failInspectionId = trim((string)($input['inspection_id'] ?? $input['request_id'] ?? ($input['application_id'] ?? '')));
+    
+    if (!empty($failInspectionId)) {
+        try {
+            $pdo = uman_integration_pdo();
+            $pdo->prepare("
+                INSERT INTO inspection_ai_logs 
+                    (request_id, inspection_id, location, utility_type, source_system,
+                     coverage_value, coverage_score, asset_health, asset_score,
+                     capacity_value, capacity_score, incident_count, incident_score,
+                     weights_applied, final_ai_score, ai_decision, factors_breakdown,
+                     response_status, created_at)
+                VALUES (?, ?, 'Unknown Location', 'Electrical', 'Urban Planning',
+                        'Fully Covered', 0, 0, 0,
+                        'Normal', 0, 0, 0,
+                        '{}', 0, 'Conditional', '{\"status\":\"Pending Review\"}',
+                        500, NOW())
+            ")->execute([$failInspectionId, $failInspectionId]);
+        } catch (Throwable) {}
+
+        http_response_code(200);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Inspection request was received but could not be automatically evaluated',
+            'data'    => [
+                'inspection_id' => $failInspectionId,
+                'status'        => 'Pending Review',
+                'decision'      => null
+            ]
+        ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+        exit;
+    }
+
     http_response_code(500);
     echo json_encode([
         'success' => false,
