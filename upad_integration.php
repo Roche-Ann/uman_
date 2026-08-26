@@ -484,9 +484,8 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <h1><i class="fas fa-city" style="color: #3b82f6;"></i> Urban Planning (UPAD) Integration Hub</h1>
                     <p>Inbound electrical grid inspection requests from Urban Planning with automated AI assessment and callback delivery.</p>
                 </div>
-                <div style="display: flex; gap: 10px;">
-                    <a href="ai_weights_dashboard.php" class="btn btn-outline"><i class="fas fa-sliders-h"></i> AI Weights</a>
-                    <a href="ai_feedback_loop.php" class="btn btn-outline"><i class="fas fa-brain"></i> AI Feedback</a>
+                <div>
+                    <a href="ai_analytics.php" class="btn btn-outline"><i class="fas fa-brain"></i> AI Analytics</a>
                 </div>
             </div>
 

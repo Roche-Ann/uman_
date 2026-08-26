@@ -1931,69 +1931,11 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
                 </ul>
             </li>
 
-            <li class="nav-section-header">WASTE MANAGEMENT</li>
             <li>
-                <a href="<?php echo $sidebarBase; ?>waste_dashboard.php" class="nav-link<?php echo sidebarActive('waste_dashboard.php', $currentPage); ?>">
-                    <i class="fas fa-recycle"></i>
-                    <span class="link-label">Waste Dashboard</span>
+                <a href="<?php echo $sidebarBase; ?>ai_analytics.php" class="nav-link<?php echo sidebarActive('ai_analytics.php', $currentPage); ?>">
+                    <i class="fas fa-brain"></i>
+                    <span class="link-label">AI Analytics</span>
                 </a>
-            </li>
-            <li>
-                <a href="<?php echo $sidebarBase; ?>waste_truck_map.php" class="nav-link<?php echo sidebarActive('waste_truck_map.php', $currentPage); ?>">
-                    <i class="fas fa-map-marked-alt"></i>
-                    <span class="link-label">Route Map</span>
-                </a>
-            </li>
-            <li>
-                <a href="<?php echo $sidebarBase; ?>waste_records.php" class="nav-link<?php echo sidebarActive('waste_records.php', $currentPage); ?>">
-                    <i class="fas fa-clipboard-list"></i>
-                    <span class="link-label">Collection Records</span>
-                </a>
-            </li>
-            <li>
-                <a href="<?php echo $sidebarBase; ?>waste_schedules.php" class="nav-link<?php echo sidebarActive('waste_schedules.php', $currentPage); ?>">
-                    <i class="fas fa-calendar-alt"></i>
-                    <span class="link-label">Schedules</span>
-                </a>
-            </li>
-            <li>
-                <a href="<?php echo $sidebarBase; ?>waste_notifications.php" class="nav-link<?php echo sidebarActive('waste_notifications.php', $currentPage); ?>">
-                    <i class="fas fa-bell"></i>
-                    <span class="link-label">Waste Notifications</span>
-                </a>
-            </li>
-
-            <!-- AI Tools Dropdown -->
-            <?php 
-            $isAIActive = in_array($currentPage, ['ai_analytics.php', 'ai_weights_dashboard.php', 'ai_feedback_loop.php']);
-            ?>
-            <li class="sidebar-dropdown-wrapper">
-                <button type="button" class="sidebar-dropdown-toggle<?php echo $isAIActive ? ' active' : ''; ?>" onclick="toggleSidebarDropdown(this)">
-                    <i class="fas fa-brain icon-main"></i>
-                    <span class="link-label">AI Tools</span>
-                    <i class="fas fa-chevron-right chevron-icon<?php echo $isAIActive ? ' rotate' : ''; ?>"></i>
-                </button>
-                <ul class="sidebar-dropdown-menu<?php echo $isAIActive ? ' open' : ''; ?>">
-                    <li>
-                        <a href="<?php echo $sidebarBase; ?>ai_analytics.php" class="dropdown-link<?php echo sidebarActive('ai_analytics.php', $currentPage); ?>">
-                            <i class="fas fa-brain"></i>
-                            <span>AI Analytics</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="<?php echo $sidebarBase; ?>ai_weights_dashboard.php" class="dropdown-link<?php echo sidebarActive('ai_weights_dashboard.php', $currentPage); ?>">
-                            <i class="fas fa-sliders-h"></i>
-                            <span>AI Weights Config</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="<?php echo $sidebarBase; ?>ai_feedback_loop.php" class="dropdown-link<?php echo sidebarActive('ai_feedback_loop.php', $currentPage); ?>">
-                            <i class="fas fa-history"></i>
-                            <span>AI Feedback & Audit</span>
-                        </a>
-                    </li>
-                </ul>
-            </li>
             </li>
 
 <!-- ===== REPORTS & EXPORTS SECTION ===== -->
