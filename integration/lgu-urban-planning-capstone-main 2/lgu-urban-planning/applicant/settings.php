@@ -1,0 +1,1275 @@
+<?php
+require_once __DIR__ . '/../core/Database.php';
+require_once __DIR__ . '/../core/Auth.php';
+require_once __DIR__ . '/../core/Helper.php';
+
+$auth = new Auth();
+$auth->requireLogin();
+$auth->requireRole('applicant');
+
+
+
+$db     = Database::getInstance();
+$pdo    = $db->getConnection();
+$userId = $_SESSION['user_id'];
+
+$isAuthPage = true; // Enables session timeout timer in user.js
+
+// ── Ensure user_preferences table exists (auto-migrate) ──────────────────────
+$pdo->exec("
+    CREATE TABLE IF NOT EXISTS user_preferences (
+        id         INT UNSIGNED    NOT NULL AUTO_INCREMENT,
+        user_id    INT UNSIGNED    NOT NULL,
+        pref_key   VARCHAR(64)     NOT NULL,
+        pref_value VARCHAR(255)    NOT NULL DEFAULT '',
+        updated_at TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        UNIQUE KEY uq_user_pref (user_id, pref_key),
+        KEY idx_user_id (user_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+");
+
+// ── Settings helper: load all settings into an associative array ──────────────
+function loadSettings($db) {
+    $rows = $db->fetchAll("SELECT setting_key, setting_value FROM settings");
+    $map  = [];
+    foreach ($rows as $row) {
+        $map[$row['setting_key']] = $row['setting_value'];
+    }
+    return $map;
+}
+
+$success = '';
+$errors  = [];
+
+// ── Handle POST actions ───────────────────────────────────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+
+    // -- Account Actions: Request Deletion -----------------------------------
+    if ($_POST['action'] === 'request_deletion') {
+        $reason          = trim($_POST['deletion_reason']  ?? '');
+        $deletionPassword = trim($_POST['deletion_password'] ?? '');
+
+        if (empty($reason)) {
+            $errors[] = 'Please select a reason for account deletion.';
+        }
+        if (empty($deletionPassword)) {
+            $errors[] = 'Please enter your password to confirm the deletion request.';
+        }
+
+        if (empty($errors)) {
+            // Verify password against users.password_hash
+            $userRow = $pdo->prepare("SELECT password_hash FROM users WHERE id = ? LIMIT 1");
+            $userRow->execute([$userId]);
+            $user = $userRow->fetch(PDO::FETCH_ASSOC);
+
+            if (!$user || !password_verify($deletionPassword, $user['password_hash'])) {
+                $errors[] = 'Incorrect password. Please try again.';
+            } else {
+                // Log deletion request to audit_logs and flag on user record
+                $stmt = $pdo->prepare(
+                    "INSERT INTO audit_logs (user_id, action, details, ip_address, created_at)
+                     VALUES (?, 'Account Deletion Request', ?, ?, NOW())"
+                );
+                $stmt->execute([$userId, $reason, $_SERVER['REMOTE_ADDR'] ?? '']);
+                $stmt2 = $pdo->prepare(
+                    "INSERT INTO user_preferences (user_id, pref_key, pref_value)
+                     VALUES (?, 'account_deletion_requested', '1')
+                     ON DUPLICATE KEY UPDATE pref_value = '1'"
+                );
+                $stmt2->execute([$userId]);
+
+                // Notify all admins via internal message
+                $userInfo = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ? LIMIT 1");
+                $userInfo->execute([$userId]);
+                $requestor = $userInfo->fetch(PDO::FETCH_ASSOC);
+                $fullName  = trim(($requestor['first_name'] ?? '') . ' ' . ($requestor['last_name'] ?? '')) ?: 'A user';
+
+                $adminList = $pdo->query("SELECT id FROM users WHERE role = 'admin'")->fetchAll(PDO::FETCH_COLUMN);
+                $msgStmt   = $pdo->prepare(
+                    "INSERT INTO messages (sender_id, receiver_id, subject, message, is_read, created_at)
+                     VALUES (?, ?, ?, ?, 0, NOW())"
+                );
+                $msgSubject = "Account Deletion Request \xe2\x80\x93 {$fullName}";
+                $msgBody    = "Dear Administrator,\n\n"
+                            . "This is a formal notice that {$fullName} (User ID: {$userId}) has submitted a request for the permanent deletion of their account and all associated data from the LGU Urban Planning and Development Portal.\n\n"
+                            . "Reason for Deletion Request:\n{$reason}\n\n"
+                            . "Kindly review this request at your earliest convenience and take the appropriate action."
+                            . "The applicant has been informed that the review process may take 3\xe2\x80\x935 business days.\n\n"
+                            . "Please ensure that all relevant records are handled in accordance with the office's data management policies before proceeding.\n\n"
+                            . "This message was automatically generated by the LGU Urban Planning and Development Portal.";
+                foreach ($adminList as $adminId) {
+                    $msgStmt->execute([$userId, $adminId, $msgSubject, $msgBody]);
+                }
+
+                $success = 'Your account deletion request has been submitted. An administrator will review it within 3–5 business days.';
+            }
+        }
+    }
+
+    // -- Account Actions: Export Data ----------------------------------------
+    if ($_POST['action'] === 'export_data') {
+        $exportReason   = trim($_POST['export_reason']   ?? '');
+        $exportPassword = trim($_POST['export_password'] ?? '');
+
+        if (empty($exportReason)) {
+            $errors[] = 'Please provide a reason for exporting your data.';
+        }
+        if (empty($exportPassword)) {
+            $errors[] = 'Please enter your current password to confirm the export.';
+        }
+
+        if (empty($errors)) {
+            // Verify password against stored hash
+            $userRow = $pdo->prepare("SELECT password_hash FROM users WHERE id = ? LIMIT 1");
+            $userRow->execute([$userId]);
+            $user = $userRow->fetch(PDO::FETCH_ASSOC);
+
+            if (!$user || !password_verify($exportPassword, $user['password_hash'])) {
+                $errors[] = 'Incorrect password. Please try again.';
+            } else {
+                // Log the export request in audit_logs
+                $stmt = $pdo->prepare(
+                    "INSERT INTO audit_logs (user_id, action, details, ip_address, created_at)
+                     VALUES (?, 'Data Export', ?, ?, NOW())"
+                );
+                $stmt->execute([$userId, $exportReason, $_SERVER['REMOTE_ADDR'] ?? '']);
+
+                // Pass the reason securely via session and redirect to the export handler
+                $_SESSION['export_reason']    = $exportReason;
+                $_SESSION['export_initiated'] = time();
+                header('Location: export-data.php');
+                exit();
+            }
+        }
+    }
+
+    // -- Save Display Preferences ---------------------------------------------
+    if ($_POST['action'] === 'save_display') {
+        $language   = trim($_POST['locale_language']    ?? 'en_PH');
+        $dateFormat = trim($_POST['locale_date_format'] ?? 'M/D/YYYY');
+        $timeFormat = trim($_POST['locale_time_format'] ?? '12h');
+
+        $stmt = $pdo->prepare(
+            "INSERT INTO user_preferences (user_id, pref_key, pref_value)
+             VALUES (?, ?, ?)
+             ON DUPLICATE KEY UPDATE pref_value = VALUES(pref_value)"
+        );
+        foreach ([
+            'locale_language'    => $language,
+            'locale_date_format' => $dateFormat,
+            'locale_time_format' => $timeFormat,
+        ] as $key => $val) {
+            $stmt->execute([$userId, $key, $val]);
+        }
+        $_SESSION['locale_language'] = $language;
+        $success = 'Display preferences saved.' . ($language === 'fil' ? ' / Naligtas ang mga kagustuhan.' : '');
+    }
+}
+
+// ── Load user preferences ─────────────────────────────────────────────────────
+$prefRows = $db->fetchAll(
+    "SELECT pref_key, pref_value FROM user_preferences WHERE user_id = ?",
+    [$userId]
+);
+$prefs = [];
+foreach ($prefRows as $row) {
+    $prefs[$row['pref_key']] = $row['pref_value'];
+}
+
+// Account actions state
+$deletionPref      = $prefs['account_deletion_requested'] ?? '0';
+$deletionRequested = $deletionPref === '1';   // pending
+$deletionRejected  = $deletionPref === '0' && array_key_exists('account_deletion_requested', $prefs); // explicitly reset
+
+// Display prefs — fallback to system locale
+$settings         = loadSettings($db);
+$localeLanguage   = $prefs['locale_language']    ?? $settings['locale_language']    ?? 'en_PH';
+$localeDateFormat = $prefs['locale_date_format'] ?? $settings['locale_date_format'] ?? 'M/D/YYYY';
+$localeTimeFormat = $prefs['locale_time_format'] ?? $settings['locale_time_format'] ?? '12h';
+
+$_SESSION['locale_language'] = $localeLanguage;
+
+// ── Login activity: last 10 login events for this user ───────────────────────
+$loginLogs = $db->fetchAll(
+    "SELECT action, details, ip_address, user_agent, created_at
+     FROM audit_logs
+     WHERE user_id = ? AND action IN ('Login', 'Failed Login', 'Login Success', 'Login Failed')
+     ORDER BY created_at DESC
+     LIMIT 10",
+    [$userId]
+);
+
+// ── Translation strings ───────────────────────────────────────────────────────
+$translations = [
+    'en_PH' => [
+        'page_title'            => 'Settings',
+        'breadcrumb_dashboard'  => 'Dashboard',
+        'breadcrumb_settings'   => 'Settings',
+        // Sidebar
+        'sidebar_title'         => 'Account Settings',
+        'sidebar_sub'           => 'Manage your preferences',
+        'nav_notifications'     => 'Account Actions',
+        'nav_display'           => 'Display Preferences',
+        'nav_login_activity'    => 'Login Activity',
+        // Account Actions tab
+        'notif_card_title'          => 'Account Actions',
+        'notif_card_subtitle'       => 'Manage your account data and submit requests to the LGU portal administrator.',
+        'acct_export_label'         => 'Download My Data',
+        'acct_export_hint'          => 'Export a copy of your application records and submitted documents as a PDF or CSV file.',
+        'acct_export_btn'           => 'Export My Data',
+        'acct_export_modal_title'   => 'Confirm Data Export',
+        'acct_export_modal_sub'     => 'For your security, please provide a reason and verify your identity before exporting.',
+        'acct_export_reason_label'  => 'Reason for Export',
+        'acct_export_reason_hint'   => 'Select a reason for exporting',
+        'acct_export_pwd_label'     => 'Current Password',
+        'acct_export_pwd_hint'      => 'Enter your account password to confirm.',
+        'acct_export_confirm_btn'   => 'Confirm &amp; Export',
+        'acct_delete_label'         => 'Request Account Deletion',
+        'acct_delete_hint'          => 'Submit a request to permanently delete your account and all associated data. An administrator will review your request within 3–5 business days.',
+        'acct_delete_reason'        => 'Reason for Deletion',
+        'acct_delete_reason_hint'   => 'Select a reason for deletion',
+        'acct_delete_reason_opt1'   => 'No longer need the account',
+        'acct_delete_reason_opt2'   => 'Privacy concerns',
+        'acct_delete_reason_opt3'   => 'Duplicate account',
+        'acct_delete_reason_opt4'   => 'Switching to another service',
+        'acct_delete_reason_opt5'   => 'Poor user experience',
+        'acct_delete_reason_opt6'   => 'Other',
+        'acct_export_reason_opt1'   => 'Personal backup',
+        'acct_export_reason_opt2'   => 'Legal reference',
+        'acct_export_reason_opt3'   => 'Migration to another service',
+        'acct_export_reason_opt4'   => 'Review my submitted data',
+        'acct_export_reason_opt5'   => 'Other',
+        'acct_delete_btn'           => 'Submit Deletion Request',
+        'acct_delete_pwd_label'     => 'Confirm with Password',
+        'acct_delete_pwd_hint'      => 'Enter your account password to confirm this request.',
+        'acct_delete_pending'       => 'Deletion Request Pending',
+        'acct_delete_pending_hint'  => 'Your account deletion request has been submitted and is awaiting admin review.',
+        'acct_delete_warning'       => 'This action cannot be undone. All your application data will be permanently removed.',
+        // Display tab
+        'display_card_title'    => 'Display Preferences',
+        'display_card_subtitle' => 'Customize how dates, times, and the interface language appear for you.',
+        'display_lang_label'    => 'Language',
+        'display_lang_hint'     => 'Sets the language used in menus and messages.',
+        'display_date_label'    => 'Date Format',
+        'display_date_hint'     => 'How dates appear across the portal.',
+        'display_time_label'    => 'Time Format',
+        // Login activity tab
+        'login_card_title'      => 'Login Activity',
+        'login_card_subtitle'   => 'Recent sign-in sessions for your account. If you see an unrecognized login, change your password immediately.',
+        'login_col_status'      => 'Status',
+        'login_col_browser'     => 'Browser / Device',
+        'login_col_ip'          => 'IP Address',
+        'login_col_datetime'    => 'Date & Time',
+        'login_empty'           => 'No login records found yet.',
+        'login_success'         => 'Success',
+        'login_failed'          => 'Failed',
+        // Common
+        'save_changes'          => 'Save Changes',
+        'alert_fix'             => 'Please fix the following:',
+        'time_12h'              => '12-hour (AM/PM)',
+        'time_24h'              => '24-hour',
+    ],
+    'fil' => [
+        'page_title'            => 'Mga Setting',
+        'breadcrumb_dashboard'  => 'Dashboard',
+        'breadcrumb_settings'   => 'Mga Setting',
+        // Sidebar
+        'sidebar_title'         => 'Mga Setting ng Account',
+        'sidebar_sub'           => 'Pamahalaan ang iyong mga kagustuhan',
+        'nav_notifications'     => 'Mga Aksyon sa Account',
+        'nav_display'           => 'Mga Kagustuhan sa Pagpapakita',
+        'nav_login_activity'    => 'Aktibidad sa Pag-login',
+        // Account Actions tab
+        'notif_card_title'          => 'Mga Aksyon sa Account',
+        'notif_card_subtitle'       => 'Pamahalaan ang iyong data at magsumite ng mga kahilingan sa administrator ng LGU portal.',
+        'acct_export_label'         => 'I-download ang Aking Data',
+        'acct_export_hint'          => 'Mag-export ng kopya ng iyong mga rekord ng aplikasyon at mga isinumiteng dokumento bilang PDF o CSV.',
+        'acct_export_btn'           => 'I-export ang Aking Data',
+        'acct_export_modal_title'   => 'Kumpirmahin ang Pag-export ng Data',
+        'acct_export_modal_sub'     => 'Para sa iyong seguridad, mangyaring magbigay ng dahilan at i-verify ang iyong pagkakakilanlan bago mag-export.',
+        'acct_export_reason_label'  => 'Dahilan ng Pag-export',
+        'acct_export_reason_hint'   => 'Pumili ng dahilan ng pag-export',
+        'acct_export_pwd_label'     => 'Kasalukuyang Password',
+        'acct_export_pwd_hint'      => 'Ilagay ang iyong password sa account upang kumpirmahin.',
+        'acct_export_confirm_btn'   => 'Kumpirmahin at I-export',
+        'acct_delete_label'         => 'Humiling ng Pagtanggal ng Account',
+        'acct_delete_hint'          => 'Magsumite ng kahilingan para permanenteng tanggalin ang iyong account at lahat ng nauugnay na data. Susuriin ito ng administrator sa loob ng 3–5 araw ng trabaho.',
+        'acct_delete_reason'        => 'Dahilan ng Pagtanggal',
+        'acct_delete_reason_hint'   => 'Pumili ng dahilan ng pagtanggal',
+        'acct_delete_reason_opt1'   => 'Hindi na kailangan ang account',
+        'acct_delete_reason_opt2'   => 'Alalahanin sa privacy',
+        'acct_delete_reason_opt3'   => 'Duplicate na account',
+        'acct_delete_reason_opt4'   => 'Lumipat sa ibang serbisyo',
+        'acct_delete_reason_opt5'   => 'Masamang karanasan sa paggamit',
+        'acct_delete_reason_opt6'   => 'Iba pa',
+        'acct_export_reason_opt1'   => 'Personal na backup',
+        'acct_export_reason_opt2'   => 'Legal na sanggunian',
+        'acct_export_reason_opt3'   => 'Paglipat sa ibang serbisyo',
+        'acct_export_reason_opt4'   => 'Suriin ang aking isinumiteng data',
+        'acct_export_reason_opt5'   => 'Iba pa',
+        'acct_delete_btn'           => 'Isumite ang Kahilingan sa Pagtanggal',
+        'acct_delete_pwd_label'     => 'Kumpirmahin gamit ang Password',
+        'acct_delete_pwd_hint'      => 'Ilagay ang iyong password upang kumpirmahin ang kahilingang ito.',
+        'acct_delete_pending'       => 'Nakabinbin ang Kahilingan sa Pagtanggal',
+        'acct_delete_pending_hint'  => 'Ang iyong kahilingan sa pagtanggal ng account ay naisumite na at naghihintay ng pagsusuri ng admin.',
+        'acct_delete_warning'       => 'Hindi na maaaring bawiin ang aksyong ito. Permanenteng aalisin ang lahat ng iyong data ng aplikasyon.',
+
+        // Display tab
+        'display_card_title'    => 'Mga Kagustuhan sa Pagpapakita',
+        'display_card_subtitle' => 'I-customize kung paano lilitaw ang mga petsa, oras, at wika ng interface para sa iyo.',
+        'display_lang_label'    => 'Wika',
+        'display_lang_hint'     => 'Nagtatakda ng wika na ginagamit sa mga menu at mensahe.',
+        'display_date_label'    => 'Format ng Petsa',
+        'display_date_hint'     => 'Paano lilitaw ang mga petsa sa buong portal.',
+        'display_time_label'    => 'Format ng Oras',
+        // Login activity tab
+        'login_card_title'      => 'Aktibidad sa Pag-login',
+        'login_card_subtitle'   => 'Mga kamakailang session sa pag-sign in sa iyong account. Kung may nakitang hindi kilalang login, palitan agad ang iyong password.',
+        'login_col_status'      => 'Katayuan',
+        'login_col_browser'     => 'Browser / Device',
+        'login_col_ip'          => 'IP Address',
+        'login_col_datetime'    => 'Petsa at Oras',
+        'login_empty'           => 'Walang mga talaan ng pag-login na nahanap.',
+        'login_success'         => 'Matagumpay',
+        'login_failed'          => 'Nabigo',
+        // Common
+        'save_changes'          => 'I-save ang mga Pagbabago',
+        'alert_fix'             => 'Pakiayos ang mga sumusunod:',
+        'time_12h'              => '12-oras (AM/PM)',
+        'time_24h'              => '24-oras',
+    ],
+];
+
+// Helper: get translated string, fallback to English
+function t(string $key, array $translations, string $lang): string {
+    return $translations[$lang][$key] ?? $translations['en_PH'][$key] ?? $key;
+}
+
+$lang      = $localeLanguage;
+$pageTitle = t('page_title', $translations, $lang);
+
+
+// Determine which tab to re-open after a POST error
+$activeTab = 'tab-notifications';
+if (!empty($errors) && isset($_POST['action'])) {
+    $tabMap = [
+        'request_deletion' => 'tab-notifications',
+        'save_display' => 'tab-display',
+    ];
+    $activeTab = $tabMap[$_POST['action']] ?? 'tab-notifications';
+}
+
+include __DIR__ . '/../user/header.php';
+?>
+
+<div class="page-container settings-page">
+
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="/lgu-urban-planning/user/index.php" style="color: inherit; text-decoration: none;"><?php echo t('breadcrumb_dashboard', $translations, $lang); ?></a>
+            </li>
+            <li class="breadcrumb-item active"><?php echo t('breadcrumb_settings', $translations, $lang); ?></li>
+        </ol>
+    </nav>
+
+
+
+    <div class="settings-grid">
+
+        <!-- ── LEFT PANEL: Settings nav ─────────────────────────────────── -->
+        <aside class="settings-sidebar-card">
+            <div class="settings-sidebar-header">
+                <div class="settings-sidebar-icon">
+                    <i class="bi bi-person-gear"></i>
+                </div>
+                <div>
+                    <h6 class="settings-sidebar-title"><?php echo t('sidebar_title', $translations, $lang); ?></h6>
+                    <p class="settings-sidebar-sub"><?php echo t('sidebar_sub', $translations, $lang); ?></p>
+                </div>
+            </div>
+
+            <nav class="settings-nav" id="settingsTabs" role="tablist">
+                <button class="settings-nav-item <?php echo $activeTab === 'tab-notifications' ? 'active' : ''; ?>"
+                        data-bs-toggle="tab" data-bs-target="#tab-notifications" type="button" role="tab">
+                    <i class="bi bi-person-gear"></i>
+                    <span><?php echo t('nav_notifications', $translations, $lang); ?></span>
+                </button>
+                <button class="settings-nav-item <?php echo $activeTab === 'tab-display' ? 'active' : ''; ?>"
+                        data-bs-toggle="tab" data-bs-target="#tab-display" type="button" role="tab">
+                    <i class="bi bi-translate"></i>
+                    <span><?php echo t('nav_display', $translations, $lang); ?></span>
+                </button>
+                <button class="settings-nav-item"
+                        data-bs-toggle="tab" data-bs-target="#tab-login-activity" type="button" role="tab">
+                    <i class="bi bi-clock-history"></i>
+                    <span><?php echo t('nav_login_activity', $translations, $lang); ?></span>
+                </button>
+            </nav>
+        </aside>
+
+        <!-- ── RIGHT PANEL: Tab content ─────────────────────────────────── -->
+        <div class="settings-main">
+            <div class="tab-content">
+
+                <!-- ── TAB: Account Actions ──────────────────────────────── -->
+                <div class="tab-pane fade <?php echo $activeTab === 'tab-notifications' ? 'show active' : ''; ?>"
+                     id="tab-notifications" role="tabpanel">
+
+                    <div class="settings-card">
+                        <div class="settings-card-header">
+                            <div>
+                                <h6 class="settings-card-title"><?php echo t('notif_card_title', $translations, $lang); ?></h6>
+                                <p class="settings-card-subtitle"><?php echo t('notif_card_subtitle', $translations, $lang); ?></p>
+                            </div>
+                        </div>
+
+                        <div class="settings-fields">
+
+                            <!-- Download My Data -->
+                            <div class="settings-field-row">
+                                <div class="settings-field-info">
+                                    <label class="settings-field-label">
+                                        <i class="bi bi-download me-1 text-primary"></i>
+                                        <?php echo t('acct_export_label', $translations, $lang); ?>
+                                    </label>
+                                    <p class="settings-field-hint"><?php echo t('acct_export_hint', $translations, $lang); ?></p>
+                                </div>
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-primary px-3 flex-shrink-0"
+                                        style="white-space:nowrap;"
+                                        data-bs-toggle="modal" data-bs-target="#exportDataModal">
+                                    <i class="bi bi-file-earmark-arrow-down me-1"></i>
+                                    <?php echo t('acct_export_btn', $translations, $lang); ?>
+                                </button>
+                            </div>
+
+                            <!-- Request Account Deletion -->
+                            <div class="settings-field-row" style="flex-direction: column; align-items: flex-start; gap: 1rem;">
+                                <div class="settings-field-info w-100">
+                                    <label class="settings-field-label">
+                                        <i class="bi bi-trash3 me-1 text-danger"></i>
+                                        <?php echo t('acct_delete_label', $translations, $lang); ?>
+                                    </label>
+                                    <p class="settings-field-hint"><?php echo t('acct_delete_hint', $translations, $lang); ?></p>
+                                </div>
+
+                                <?php if ($deletionRequested): ?>
+                                    <!-- Already pending -->
+                                    <div class="w-100 p-3 rounded-3 d-flex align-items-center gap-2 notice-box notice-pending">
+                                        <i class="bi bi-hourglass-split text-warning fs-5"></i>
+                                        <div>
+                                            <div class="fw-semibold notice-title" style="font-size:0.85rem;">
+                                                <?php echo t('acct_delete_pending', $translations, $lang); ?>
+                                            </div>
+                                            <div class="notice-text" style="font-size:0.78rem;">
+                                                <?php echo t('acct_delete_pending_hint', $translations, $lang); ?>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php else: ?>
+                                    <?php if ($deletionRejected): ?>
+                                    <!-- Rejection notice -->
+                                    <div class="w-100 p-3 rounded-3 d-flex align-items-center gap-2 mb-1 notice-box notice-rejected">
+                                        <i class="bi bi-x-circle-fill text-success fs-5 flex-shrink-0"></i>
+                                        <div>
+                                            <div class="fw-semibold notice-title" style="font-size:0.85rem;">Request Not Approved</div>
+                                            <div class="notice-text" style="font-size:0.78rem;">
+                                                Your previous deletion request was reviewed and was not approved. You may submit a new request below if needed.
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <?php endif; ?>
+                                    <!-- Warning box -->
+                                    <div class="w-100 p-3 rounded-3 d-flex align-items-start gap-2 mb-1 notice-box notice-warning">
+                                        <i class="bi bi-exclamation-triangle-fill text-danger mt-1" style="font-size:0.9rem; flex-shrink:0;"></i>
+                                        <span class="notice-text" style="font-size:0.8rem;">
+                                            <?php echo t('acct_delete_warning', $translations, $lang); ?>
+                                        </span>
+                                    </div>
+                                    <!-- Deletion form -->
+                                    <form method="POST" class="w-100" id="deletionForm">
+                                        <input type="hidden" name="action" value="request_deletion">
+                                        <div class="mb-3">
+                                            <label class="settings-field-label mb-1" for="deletionReason">
+                                                <?php echo t('acct_delete_reason', $translations, $lang); ?>
+                                            </label>
+                                            <select id="deletionReason" name="deletion_reason"
+                                                    class="form-select settings-textarea">
+                                                <option value=""><?php echo t('acct_delete_reason_hint', $translations, $lang); ?></option>
+                                                <option value="<?php echo t('acct_delete_reason_opt1', $translations, $lang); ?>"><?php echo t('acct_delete_reason_opt1', $translations, $lang); ?></option>
+                                                <option value="<?php echo t('acct_delete_reason_opt2', $translations, $lang); ?>"><?php echo t('acct_delete_reason_opt2', $translations, $lang); ?></option>
+                                                <option value="<?php echo t('acct_delete_reason_opt3', $translations, $lang); ?>"><?php echo t('acct_delete_reason_opt3', $translations, $lang); ?></option>
+                                                <option value="<?php echo t('acct_delete_reason_opt4', $translations, $lang); ?>"><?php echo t('acct_delete_reason_opt4', $translations, $lang); ?></option>
+                                                <option value="<?php echo t('acct_delete_reason_opt5', $translations, $lang); ?>"><?php echo t('acct_delete_reason_opt5', $translations, $lang); ?></option>
+                                                <option value="<?php echo t('acct_delete_reason_opt6', $translations, $lang); ?>"><?php echo t('acct_delete_reason_opt6', $translations, $lang); ?></option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="settings-field-label mb-1" for="deletionPassword">
+                                                <i class="bi bi-key me-1 text-warning"></i>
+                                                <?php echo t('acct_delete_pwd_label', $translations, $lang); ?>
+                                            </label>
+                                            <div class="input-group">
+                                                <input type="password" id="deletionPassword" name="deletion_password"
+                                                       class="form-control settings-textarea"
+                                                       placeholder="••••••••"
+                                                       autocomplete="current-password">
+                                                <button type="button" class="btn btn-outline-secondary"
+                                                        style="font-size:0.8rem;" id="toggleDeletionPwd"
+                                                        tabindex="-1" title="Show / hide password">
+                                                    <i class="bi bi-eye" id="toggleDeletionPwdIcon"></i>
+                                                </button>
+                                            </div>
+                                            <p class="mt-1 mb-0 settings-field-hint">
+                                                <?php echo t('acct_delete_pwd_hint', $translations, $lang); ?>
+                                            </p>
+                                        </div>
+                                        <button type="submit" class="btn btn-sm btn-danger px-3 fw-semibold">
+                                            <i class="bi bi-send me-1"></i>
+                                            <?php echo t('acct_delete_btn', $translations, $lang); ?>
+                                        </button>
+                                    </form>
+                                <?php endif; ?>
+                            </div>
+
+                        </div><!-- /.settings-fields -->
+                    </div><!-- /.settings-card -->
+                </div><!-- /#tab-notifications -->
+
+                <!-- ── TAB: Display Preferences ─────────────────────────── -->
+                <div class="tab-pane fade <?php echo $activeTab === 'tab-display' ? 'show active' : ''; ?>"
+                     id="tab-display" role="tabpanel">
+
+                    <div class="settings-card">
+                        <div class="settings-card-header">
+                            <div>
+                                <h6 class="settings-card-title"><?php echo t('display_card_title', $translations, $lang); ?></h6>
+                                <p class="settings-card-subtitle"><?php echo t('display_card_subtitle', $translations, $lang); ?></p>
+                            </div>
+                        </div>
+
+                        <form method="POST">
+                            <input type="hidden" name="action" value="save_display">
+                            <div class="settings-fields">
+
+                                <!-- Language -->
+                                <div class="settings-field-row">
+                                    <div class="settings-field-info">
+                                        <label class="settings-field-label" for="dispLanguage"><?php echo t('display_lang_label', $translations, $lang); ?></label>
+                                        <p class="settings-field-hint"><?php echo t('display_lang_hint', $translations, $lang); ?></p>
+                                    </div>
+                                    <select class="form-select settings-select" id="dispLanguage" name="locale_language">
+                                        <option value="en_PH" <?php echo $localeLanguage === 'en_PH' ? 'selected' : ''; ?>>English (Philippines)</option>
+                                        <option value="fil"   <?php echo $localeLanguage === 'fil'   ? 'selected' : ''; ?>>Filipino</option>
+                                    </select>
+                                </div>
+
+                                <!-- Date Format -->
+                                <div class="settings-field-row">
+                                    <div class="settings-field-info">
+                                        <label class="settings-field-label" for="dispDateFormat"><?php echo t('display_date_label', $translations, $lang); ?></label>
+                                        <p class="settings-field-hint"><?php echo t('display_date_hint', $translations, $lang); ?></p>
+                                    </div>
+                                    <select class="form-select settings-select" id="dispDateFormat" name="locale_date_format">
+                                        <option value="M/D/YYYY"   <?php echo $localeDateFormat === 'M/D/YYYY'   ? 'selected' : ''; ?>>MM/DD/YYYY</option>
+                                        <option value="D/M/YYYY"   <?php echo $localeDateFormat === 'D/M/YYYY'   ? 'selected' : ''; ?>>DD/MM/YYYY</option>
+                                        <option value="YYYY-MM-DD" <?php echo $localeDateFormat === 'YYYY-MM-DD' ? 'selected' : ''; ?>>YYYY-MM-DD</option>
+                                        <option value="F j, Y"     <?php echo $localeDateFormat === 'F j, Y'     ? 'selected' : ''; ?>>Month D, YYYY (e.g. December 25, 2025)</option>
+                                    </select>
+                                </div>
+
+                                <!-- Time Format -->
+                                <div class="settings-field-row">
+                                    <div class="settings-field-info">
+                                        <label class="settings-field-label" for="dispTimeFormat"><?php echo t('display_time_label', $translations, $lang); ?></label>
+                                    </div>
+                                    <select class="form-select settings-select" id="dispTimeFormat" name="locale_time_format">
+                                        <option value="12h" <?php echo $localeTimeFormat === '12h' ? 'selected' : ''; ?>><?php echo t('time_12h', $translations, $lang); ?></option>
+                                        <option value="24h" <?php echo $localeTimeFormat === '24h' ? 'selected' : ''; ?>><?php echo t('time_24h', $translations, $lang); ?></option>
+                                    </select>
+                                </div>
+
+                            </div>
+                            <div class="settings-card-footer">
+                                <button type="submit" class="btn btn-save">
+                                    <i class="bi bi-check-lg"></i> <?php echo t('save_changes', $translations, $lang); ?>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div><!-- /#tab-display -->
+
+                <!-- ── TAB: Login Activity ───────────────────────────────── -->
+                <div class="tab-pane fade" id="tab-login-activity" role="tabpanel">
+
+                    <div class="settings-card">
+                        <div class="settings-card-header">
+                            <div>
+                                <h6 class="settings-card-title"><?php echo t('login_card_title', $translations, $lang); ?></h6>
+                                <p class="settings-card-subtitle"><?php echo t('login_card_subtitle', $translations, $lang); ?></p>
+                            </div>
+                        </div>
+
+                        <?php if (empty($loginLogs)): ?>
+                            <div class="settings-empty-state">
+                                <i class="bi bi-clock-history"></i>
+                                <p><?php echo t('login_empty', $translations, $lang); ?></p>
+                            </div>
+                        <?php else: ?>
+                            <div class="table-responsive">
+                                <table class="table settings-activity-table align-middle mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th><?php echo t('login_col_status', $translations, $lang); ?></th>
+                                            <th><?php echo t('login_col_browser', $translations, $lang); ?></th>
+                                            <th><?php echo t('login_col_ip', $translations, $lang); ?></th>
+                                            <th><?php echo t('login_col_datetime', $translations, $lang); ?></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($loginLogs as $log):
+                                            $isFailed   = stripos($log['action'], 'fail') !== false;
+                                            $badgeClass = $isFailed ? 'badge-login-fail' : 'badge-login-success';
+                                            $badgeText  = $isFailed ? t('login_failed', $translations, $lang) : t('login_success', $translations, $lang);
+
+                                            $ua = $log['user_agent'] ?? '';
+                                            if      (stripos($ua, 'Firefox') !== false) $browser = 'Firefox';
+                                            elseif  (stripos($ua, 'Edg')     !== false) $browser = 'Edge';
+                                            elseif  (stripos($ua, 'Chrome')  !== false) $browser = 'Chrome';
+                                            elseif  (stripos($ua, 'Safari')  !== false) $browser = 'Safari';
+                                            else $browser = 'Unknown browser';
+
+                                            if      (stripos($ua, 'Windows') !== false) $os = 'Windows';
+                                            elseif  (stripos($ua, 'Mac')     !== false) $os = 'macOS';
+                                            elseif  (stripos($ua, 'Linux')   !== false) $os = 'Linux';
+                                            elseif  (stripos($ua, 'Android') !== false) $os = 'Android';
+                                            elseif  (stripos($ua, 'iPhone')  !== false) $os = 'iOS';
+                                            else $os = 'Unknown OS';
+                                        ?>
+                                        <tr>
+                                            <td>
+                                                <span class="badge <?php echo $badgeClass; ?>">
+                                                    <?php echo $badgeText; ?>
+                                                </span>
+                                            </td>
+                                            <td class="activity-browser">
+                                                <i class="bi bi-browser-<?php echo strtolower($browser); ?> me-1"></i>
+                                                <?php echo htmlspecialchars("{$browser} · {$os}"); ?>
+                                            </td>
+                                            <td>
+                                                <code class="activity-ip">
+                                                    <?php echo htmlspecialchars($log['ip_address']); ?>
+                                                </code>
+                                            </td>
+                                            <td class="activity-time text-muted">
+                                                <?php echo date('M j, Y · g:i A', strtotime($log['created_at'])); ?>
+                                            </td>
+                                        </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div><!-- /#tab-login-activity -->
+
+            </div><!-- /.tab-content -->
+        </div><!-- /.settings-main -->
+
+    </div><!-- /.settings-grid -->
+</div><!-- /.settings-page -->
+
+<!-- ── Toast container ─────────────────────────────────────────────────────── -->
+<div id="toastContainer" aria-live="polite" aria-atomic="true"
+     style="position:fixed;bottom:1.25rem;right:1.25rem;z-index:9999;display:flex;flex-direction:column;gap:0.5rem;"></div>
+
+<!-- ── Styles ──────────────────────────────────────────────────────────────── -->
+<style>
+/* ── Layout ── */
+.settings-page { padding: 1.5rem 2rem; }
+.settings-grid {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 1.5rem;
+    align-items: start;
+}
+/* --- 1024px: Laptop --- */
+@media (max-width: 1024px) {
+    .settings-page { padding: 1.25rem 1.5rem; }
+    .settings-grid { grid-template-columns: 210px 1fr; gap: 1.1rem; }
+    .settings-card-header { padding: 1rem 1.25rem; }
+    .settings-card-title { font-size: 0.92rem; }
+    .settings-fields { padding: 0.25rem 1.25rem; }
+    .settings-card-footer { padding: 0.85rem 1.25rem; }
+}
+
+@media (max-width: 820px) {
+    .settings-grid { grid-template-columns: 1fr; }
+    .settings-sidebar-card { overflow: visible; position: static; }
+    .settings-nav {
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        padding: 0.4rem 0.5rem;
+        gap: 4px;
+    }
+    .settings-nav::-webkit-scrollbar { display: none; }
+    .settings-nav-item {
+        flex-shrink: 0;
+        width: auto;
+        padding: 0.45rem 0.75rem;
+        font-size: 0.78rem;
+        white-space: nowrap;
+        border-radius: 20px;
+    }
+}
+
+/* --- 768px: Tablet --- */
+@media (max-width: 768px) {
+    .settings-page { padding: 1rem; }
+    .settings-grid { gap: 1rem; }
+    .settings-sidebar-header { padding: 0.75rem 1rem; }
+    .settings-sidebar-icon { width: 34px; height: 34px; font-size: 0.95rem; }
+    .settings-sidebar-title { font-size: 0.82rem; }
+    .settings-sidebar-sub { font-size: 0.68rem; }
+    .settings-card-header { padding: 0.85rem 1.1rem; flex-wrap: wrap; gap: 6px; }
+    .settings-card-title { font-size: 0.88rem; }
+    .settings-card-subtitle { font-size: 0.75rem; }
+    .settings-card-footer { padding: 0.75rem 1.1rem; flex-wrap: wrap; gap: 6px; }
+    .settings-fields { padding: 0.25rem 1.1rem; }
+    .settings-field-row { flex-wrap: wrap; gap: 0.5rem; padding: 0.75rem 0; }
+    .settings-field-label { font-size: 0.82rem; }
+    .settings-field-hint { font-size: 0.72rem; }
+    .settings-select,
+    .settings-input,
+    .settings-input-group { width: 100%; }
+    .settings-activity-table { font-size: 0.78rem; }
+    .settings-activity-table thead th { padding: 0.6rem 0.75rem; font-size: 0.7rem; }
+    .settings-activity-table tbody td { padding: 0.6rem 0.75rem; }
+}
+
+/* --- 480px: Large Mobile --- */
+@media (max-width: 480px) {
+    .settings-page { padding: 0.75rem; }
+    .settings-sidebar-header { padding: 0.65rem 0.85rem; gap: 8px; }
+    .settings-sidebar-icon { width: 30px; height: 30px; font-size: 0.85rem; }
+    .settings-sidebar-title { font-size: 0.78rem; }
+    .settings-sidebar-sub { display: none; }
+    .settings-nav { padding: 0.3rem 0.4rem; gap: 3px; }
+    .settings-nav-item { font-size: 0.72rem; padding: 0.4rem 0.65rem; }
+    .settings-card-header { padding: 0.75rem 0.9rem; }
+    .settings-card-title { font-size: 0.82rem; }
+    .settings-card-subtitle { font-size: 0.7rem; }
+    .settings-card-footer { padding: 0.6rem 0.9rem; }
+    .settings-fields { padding: 0.25rem 0.9rem; }
+    .settings-field-row { padding: 0.65rem 0; gap: 0.4rem; }
+    .settings-field-label { font-size: 0.78rem; }
+    .settings-field-hint { font-size: 0.68rem; }
+    .form-control, .form-select, .settings-textarea { font-size: 0.82rem; padding: 6px 9px; }
+    .settings-select { font-size: 0.82rem; }
+    .settings-toggle { width: 2.2em; height: 1.2em; }
+    .settings-activity-table { font-size: 0.72rem; }
+    .settings-activity-table thead th { padding: 0.5rem 0.6rem; font-size: 0.65rem; }
+    .settings-activity-table tbody td { padding: 0.5rem 0.6rem; }
+    .activity-ip { font-size: 0.7rem; padding: 1px 6px; }
+    .activity-time { font-size: 0.72rem; }
+    .btn-save { font-size: 0.8rem; padding: 0.4rem 1rem; }
+}
+
+/* --- 320px: Small Mobile --- */
+@media (max-width: 320px) {
+    .settings-page { padding: 0.5rem; }
+    .settings-sidebar-header { padding: 0.5rem 0.7rem; gap: 6px; }
+    .settings-sidebar-icon { width: 26px; height: 26px; font-size: 0.78rem; }
+    .settings-sidebar-title { font-size: 0.72rem; }
+    .settings-nav { padding: 0.25rem; gap: 2px; }
+    .settings-nav-item { font-size: 0.65rem; padding: 0.35rem 0.55rem; }
+    .settings-nav-item i { font-size: 0.78rem; }
+    .settings-card-header { padding: 0.6rem 0.75rem; }
+    .settings-card-footer { padding: 0.5rem 0.75rem; flex-direction: row; justify-content: stretch; gap: 6px; }
+    .settings-card-footer .btn-save { flex: 1; text-align: center; font-size: 0.72rem; padding: 6px 8px; }
+    .settings-fields { padding: 0.2rem 0.75rem; }
+    .settings-field-row {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 0.35rem;
+        padding: 0.55rem 0;
+    }
+    .settings-field-info { width: 100%; }
+    .settings-select,
+    .settings-field-row .form-select,
+    .settings-field-row .form-control { width: 100% !important; font-size: 0.78rem; }
+    .settings-field-row .settings-toggle { align-self: flex-start; }
+    .settings-activity-table { font-size: 0.65rem; }
+    .settings-activity-table thead th { padding: 0.4rem 0.5rem; font-size: 0.58rem; }
+    .settings-activity-table tbody td { padding: 0.4rem 0.5rem; }
+    .activity-ip { font-size: 0.62rem; padding: 1px 5px; }
+    .activity-time { font-size: 0.65rem; }
+    .btn-save { font-size: 0.72rem; padding: 0.35rem 0.85rem; }
+    .settings-empty-state { padding: 1.5rem 0.5rem; }
+    .settings-empty-state i { font-size: 1.75rem; }
+    .settings-empty-state p { font-size: 0.75rem; }
+}
+
+/* ── Left sidebar ── */
+.settings-sidebar-card {
+    background: #fff;
+    border: 1px solid #e5e9f0;
+    border-radius: 14px;
+    overflow: hidden;
+    position: sticky;
+    top: 1rem;
+}
+.settings-sidebar-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 1.1rem 1.25rem;
+    border-bottom: 1px solid #f0f3f8;
+}
+.settings-sidebar-icon {
+    width: 40px;
+    height: 40px;
+    background: #e8edf7;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #1e3a6e;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+.settings-sidebar-title { font-size: 0.9rem; font-weight: 600; color: #1a1a2e; margin: 0; }
+.settings-sidebar-sub   { font-size: 0.75rem; color: #6b7280; margin: 0; }
+.settings-nav {
+    padding: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.settings-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0.6rem 0.85rem;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: #4b5563;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    width: 100%;
+    transition: background 0.15s, color 0.15s;
+}
+.settings-nav-item i { font-size: 0.95rem; flex-shrink: 0; }
+.settings-nav-item:hover  { background: #f3f6fb; color: #1e3a6e; }
+.settings-nav-item.active { background: #e8edf7; color: #1e3a6e; font-weight: 600; }
+
+/* ── Right content cards ── */
+.settings-main { min-width: 0; }
+.settings-card {
+    background: #fff;
+    border: 1px solid #e5e9f0;
+    border-radius: 14px;
+    overflow: hidden;
+}
+.settings-card-header {
+    padding: 1.1rem 1.5rem;
+    border-bottom: 1px solid #f0f3f8;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+.settings-card-title    { font-size: 0.95rem; font-weight: 600; color: #1a1a2e; margin: 0; }
+.settings-card-subtitle { font-size: 0.8rem; color: #6b7280; margin: 2px 0 0; }
+.settings-card-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid #f0f3f8;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
+/* ── Settings fields ── */
+.settings-fields { padding: 0.5rem 1.5rem; }
+.settings-field-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.85rem 0;
+    border-bottom: 1px solid #f5f7fb;
+}
+.settings-field-row:last-child { border-bottom: none; }
+.settings-field-stack { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+.settings-field-info  { flex: 1; min-width: 0; }
+.settings-field-label { font-size: 0.85rem; font-weight: 600; color: #374151; margin: 0; display: block; }
+.settings-field-hint  { font-size: 0.78rem; color: #9ca3af; margin: 2px 0 0; }
+.settings-select {
+    width: 200px;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+.settings-input {
+    width: 260px;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+.settings-input-group {
+    width: 260px;
+    flex-shrink: 0;
+}
+.settings-textarea {
+    font-size: 0.85rem;
+    width: 100%;
+    resize: vertical;
+}
+.settings-toggle { width: 2.5em; height: 1.3em; cursor: pointer; }
+
+/* Password-reveal input-groups (Reason for Deletion / Confirm with
+   Password, and the export-account one): Bootstrap's .input-group wraps
+   by default, and .settings-textarea's width:100% above fights with the
+   flex sizing Bootstrap needs for the input to shrink alongside the eye
+   toggle button — pushing the button onto its own line below the field.
+   Force the row to stay on one line and let the input take the
+   remaining space instead of a hardcoded 100%. */
+.settings-page .input-group,
+.modal .input-group {
+    flex-wrap: nowrap;
+}
+.settings-main .input-group .settings-textarea {
+    width: auto;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+/* ── Login activity table ── */
+.settings-activity-table { font-size: 0.85rem; }
+.settings-activity-table thead th {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e9f0;
+    padding: 0.75rem 1.5rem;
+}
+.settings-activity-table tbody td { padding: 0.75rem 1.5rem; border-color: #f0f3f8; }
+.settings-activity-table tbody tr:hover td { background: #f9fafb; }
+.badge-login-success { background: #d1fae5; color: #065f46; font-size: 0.75rem; font-weight: 600; }
+.badge-login-fail    { background: #fee2e2; color: #991b1b; font-size: 0.75rem; font-weight: 600; }
+.activity-ip   { background: #f3f4f6; color: #374151; padding: 2px 8px; border-radius: 5px; font-size: 0.8rem; }
+.activity-time { font-size: 0.82rem; }
+
+/* ── Empty state ── */
+.settings-empty-state { text-align: center; padding: 3rem 1rem; color: #9ca3af; }
+.settings-empty-state i { font-size: 2.5rem; display: block; margin-bottom: 0.75rem; }
+.settings-empty-state p { font-size: 0.9rem; margin: 0; }
+
+/* ── Notice boxes (pending / rejected / warning) ── */
+.notice-pending  { background: #fff7ed; border: 1px solid #fed7aa; }
+.notice-rejected { background: #f0fdf4; border: 1px solid #bbf7d0; }
+.notice-warning  { background: #fef2f2; border: 1px solid #fecaca; }
+.notice-pending  .notice-title { color: #92400e; } .notice-pending  .notice-text { color: #b45309; }
+.notice-rejected .notice-title { color: #166534; } .notice-rejected .notice-text { color: #15803d; }
+.notice-warning  .notice-text  { color: #991b1b; }
+
+/* ── Export modal ── */
+.settings-modal-header,
+.settings-modal-footer { background: #f9fafb; }
+.settings-modal-header { border-bottom: 1px solid #e5e9f0; }
+.settings-modal-footer { border-top: 1px solid #e5e9f0; }
+.settings-modal-icon {
+    width: 36px; height: 36px; background: #e8edf7; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; color: #1e3a6e;
+}
+.settings-modal-title { color: #1a1a2e; }
+.settings-modal-sub   { color: #6b7280; }
+.settings-modal-label { color: #374151; }
+.settings-modal-hint  { color: #9ca3af; }
+
+/* ── Save button ── */
+.btn-save {
+    background: #1e3a6e;
+    color: #fff;
+    border: none;
+    padding: 0.45rem 1.2rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.15s;
+}
+.btn-save:hover { background: #16305c; color: #fff; }
+
+/* ── Dark mode ── */
+[data-bs-theme="dark"] .settings-sidebar-card,
+[data-bs-theme="dark"] .settings-card { background: #1e293b; border-color: #334155; }
+[data-bs-theme="dark"] .settings-sidebar-header,
+[data-bs-theme="dark"] .settings-card-header,
+[data-bs-theme="dark"] .settings-card-footer { border-color: #334155; }
+[data-bs-theme="dark"] .settings-sidebar-title,
+[data-bs-theme="dark"] .settings-card-title { color: #f1f5f9; }
+[data-bs-theme="dark"] .settings-sidebar-sub,
+[data-bs-theme="dark"] .settings-card-subtitle { color: #94a3b8; }
+[data-bs-theme="dark"] .settings-sidebar-icon { background: #1e3a5f; }
+[data-bs-theme="dark"] .settings-nav-item { color: #94a3b8; }
+[data-bs-theme="dark"] .settings-nav-item:hover  { background: #1e3a5f; color: #93c5fd; }
+[data-bs-theme="dark"] .settings-nav-item.active { background: #1e3a5f; color: #93c5fd; }
+[data-bs-theme="dark"] .settings-field-label { color: #e2e8f0; }
+[data-bs-theme="dark"] .settings-field-row { border-color: #334155; }
+[data-bs-theme="dark"] .settings-activity-table thead th { background: #0f172a; color: #94a3b8; border-color: #334155; }
+[data-bs-theme="dark"] .settings-activity-table tbody td { border-color: #334155; color: #cbd5e1; }
+[data-bs-theme="dark"] .settings-activity-table tbody tr:hover td { background: #0f172a; }
+[data-bs-theme="dark"] .activity-ip { background: #334155; color: #e2e8f0; }
+[data-bs-theme="dark"] .form-select,
+[data-bs-theme="dark"] .form-control { background: #0f172a; border-color: #334155; color: #f1f5f9; }
+[data-bs-theme="dark"] .settings-empty-state { color: #64748b; }
+
+/* Notice boxes */
+[data-bs-theme="dark"] .notice-pending  { background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.35); }
+[data-bs-theme="dark"] .notice-rejected { background: rgba(34, 197, 94, 0.12);  border-color: rgba(34, 197, 94, 0.35); }
+[data-bs-theme="dark"] .notice-warning  { background: rgba(239, 68, 68, 0.12);  border-color: rgba(239, 68, 68, 0.35); }
+[data-bs-theme="dark"] .notice-pending  .notice-title { color: #fbbf24; }
+[data-bs-theme="dark"] .notice-pending  .notice-text  { color: #fcd34d; }
+[data-bs-theme="dark"] .notice-rejected .notice-title { color: #4ade80; }
+[data-bs-theme="dark"] .notice-rejected .notice-text  { color: #86efac; }
+[data-bs-theme="dark"] .notice-warning  .notice-text  { color: #fca5a5; }
+
+/* Export modal */
+[data-bs-theme="dark"] .settings-modal-header,
+[data-bs-theme="dark"] .settings-modal-footer { background: #0f172a; }
+[data-bs-theme="dark"] .settings-modal-header { border-color: #334155; }
+[data-bs-theme="dark"] .settings-modal-footer { border-color: #334155; }
+[data-bs-theme="dark"] .settings-modal-icon   { background: #1e3a5f; color: #93c5fd; }
+[data-bs-theme="dark"] .settings-modal-title  { color: #f1f5f9; }
+[data-bs-theme="dark"] .settings-modal-sub,
+[data-bs-theme="dark"] .settings-modal-hint   { color: #94a3b8; }
+[data-bs-theme="dark"] .settings-modal-label  { color: #e2e8f0; }
+
+/* Login activity badges */
+[data-bs-theme="dark"] .badge-login-success { background: rgba(34, 197, 94, 0.18); color: #4ade80; }
+[data-bs-theme="dark"] .badge-login-fail    { background: rgba(239, 68, 68, 0.18); color: #f87171; }
+
+/* Confirmation dialog icon */
+[data-bs-theme="dark"] .confirm-dialog .confirm-icon { background: rgba(220, 38, 38, 0.15); color: #f87171; }
+/* ── Toast notifications ── */
+.settings-toast {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 260px;
+    max-width: 340px;
+    padding: 0.7rem 1rem;
+    border-radius: 10px;
+    background: #1e293b;
+    color: #f1f5f9;
+    font-size: 0.85rem;
+    font-weight: 500;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity 0.22s ease, transform 0.22s ease;
+    pointer-events: none;
+}
+.settings-toast.toast-show {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+.settings-toast.toast-warning { border-left: 4px solid #f59e0b; }
+.settings-toast.toast-error   { border-left: 4px solid #ef4444; }
+.settings-toast.toast-info    { border-left: 4px solid #3b82f6; }
+.settings-toast.toast-success { border-left: 4px solid #22c55e; }
+.settings-toast .toast-icon   { font-size: 1rem; flex-shrink: 0; }
+.settings-toast .toast-close  {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 0;
+    font-size: 0.8rem;
+    line-height: 1;
+}
+.settings-toast .toast-close:hover { color: #f1f5f9; }
+[data-bs-theme="dark"] .settings-toast { background: #0f172a; }
+
+/* ── Centered confirmation dialog ── */
+.confirm-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+.confirm-overlay.show { opacity: 1; }
+.confirm-dialog {
+    background: #fff;
+    border-radius: 16px;
+    padding: 2rem 2rem 1.5rem;
+    max-width: 420px;
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    transform: scale(0.92) translateY(16px);
+    transition: transform 0.22s ease, opacity 0.22s ease;
+    opacity: 0;
+    text-align: center;
+}
+.confirm-overlay.show .confirm-dialog {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+}
+.confirm-dialog .confirm-icon {
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    background: #fef2f2;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 1.1rem;
+    font-size: 1.7rem;
+    color: #dc2626;
+}
+.confirm-dialog .confirm-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 0.5rem;
+}
+.confirm-dialog .confirm-message {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-bottom: 1.6rem;
+    line-height: 1.6;
+}
+.confirm-dialog .confirm-actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+}
+.confirm-dialog .confirm-actions .btn {
+    min-width: 130px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 0.55rem 1.25rem;
+    border-radius: 8px;
+}
+[data-bs-theme="dark"] .confirm-dialog { background: #1e293b; }
+[data-bs-theme="dark"] .confirm-dialog .confirm-title  { color: #f1f5f9; }
+[data-bs-theme="dark"] .confirm-dialog .confirm-message { color: #94a3b8; }
+</style>
+
+<!-- ── Scripts ──────────────────────────────────────────────────────────────── -->
+<script>
+window.USER_SETTINGS_CONFIG = {
+    exportConfirmBtnLabel: <?php echo json_encode(t('acct_export_confirm_btn', $translations, $lang)); ?>,
+    errorAction: <?php echo (!empty($errors) && isset($_POST['action'])) ? json_encode($_POST['action']) : 'null'; ?>,
+    showExportModalError: <?php echo (!empty($errors) && isset($_POST['action']) && $_POST['action'] === 'export_data') ? 'true' : 'false'; ?>,
+    errorMessages: <?php echo !empty($errors) ? json_encode(array_map('htmlspecialchars', $errors)) : '[]'; ?>,
+    successMessage: <?php echo !empty($success) ? json_encode(htmlspecialchars($success)) : 'null'; ?>
+};
+</script>
+<script src="/lgu-urban-planning/assets/js/user-settings.js"></script>
+
+<!-- ── Export Data Modal ──────────────────────────────────────────────────── -->
+<div class="modal fade" id="exportDataModal" tabindex="-1"
+     aria-labelledby="exportDataModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:14px; overflow:hidden;">
+
+            <div class="modal-header settings-modal-header">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="settings-modal-icon">
+                        <i class="bi bi-shield-lock"></i>
+                    </div>
+                    <div>
+                        <h6 class="modal-title mb-0 fw-semibold settings-modal-title" id="exportDataModalLabel" style="font-size:0.95rem;">
+                            <?php echo t('acct_export_modal_title', $translations, $lang); ?>
+                        </h6>
+                        <p class="mb-0 settings-modal-sub" style="font-size:0.76rem;">
+                            <?php echo t('acct_export_modal_sub', $translations, $lang); ?>
+                        </p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <form method="POST" id="exportDataForm">
+                <input type="hidden" name="action" value="export_data">
+
+                <div class="modal-body" style="padding:1.25rem 1.5rem;">
+
+                    <!-- Reason -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold settings-modal-label" for="exportReason" style="font-size:0.85rem;">
+                            <i class="bi bi-chat-left-text me-1 text-primary"></i>
+                            <?php echo t('acct_export_reason_label', $translations, $lang); ?>
+                        </label>
+                        <select id="exportReason" name="export_reason"
+                                class="form-select" style="font-size:0.85rem;">
+                            <option value=""><?php echo htmlspecialchars(t('acct_export_reason_hint', $translations, $lang)); ?></option>
+                            <option value="<?php echo htmlspecialchars(t('acct_export_reason_opt1', $translations, $lang)); ?>"><?php echo t('acct_export_reason_opt1', $translations, $lang); ?></option>
+                            <option value="<?php echo htmlspecialchars(t('acct_export_reason_opt2', $translations, $lang)); ?>"><?php echo t('acct_export_reason_opt2', $translations, $lang); ?></option>
+                            <option value="<?php echo htmlspecialchars(t('acct_export_reason_opt3', $translations, $lang)); ?>"><?php echo t('acct_export_reason_opt3', $translations, $lang); ?></option>
+                            <option value="<?php echo htmlspecialchars(t('acct_export_reason_opt4', $translations, $lang)); ?>"><?php echo t('acct_export_reason_opt4', $translations, $lang); ?></option>
+                            <option value="<?php echo htmlspecialchars(t('acct_export_reason_opt5', $translations, $lang)); ?>"><?php echo t('acct_export_reason_opt5', $translations, $lang); ?></option>
+                        </select>
+                    </div>
+
+                    <!-- Password -->
+                    <div class="mb-1">
+                        <label class="form-label fw-semibold settings-modal-label" for="exportPassword" style="font-size:0.85rem;">
+                            <i class="bi bi-key me-1 text-warning"></i>
+                            <?php echo t('acct_export_pwd_label', $translations, $lang); ?>
+                        </label>
+                        <div class="input-group">
+                            <input type="password" id="exportPassword" name="export_password"
+                                   class="form-control" style="font-size:0.85rem;"
+                                   placeholder="••••••••"
+                                   autocomplete="current-password">
+                            <button type="button" class="btn btn-outline-secondary"
+                                    style="font-size:0.8rem;" id="toggleExportPwd"
+                                    tabindex="-1" title="Show / hide password">
+                                <i class="bi bi-eye" id="toggleExportPwdIcon"></i>
+                            </button>
+                        </div>
+                        <p class="mt-1 mb-0 settings-modal-hint" style="font-size:0.76rem;">
+                            <?php echo t('acct_export_pwd_hint', $translations, $lang); ?>
+                        </p>
+                    </div>
+
+                </div><!-- /.modal-body -->
+
+                <div class="modal-footer settings-modal-footer" style="gap:0.5rem;">
+                    <button type="button" class="btn btn-sm btn-outline-secondary px-3"
+                            data-bs-dismiss="modal">
+                        <i class="bi bi-x-lg me-1"></i>Cancel
+                    </button>
+                    <button type="submit" class="btn btn-save btn-sm px-3" id="exportSubmitBtn">
+                        <i class="bi bi-file-earmark-arrow-down me-1"></i>
+                        <?php echo t('acct_export_confirm_btn', $translations, $lang); ?>
+                    </button>
+                </div>
+
+            </form>
+        </div>
+    </div>
+</div><!-- /#exportDataModal -->
+
+<?php include __DIR__ . '/../user/footer.php'; ?>

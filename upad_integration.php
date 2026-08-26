@@ -2,8 +2,8 @@
 /**
  * UMAN Staff: Urban Planning (UPAD) Integration Hub
  *
- * View inbound electrical/grid inspection requests from UPAD,
- * test integration, run real AI scoring, and send inspection callbacks back to UPAD.
+ * Real Inbound Electrical / Grid Inspection Monitoring,
+ * AI Auto-Approval Engine, and Callback Delivery to UPAD.
  */
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
@@ -18,26 +18,66 @@ if (!isLoggedIn() || !isEmployee()) {
 $errors = [];
 $successes = [];
 
-// Ensure tables exist
+// Self-healing database schema check (ensures columns exist without throwing warnings)
 try {
-    $pdo->exec(file_get_contents(__DIR__ . '/sql/inspection_ai.sql'));
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS `upad_inspection_requests` (
+          `id` INT AUTO_INCREMENT PRIMARY KEY,
+          `reference_id` VARCHAR(30) NOT NULL UNIQUE,
+          `application_id` INT NOT NULL,
+          `source_system` VARCHAR(20) NOT NULL DEFAULT 'UPAD',
+          `project_name` VARCHAR(255) NULL,
+          `barangay` VARCHAR(100) NULL,
+          `district` VARCHAR(50) NULL,
+          `category` VARCHAR(80) NULL,
+          `estimated_load_kva` DECIMAL(10,2) NULL,
+          `priority` ENUM('Urgent','Medium','Low') NOT NULL DEFAULT 'Medium',
+          `address` TEXT NULL,
+          `latitude` DECIMAL(10,7) NULL,
+          `longitude` DECIMAL(10,7) NULL,
+          `description` TEXT NULL,
+          `requested_by` VARCHAR(150) NULL,
+          `callback_url` TEXT NULL,
+          `status` ENUM('pending','processing','completed','failed') NOT NULL DEFAULT 'pending',
+          `ai_score` DECIMAL(5,2) NULL,
+          `ai_decision` VARCHAR(50) NULL,
+          `raw_payload` JSON NULL,
+          `result_payload` JSON NULL,
+          `callback_sent_at` DATETIME NULL,
+          `callback_http_code` SMALLINT NULL,
+          `callback_error` TEXT NULL,
+          `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX `idx_application_id` (`application_id`),
+          INDEX `idx_status` (`status`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    ");
+
+    // Add missing columns if table already existed without them
+    $existingCols = $pdo->query("SHOW COLUMNS FROM `upad_inspection_requests`")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array('ai_score', $existingCols, true)) {
+        $pdo->exec("ALTER TABLE `upad_inspection_requests` ADD COLUMN `ai_score` DECIMAL(5,2) NULL AFTER `status`");
+    }
+    if (!in_array('ai_decision', $existingCols, true)) {
+        $pdo->exec("ALTER TABLE `upad_inspection_requests` ADD COLUMN `ai_decision` VARCHAR(50) NULL AFTER `ai_score`");
+    }
 } catch (Throwable $e) {
-    // fail-safe
+    // Fail-safe
 }
 
 // ── Handle Manual Callback Submission from UI ────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'send_callback') {
-    $refId            = trim($_POST['reference_id'] ?? '');
-    $inspectionDate   = trim($_POST['inspection_date'] ?? date('Y-m-d'));
-    $engineerAssigned = trim($_POST['engineer_assigned'] ?? 'Engr. Juan Dela Cruz');
-    $overallCondition = trim($_POST['overall_condition'] ?? 'Good');
-    $gridCondition    = trim($_POST['grid_capacity_condition'] ?? 'Good');
-    $transformerCond  = trim($_POST['transformer_condition'] ?? 'Good');
-    $lineCond         = trim($_POST['line_condition'] ?? 'Good');
-    $loadForecastCond = trim($_POST['load_forecast_condition'] ?? 'Good');
-    $severity         = trim($_POST['severity'] ?? 'Low');
-    $recommendation   = trim($_POST['recommendation'] ?? 'Approved for grid connection');
-    $remarks          = trim($_POST['remarks'] ?? '');
+    $refId            = trim((string)($_POST['reference_id'] ?? ''));
+    $inspectionDate   = trim((string)($_POST['inspection_date'] ?? date('Y-m-d')));
+    $engineerAssigned = trim((string)($_POST['engineer_assigned'] ?? 'Engr. Juan Dela Cruz'));
+    $overallCondition = trim((string)($_POST['overall_condition'] ?? 'Good'));
+    $gridCondition    = trim((string)($_POST['grid_capacity_condition'] ?? 'Good'));
+    $transformerCond  = trim((string)($_POST['transformer_condition'] ?? 'Good'));
+    $lineCond         = trim((string)($_POST['line_condition'] ?? 'Good'));
+    $loadForecastCond = trim((string)($_POST['load_forecast_condition'] ?? 'Good'));
+    $severity         = trim((string)($_POST['severity'] ?? 'Low'));
+    $recommendation   = trim((string)($_POST['recommendation'] ?? 'Approved for grid connection'));
+    $remarks          = trim((string)($_POST['remarks'] ?? ''));
 
     if (empty($refId)) {
         $errors[] = "Reference ID is required.";
@@ -61,8 +101,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 'overall_condition'        => $overallCondition,
                 'severity'                 => $severity,
                 'recommendation'           => $recommendation,
-                'gps_latitude'             => $req['latitude'] ? (float)$req['latitude'] : null,
-                'gps_longitude'            => $req['longitude'] ? (float)$req['longitude'] : null,
+                'gps_latitude'             => !empty($req['latitude']) ? (float)$req['latitude'] : null,
+                'gps_longitude'            => !empty($req['longitude']) ? (float)$req['longitude'] : null,
                 'remarks'                  => $remarks,
                 'photo_urls'               => [],
             ];
@@ -87,7 +127,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $responseBody = curl_exec($ch);
                 $httpCode     = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
                 $curlErr      = curl_error($ch);
-
                 return [$httpCode, $curlErr, $responseBody];
             };
 
@@ -123,9 +162,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
-// ── Handle AI Validation Trigger ──────────────────────────────────────────────
+// ── Handle AI Validation & Auto-Approval Trigger ─────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'run_ai_validation') {
-    $refId = trim($_POST['reference_id'] ?? '');
+    $refId = trim((string)($_POST['reference_id'] ?? ''));
     if (empty($refId)) {
         $errors[] = "Reference ID is required.";
     } else {
@@ -133,91 +172,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $aiResult = runInspectionAIValidation($refId, $pdo);
         if ($aiResult['success']) {
             if ($aiResult['approved']) {
-                $successes[] = "AI Validation Success ($refId): Score {$aiResult['score']}/100 ({$aiResult['decision']}). Callback dispatched to UPAD.";
+                $statusMsg = $aiResult['callback_success'] 
+                    ? "Callback successfully dispatched to UPAD (HTTP {$aiResult['callback_http_code']})."
+                    : "Callback attempt recorded ({$aiResult['callback_error']}).";
+                $successes[] = "AI Evaluation Complete ({$refId}): Decision {$aiResult['decision']} (Score: {$aiResult['score']}%). {$statusMsg}";
             } else {
-                $errors[] = "AI Validation ($refId): Score {$aiResult['score']}/100 ({$aiResult['decision']}). " . $aiResult['message'];
+                $errors[] = "AI Evaluation ({$refId}): Score {$aiResult['score']}% ({$aiResult['decision']}). " . $aiResult['message'];
             }
         } else {
             $errors[] = "AI Engine Error: " . $aiResult['error'];
         }
     }
-}
-
-// ── Handle Seed Real Urban Planning Requests ─────────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'seed_test_request') {
-    $realProjects = [
-        [
-            'project' => 'Quezon Boulevard Urban Drainage & Power Outflow Inspection',
-            'barangay' => 'Quiapo',
-            'district' => 'District 3',
-            'category' => 'Infrastructure',
-            'load' => 350.00,
-            'priority' => 'Urgent',
-            'address' => 'Quezon Blvd, Quiapo, Manila',
-            'lat' => 14.59833300,
-            'lng' => 120.98500000,
-            'desc' => 'Urban planning grid inspection for high-volume commercial drainage and lighting project.'
-        ],
-        [
-            'project' => 'Magsaysay Boulevard Electrical Substation & Pole Connection',
-            'barangay' => 'Santa Mesa',
-            'district' => 'District 6',
-            'category' => 'Commercial',
-            'load' => 600.00,
-            'priority' => 'Medium',
-            'address' => 'Magsaysay Blvd, Santa Mesa, Manila',
-            'lat' => 14.60194400,
-            'lng' => 121.00833300,
-            'desc' => 'Grid capacity verification for new civic infrastructure development.'
-        ],
-        [
-            'project' => 'Taft Avenue Smart Streetlight & Microgrid Expansion',
-            'barangay' => 'Malate',
-            'district' => 'District 5',
-            'category' => 'Infrastructure',
-            'load' => 450.00,
-            'priority' => 'Low',
-            'address' => 'Taft Avenue corner Vito Cruz, Manila',
-            'lat' => 14.56388900,
-            'lng' => 120.99472200,
-            'desc' => 'Load analysis and solar grid sync check for smart street lighting corridor.'
-        ]
-    ];
-
-    $selected = $realProjects[array_rand($realProjects)];
-    $testAppId = rand(2000, 9999);
-    $year      = date('Y');
-    $seqRow    = $pdo->query("SELECT COUNT(*) AS c FROM upad_inspection_requests WHERE YEAR(created_at) = $year")->fetch(PDO::FETCH_ASSOC);
-    $seq       = ((int) ($seqRow['c'] ?? 0)) + 1;
-    $refId     = sprintf('EG-%s-%03d', $year, $seq);
-
-    $stmt = $pdo->prepare("
-        INSERT INTO upad_inspection_requests
-            (reference_id, application_id, source_system, project_name, barangay, district, category,
-             estimated_load_kva, priority, address, latitude, longitude, description, requested_by,
-             callback_url, status, created_at)
-        VALUES (?, ?, 'UPAD', ?, ?, ?, ?, ?, ?,
-                ?, ?, ?, ?,
-                'Urban Planning Office',
-                ?,
-                'pending', NOW())
-    ");
-    $stmt->execute([
-        $refId,
-        $testAppId,
-        $selected['project'],
-        $selected['barangay'],
-        $selected['district'],
-        $selected['category'],
-        $selected['load'],
-        $selected['priority'],
-        $selected['address'],
-        $selected['lat'],
-        $selected['lng'],
-        $selected['desc'],
-        UPAD_DEFAULT_CALLBACK_URL
-    ]);
-    $successes[] = "Real Urban Planning Inspection Request created ($refId - {$selected['project']}).";
 }
 
 // ── Query statistics ─────────────────────────────────────────────────────────
@@ -261,7 +226,6 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
             position: fixed;
             inset: 0;
             backdrop-filter: blur(6px);
-            -webkit-backdrop-filter: blur(6px);
             background: rgba(0, 0, 0, 0.30);
             z-index: 0;
             transition: background 0.3s ease;
@@ -281,6 +245,8 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
         }
         .page-header h1 {
             font-size: 24px;
@@ -301,7 +267,6 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
             max-width: 1700px;
             background: rgba(255, 255, 255, 0.88);
             backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
             border-radius: 18px;
             padding: 35px 40px;
             box-shadow: 0 6px 24px rgba(0,0,0,0.22);
@@ -428,6 +393,7 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
             padding: 14px 16px;
             border-bottom: 1px solid #f1f5f9;
             color: #334155;
+            vertical-align: middle;
         }
         tr:hover td { background: #f8fafc; }
 
@@ -441,12 +407,25 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
             text-transform: uppercase;
         }
         .badge-pending { background: #fef3c7; color: #92400e; }
+        .badge-processing { background: #dbeafe; color: #1e40af; }
         .badge-completed { background: #d1fae5; color: #065f46; }
         .badge-failed { background: #fee2e2; color: #991b1b; }
         .badge-urgent { background: #fee2e2; color: #b91c1c; }
         .badge-medium { background: #e0f2fe; color: #0369a1; }
         .badge-low { background: #f1f5f9; color: #475569; }
-        .badge-score { background: #e0e7ff; color: #3730a3; font-weight: 700; }
+        
+        .score-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 12px;
+        }
+        .score-approved { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+        .score-conditional { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+        .score-rejected { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
 
         /* Modal */
         .modal {
@@ -503,17 +482,11 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <div class="page-header">
                 <div>
                     <h1><i class="fas fa-city" style="color: #3b82f6;"></i> Urban Planning (UPAD) Integration Hub</h1>
-                    <p>Evaluate real infrastructure conditions, calculate AI inspection scores, and dispatch approvals to UPAD.</p>
+                    <p>Inbound electrical grid inspection requests from Urban Planning with automated AI assessment and callback delivery.</p>
                 </div>
                 <div style="display: flex; gap: 10px;">
                     <a href="ai_weights_dashboard.php" class="btn btn-outline"><i class="fas fa-sliders-h"></i> AI Weights</a>
                     <a href="ai_feedback_loop.php" class="btn btn-outline"><i class="fas fa-brain"></i> AI Feedback</a>
-                    <form method="POST" style="display:inline;">
-                        <input type="hidden" name="action" value="seed_test_request">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-plus-circle"></i> Create Test Request
-                        </button>
-                    </form>
                 </div>
             </div>
 
@@ -531,7 +504,7 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <div class="stat-icon"><i class="fas fa-clipboard-list"></i></div>
                     <div class="stat-info">
                         <h3><?php echo $totalCount; ?></h3>
-                        <p>Total Requests</p>
+                        <p>Total UPAD Requests</p>
                     </div>
                 </div>
                 <div class="stat-card pending">
@@ -573,57 +546,75 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <th>Load (kVA)</th>
                                 <th>Priority</th>
                                 <th>AI Evaluation</th>
-                                <th>Status</th>
+                                <th>Callback Status</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php if (empty($requests)): ?>
                                 <tr>
-                                    <td colspan="9" style="text-align: center; color: #94a3b8; padding: 30px;">
-                                        No inspection requests received yet. Click <strong>Create Test Request</strong> above to simulate one!
+                                    <td colspan="9" style="text-align: center; color: #94a3b8; padding: 40px;">
+                                        <i class="fas fa-inbox" style="font-size: 28px; margin-bottom: 8px; display: block;"></i>
+                                        No inspection requests received from Urban Planning yet.<br>
+                                        When Urban Planning staff clicks <strong>Request New Inspection</strong> in UPAD, it will appear here instantly.
                                     </td>
                                 </tr>
                             <?php else: ?>
                                 <?php foreach ($requests as $r): ?>
+                                    <?php 
+                                        $aiScore = isset($r['ai_score']) && $r['ai_score'] !== null ? (float)$r['ai_score'] : null;
+                                        $aiDecision = $r['ai_decision'] ?? null;
+                                        $scoreClass = 'score-approved';
+                                        if ($aiScore !== null) {
+                                            if ($aiScore < 50.0) {
+                                                $scoreClass = 'score-rejected';
+                                            } elseif ($aiScore < 80.0) {
+                                                $scoreClass = 'score-conditional';
+                                            }
+                                        }
+                                    ?>
                                     <tr>
-                                        <td><strong><?php echo htmlspecialchars($r['reference_id']); ?></strong></td>
-                                        <td>#<?php echo (int) $r['application_id']; ?></td>
+                                        <td><strong><?php echo htmlspecialchars($r['reference_id'] ?? ''); ?></strong></td>
+                                        <td>#<?php echo (int) ($r['application_id'] ?? 0); ?></td>
                                         <td>
-                                            <strong><?php echo htmlspecialchars($r['project_name'] ?: 'N/A'); ?></strong><br>
-                                            <small style="color: #64748b;"><?php echo htmlspecialchars($r['barangay'] ?: 'No Barangay'); ?></small>
+                                            <strong><?php echo htmlspecialchars($r['project_name'] ?? 'N/A'); ?></strong><br>
+                                            <small style="color: #64748b;"><?php echo htmlspecialchars($r['barangay'] ?? 'No Barangay'); ?></small>
                                         </td>
-                                        <td><?php echo htmlspecialchars($r['category'] ?: 'General'); ?></td>
-                                        <td><?php echo $r['estimated_load_kva'] ? number_format((float)$r['estimated_load_kva'], 1) . ' kVA' : 'N/A'; ?></td>
+                                        <td><?php echo htmlspecialchars($r['category'] ?? 'Commercial'); ?></td>
+                                        <td><?php echo !empty($r['estimated_load_kva']) ? number_format((float)$r['estimated_load_kva'], 1) . ' kVA' : 'N/A'; ?></td>
                                         <td>
-                                            <span class="badge badge-<?php echo strtolower($r['priority']); ?>">
-                                                <?php echo htmlspecialchars($r['priority']); ?>
+                                            <span class="badge badge-<?php echo strtolower($r['priority'] ?? 'medium'); ?>">
+                                                <?php echo htmlspecialchars($r['priority'] ?? 'Medium'); ?>
                                             </span>
                                         </td>
                                         <td>
-                                            <?php if ($r['ai_score'] !== null): ?>
-                                                <span class="badge badge-score"><?php echo $r['ai_score']; ?>%</span>
-                                                <small style="color:#64748b; display:block;"><?php echo htmlspecialchars($r['ai_decision'] ?? ''); ?></small>
+                                            <?php if ($aiScore !== null): ?>
+                                                <div class="score-pill <?php echo $scoreClass; ?>">
+                                                    <i class="fas fa-robot"></i> <?php echo $aiScore; ?>% (<?php echo htmlspecialchars($aiDecision ?? ''); ?>)
+                                                </div>
                                             <?php else: ?>
-                                                <small style="color:#94a3b8;">Pending AI</small>
+                                                <small style="color:#94a3b8;"><i class="fas fa-hourglass-start"></i> Pending AI</small>
                                             <?php endif; ?>
                                         </td>
                                         <td>
-                                            <span class="badge badge-<?php echo strtolower($r['status']); ?>">
-                                                <?php echo htmlspecialchars($r['status']); ?>
+                                            <span class="badge badge-<?php echo strtolower($r['status'] ?? 'pending'); ?>">
+                                                <?php echo htmlspecialchars($r['status'] ?? 'pending'); ?>
                                             </span>
+                                            <?php if (!empty($r['callback_http_code'])): ?>
+                                                <br><small style="color: #64748b; font-size: 11px;">HTTP <?php echo (int)$r['callback_http_code']; ?></small>
+                                            <?php endif; ?>
                                         </td>
                                         <td>
                                             <div style="display:flex; gap:6px;">
                                                 <form method="POST" style="display:inline;">
                                                     <input type="hidden" name="action" value="run_ai_validation">
-                                                    <input type="hidden" name="reference_id" value="<?php echo htmlspecialchars($r['reference_id']); ?>">
-                                                    <button type="submit" class="btn btn-ai" title="Evaluate real grid data & auto-approve">
+                                                    <input type="hidden" name="reference_id" value="<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>">
+                                                    <button type="submit" class="btn btn-ai" title="Evaluate real grid data & deliver callback to UPAD">
                                                         <i class="fas fa-robot"></i> AI Validate
                                                     </button>
                                                 </form>
 
-                                                <button type="button" class="btn btn-success" onclick="openCallbackModal('<?php echo htmlspecialchars($r['reference_id']); ?>')">
+                                                <button type="button" class="btn btn-success" onclick="openCallbackModal('<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>')">
                                                     <i class="fas fa-paper-plane"></i> Callback
                                                 </button>
                                             </div>

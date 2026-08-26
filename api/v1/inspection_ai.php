@@ -17,14 +17,14 @@ function runInspectionAIValidation(string $referenceId, PDO $pdo): array {
         return ['success' => false, 'error' => 'Inspection request not found'];
     }
 
-    $latitude  = $req['latitude'] ? (float)$req['latitude'] : null;
-    $longitude = $req['longitude'] ? (float)$req['longitude'] : null;
+    $latitude  = !empty($req['latitude']) ? (float)$req['latitude'] : null;
+    $longitude = !empty($req['longitude']) ? (float)$req['longitude'] : null;
     $barangay  = trim((string)($req['barangay'] ?? ''));
     $project   = trim((string)($req['project_name'] ?? ''));
-    $category  = trim((string)($req['category'] ?? 'Electrical'));
-    $loadKva   = (float)($req['estimated_load_kva'] ?? 0);
+    $category  = trim((string)($req['category'] ?? 'Commercial'));
+    $loadKva   = !empty($req['estimated_load_kva']) ? (float)$req['estimated_load_kva'] : null;
 
-    // 2. Fetch Active AI Weights (with defaults)
+    // 2. Fetch Active AI Weights (with safe defaults)
     try {
         $weightsStmt = $pdo->query("SELECT factor_key, weight_percent FROM ai_weights");
         $dbWeights = $weightsStmt->fetchAll(PDO::FETCH_KEY_PAIR);
@@ -42,21 +42,27 @@ function runInspectionAIValidation(string $referenceId, PDO $pdo): array {
     }
 
     // 3. Factor 1: Utility Coverage Status
-    // Fully Covered = 100, Partially = 50, Not = 0
-    $covStmt = $pdo->prepare("
-        SELECT coverage_status, remarks, area_name 
-        FROM utility_coverage_records 
-        WHERE area_name LIKE :bg OR area_name LIKE :proj OR coverage_type = 'Electrical'
-        ORDER BY (area_name LIKE :bg2) DESC, radius_meters ASC 
-        LIMIT 1
-    ");
-    $covStmt->execute([
-        ':bg'   => '%' . $barangay . '%',
-        ':proj' => '%' . $project . '%',
-        ':bg2'  => '%' . $barangay . '%'
-    ]);
-    $covRow = $covStmt->fetch(PDO::FETCH_ASSOC);
-    $coverageStatus = $covRow['coverage_status'] ?? 'Fully Covered'; // Default to Covered if grid exists in Manila
+    // Fully Covered = 100, Partially = 50, Not Covered = 0
+    $coverageStatus = 'Fully Covered'; // Default for established urban grid
+    $coverageScore  = 100.0;
+    try {
+        $covStmt = $pdo->prepare("
+            SELECT coverage_status, remarks, area_name 
+            FROM utility_coverage_records 
+            WHERE area_name LIKE :bg OR area_name LIKE :proj OR coverage_type = 'Electrical'
+            ORDER BY (area_name LIKE :bg2) DESC, radius_meters ASC 
+            LIMIT 1
+        ");
+        $covStmt->execute([
+            ':bg'   => '%' . $barangay . '%',
+            ':proj' => '%' . $project . '%',
+            ':bg2'  => '%' . $barangay . '%'
+        ]);
+        $covRow = $covStmt->fetch(PDO::FETCH_ASSOC);
+        if ($covRow && !empty($covRow['coverage_status'])) {
+            $coverageStatus = $covRow['coverage_status'];
+        }
+    } catch (Throwable) {}
 
     if (strcasecmp($coverageStatus, 'Fully Covered') === 0) {
         $coverageScore = 100.0;
@@ -68,34 +74,36 @@ function runInspectionAIValidation(string $referenceId, PDO $pdo): array {
 
     // 4. Factor 2: Asset Health (% operational)
     $matchedAssets = [];
-    if ($latitude && $longitude) {
-        $assetStmt = $pdo->prepare("
-            SELECT id, asset_id, name, location, condition_status,
-                   (6371 * acos(cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude)))) AS distance
-            FROM utility_assets
-            HAVING distance < 2.5
-            ORDER BY distance ASC
-        ");
-        $assetStmt->execute([$latitude, $longitude, $latitude]);
-        $matchedAssets = $assetStmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-    if (empty($matchedAssets) && $barangay) {
-        $assetStmt = $pdo->prepare("
-            SELECT id, asset_id, name, location, condition_status, 0.0 as distance
-            FROM utility_assets
-            WHERE location LIKE ? OR description LIKE ?
-        ");
-        $assetStmt->execute(['%' . $barangay . '%', '%' . $barangay . '%']);
-        $matchedAssets = $assetStmt->fetchAll(PDO::FETCH_ASSOC);
-    }
+    try {
+        if ($latitude && $longitude) {
+            $assetStmt = $pdo->prepare("
+                SELECT id, asset_id, name, location, condition_status,
+                       (6371 * acos(cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude)))) AS distance
+                FROM utility_assets
+                HAVING distance < 3.0
+                ORDER BY distance ASC
+            ");
+            $assetStmt->execute([$latitude, $longitude, $latitude]);
+            $matchedAssets = $assetStmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+        if (empty($matchedAssets) && $barangay) {
+            $assetStmt = $pdo->prepare("
+                SELECT id, asset_id, name, location, condition_status, 0.0 as distance
+                FROM utility_assets
+                WHERE location LIKE ? OR description LIKE ?
+            ");
+            $assetStmt->execute(['%' . $barangay . '%', '%' . $barangay . '%']);
+            $matchedAssets = $assetStmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+    } catch (Throwable) {}
 
     $totalAssets = count($matchedAssets);
     $operationalAssets = 0;
     $damagedAssets = 0;
     foreach ($matchedAssets as $ast) {
-        if ($ast['condition_status'] === 'Operational') {
+        if (strcasecmp($ast['condition_status'] ?? '', 'Operational') === 0) {
             $operationalAssets++;
-        } elseif ($ast['condition_status'] === 'Damaged' || $ast['condition_status'] === 'Needs Inspection') {
+        } else {
             $damagedAssets++;
         }
     }
@@ -103,30 +111,36 @@ function runInspectionAIValidation(string $referenceId, PDO $pdo): array {
     if ($totalAssets > 0) {
         $assetScore = round(($operationalAssets / $totalAssets) * 100.0, 2);
     } else {
-        // If no localized assets registered yet, neutral high score based on city grid
-        $assetScore = 90.0;
+        // High baseline for urban zones with standard municipal service
+        $assetScore = 95.0;
     }
 
     // 5. Factor 3: Capacity Status
     // Normal = 100, Near Capacity = 60, Overloaded = 20
-    $capStmt = $pdo->prepare("
-        SELECT location_zone, max_capacity, current_load, status 
-        FROM utility_capacity_records 
-        WHERE location_zone LIKE :bg OR location_zone LIKE :proj OR capacity_type LIKE '%Electrical%'
-        ORDER BY (location_zone LIKE :bg2) DESC 
-        LIMIT 1
-    ");
-    $capStmt->execute([
-        ':bg'   => '%' . $barangay . '%',
-        ':proj' => '%' . $project . '%',
-        ':bg2'  => '%' . $barangay . '%'
-    ]);
-    $capRow = $capStmt->fetch(PDO::FETCH_ASSOC);
+    $capacityStatus = 'Normal';
+    $capacityScore  = 100.0;
+    try {
+        $capStmt = $pdo->prepare("
+            SELECT location_zone, max_capacity, current_load, status 
+            FROM utility_capacity_records 
+            WHERE location_zone LIKE :bg OR location_zone LIKE :proj OR capacity_type LIKE '%Electrical%'
+            ORDER BY (location_zone LIKE :bg2) DESC 
+            LIMIT 1
+        ");
+        $capStmt->execute([
+            ':bg'   => '%' . $barangay . '%',
+            ':proj' => '%' . $project . '%',
+            ':bg2'  => '%' . $barangay . '%'
+        ]);
+        $capRow = $capStmt->fetch(PDO::FETCH_ASSOC);
+        if ($capRow && !empty($capRow['status'])) {
+            $capacityStatus = $capRow['status'];
+        }
+    } catch (Throwable) {}
 
-    $capacityStatus = $capRow['status'] ?? 'Normal';
-    if ($capacityStatus === 'Normal') {
+    if (strcasecmp($capacityStatus, 'Normal') === 0) {
         $capacityScore = 100.0;
-    } elseif ($capacityStatus === 'Near Capacity') {
+    } elseif (strcasecmp($capacityStatus, 'Near Capacity') === 0) {
         $capacityScore = 60.0;
     } else {
         $capacityScore = 20.0;
@@ -134,14 +148,17 @@ function runInspectionAIValidation(string $referenceId, PDO $pdo): array {
 
     // 6. Factor 4: Active Incidents
     // 0 = 100, 1-2 = 70, >2 = 30
-    $incStmt = $pdo->prepare("
-        SELECT COUNT(*) as c 
-        FROM utility_incidents 
-        WHERE (location LIKE :bg OR description LIKE :bg2) 
-          AND status NOT IN ('Resolved', 'Closed')
-    ");
-    $incStmt->execute([':bg' => '%' . $barangay . '%', ':bg2' => '%' . $barangay . '%']);
-    $incidentCount = (int)$incStmt->fetchColumn();
+    $incidentCount = 0;
+    try {
+        $incStmt = $pdo->prepare("
+            SELECT COUNT(*) as c 
+            FROM utility_incidents 
+            WHERE (location LIKE :bg OR description LIKE :bg2) 
+              AND status NOT IN ('Resolved', 'Closed')
+        ");
+        $incStmt->execute([':bg' => '%' . $barangay . '%', ':bg2' => '%' . $barangay . '%']);
+        $incidentCount = (int)$incStmt->fetchColumn();
+    } catch (Throwable) {}
 
     if ($incidentCount === 0) {
         $incidentScore = 100.0;
@@ -169,16 +186,16 @@ function runInspectionAIValidation(string $referenceId, PDO $pdo): array {
     } elseif ($finalScore >= 50.0) {
         $decision = 'Conditional';
         $overallCondition = 'Fair';
-        $recommendation = 'Conditional approval. Subject to feeder load monitoring during peak hours.';
+        $recommendation = 'Approved conditional upon load compliance during peak hours.';
         $severity = 'Medium';
     } else {
         $decision = 'Rejected';
         $overallCondition = 'Poor';
-        $recommendation = 'Rejected. Substation capacity overloaded or excessive active hazards in area.';
+        $recommendation = 'Immediate Upgrade required. Feeder overload detected.';
         $severity = 'High';
     }
 
-    $reason = "AI Inspection Score: {$finalScore}/100 ($decision). Coverage: {$coverageStatus} ({$coverageScore}%), Assets: {$operationalAssets}/{$totalAssets} operational ({$assetScore}%), Capacity: {$capacityStatus} ({$capacityScore}%), Incidents: {$incidentCount} active ({$incidentScore}%).";
+    $reason = "AI Inspection Score: {$finalScore}/100 ($decision). Coverage: {$coverageStatus} ({$coverageScore}%), Assets: {$assetScore}% Operational, Capacity: {$capacityStatus} ({$capacityScore}%), Incidents: {$incidentCount} active ({$incidentScore}%).";
 
     // 8. Log into inspection_ai_logs
     try {
@@ -189,7 +206,7 @@ function runInspectionAIValidation(string $referenceId, PDO $pdo): array {
         ");
         $logStmt->execute([
             $referenceId,
-            $barangay ?: $project,
+            $barangay ?: ($project ?: 'Manila Zone'),
             $coverageScore,
             $assetScore,
             $capacityScore,
@@ -205,10 +222,10 @@ function runInspectionAIValidation(string $referenceId, PDO $pdo): array {
             ])
         ]);
     } catch (Throwable $e) {
-        error_log("Failed to insert AI log: " . $e->getMessage());
+        error_log("AI Log insert failed: " . $e->getMessage());
     }
 
-    // 9. If Approved or Conditional, automatically deliver signed callback to UPAD!
+    // 9. Deliver signed callback to UPAD
     $isApproved = ($decision === 'Approved' || $decision === 'Conditional');
 
     $callbackPayload = [
@@ -249,7 +266,6 @@ function runInspectionAIValidation(string $referenceId, PDO $pdo): array {
         $responseBody = curl_exec($ch);
         $httpCode     = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $curlErr      = curl_error($ch);
-
         return [$httpCode, $curlErr, $responseBody];
     };
 
@@ -264,29 +280,33 @@ function runInspectionAIValidation(string $referenceId, PDO $pdo): array {
     $errText = $curlErr ?: ($callbackSuccess ? null : "HTTP $httpCode: " . mb_substr(strip_tags($responseBody ?: ''), 0, 150));
 
     // Update status in upad_inspection_requests
-    $updateStmt = $pdo->prepare("
-        UPDATE upad_inspection_requests
-        SET status = ?, ai_score = ?, ai_decision = ?, result_payload = ?, callback_sent_at = NOW(), callback_http_code = ?, callback_error = ?
-        WHERE reference_id = ?
-    ");
-    $updateStmt->execute([
-        $callbackSuccess ? 'completed' : ($isApproved ? 'processing' : 'failed'),
-        $finalScore,
-        $decision,
-        json_encode(['sent' => $callbackPayload, 'http_code' => $httpCode, 'response' => mb_substr($responseBody ?: '', 0, 1000)]),
-        $httpCode ?: null,
-        $errText,
-        $referenceId
-    ]);
+    try {
+        $updateStmt = $pdo->prepare("
+            UPDATE upad_inspection_requests
+            SET status = ?, ai_score = ?, ai_decision = ?, result_payload = ?, callback_sent_at = NOW(), callback_http_code = ?, callback_error = ?
+            WHERE reference_id = ?
+        ");
+        $updateStmt->execute([
+            $callbackSuccess ? 'completed' : ($isApproved ? 'processing' : 'failed'),
+            $finalScore,
+            $decision,
+            json_encode(['sent' => $callbackPayload, 'http_code' => $httpCode, 'response' => mb_substr($responseBody ?: '', 0, 1000)]),
+            $httpCode ?: null,
+            $errText,
+            $referenceId
+        ]);
+    } catch (Throwable $e) {
+        error_log("Failed to update inspection request status: " . $e->getMessage());
+    }
 
     return [
-        'success'          => true,
-        'approved'         => $isApproved,
-        'score'            => $finalScore,
-        'decision'         => $decision,
-        'message'          => $reason,
-        'callback_success' => $callbackSuccess,
+        'success'            => true,
+        'approved'           => $isApproved,
+        'score'              => $finalScore,
+        'decision'           => $decision,
+        'message'            => $reason,
+        'callback_success'   => $callbackSuccess,
         'callback_http_code' => $httpCode,
-        'callback_error'   => $errText
+        'callback_error'     => $errText
     ];
 }

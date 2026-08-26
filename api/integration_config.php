@@ -43,12 +43,14 @@ define('UPAD_API_KEY',         trim((string)(getenv('UPAD_API_KEY')         ?: '
 // Must match UMAN_WEBHOOK_SECRET in the UPAD system's utilities_integration.php.
 define('UPAD_WEBHOOK_SECRET',  trim((string)(getenv('UPAD_WEBHOOK_SECRET')  ?: 'UPAD_UMAN_WEBHOOK_SECRET_2026')));
 
-// Fallback callback URL — dynamically points to local physical callback endpoint if host is localhost/lgu, or env setting
+// Fallback callback URL — points to UPAD deployed path or local XAMPP workspace
 $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
 $host   = $_SERVER['HTTP_HOST'] ?? 'localhost';
-$localDefaultCallback = "$scheme://$host/uman_/integration/lgu-urban-planning-capstone-main/lgu-urban-planning/uman-integration/uman_inspection_result.php";
+$prodCallback = 'https://upad.infragovservices.com/uman-integration/uman_inspection_result.php';
+$localCallback = "$scheme://$host/uman_/integration/lgu-urban-planning-capstone-main%202/lgu-urban-planning/uman-integration/uman_inspection_result.php";
+$defaultCallback = (str_contains($host, 'localhost') || str_contains($host, '127.0.0.1')) ? $localCallback : $prodCallback;
 
-define('UPAD_DEFAULT_CALLBACK_URL', trim((string)(getenv('UPAD_DEFAULT_CALLBACK_URL') ?: $localDefaultCallback)));
+define('UPAD_DEFAULT_CALLBACK_URL', trim((string)(getenv('UPAD_DEFAULT_CALLBACK_URL') ?: $defaultCallback)));
 
 // ── Auth helpers ──────────────────────────────────────────────────────────────
 
