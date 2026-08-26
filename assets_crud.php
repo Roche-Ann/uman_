@@ -1814,7 +1814,7 @@ if (!empty($search) || $status_filter) {
                 <div class="form-row">
                     <div class="form-group">
                         <label>Responsible Office / Department</label>
-                        <input type="text" name="responsible_office" class="form-control" placeholder="e.g. City Engineering Office">
+                        <input type="text" name="responsible_office" class="form-control" placeholder="Supplier">
                     </div>
                     <div class="form-group">
                         <label>Asset Representative Image</label>
