@@ -1472,6 +1472,12 @@ function sidebarActive(string $page, string $current): string {
                 </a>
             </li>
             <li>
+                <a href="<?php echo $sidebarBase; ?>citizen_asset_request.php" class="nav-link<?php echo sidebarActive('citizen_asset_request.php', $currentPage); ?>">
+                    <i class="fas fa-boxes-stacked"></i>
+                    <span class="link-label">Asset Requests</span>
+                </a>
+            </li>
+            <li>
                 <a href="<?php echo $sidebarBase; ?>citizen_advisories.php" class="nav-link<?php echo sidebarActive('citizen_advisories.php', $currentPage); ?>">
                     <i class="fas fa-bullhorn"></i>
                     <span class="link-label">LGU Advisories</span>

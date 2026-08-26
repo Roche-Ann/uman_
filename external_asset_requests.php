@@ -50,7 +50,7 @@ $pdo->exec("
       `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 ");
-// Self-healing: add is_archived if missing
+// Self-healing: add is_archived and citizen columns if missing
 try { $pdo->query("SELECT `is_archived` FROM `external_asset_requests` LIMIT 1"); }
 catch (Throwable $e) {
     try {
@@ -58,6 +58,9 @@ catch (Throwable $e) {
         $pdo->exec("ALTER TABLE `external_asset_requests` ADD COLUMN `archived_at` TIMESTAMP NULL AFTER `is_archived`");
     } catch (Throwable $ignored) {}
 }
+try { $pdo->exec("ALTER TABLE `external_asset_requests` ADD COLUMN `citizen_user_id` INT NULL AFTER `cprf_facility_id`"); } catch (Throwable $e) {}
+try { $pdo->exec("ALTER TABLE `external_asset_requests` ADD COLUMN `requester_name` VARCHAR(150) NULL AFTER `citizen_user_id`"); } catch (Throwable $e) {}
+try { $pdo->exec("ALTER TABLE `external_asset_requests` ADD COLUMN `requester_contact` VARCHAR(100) NULL AFTER `requester_name`"); } catch (Throwable $e) {}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers (shared between tabs)
@@ -176,7 +179,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $notes = trim((string)($_POST['review_notes'] ?? ''));
 
             // Check real-time inventory availability before approving
-            $reqStmt = $pdo->prepare("SELECT id, request_ref, asset_type, quantity FROM external_asset_requests WHERE id = ? LIMIT 1");
+            $reqStmt = $pdo->prepare("SELECT id, request_ref, asset_type, quantity, citizen_user_id FROM external_asset_requests WHERE id = ? LIMIT 1");
             $reqStmt->execute([$id]);
             $targetReq = $reqStmt->fetch(PDO::FETCH_ASSOC);
 
@@ -206,24 +209,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $pdo->prepare("UPDATE external_asset_requests SET status = 'approved', review_notes = ?, updated_at = NOW() WHERE id = ?")
                         ->execute([$notes ?: null, $id]);
                     $successes[] = "Request {$targetReq['request_ref']} approved successfully (Stock verified: {$availCheck['available_qty']} units available).";
+
+                    // Citizen notification if applicable
+                    if (!empty($targetReq['citizen_user_id'])) {
+                        try {
+                            $notifText = "Your asset request [{$targetReq['request_ref']}] for {$targetReq['quantity']}x {$targetReq['asset_type']} has been APPROVED by LGU staff.";
+                            if ($notes !== '') $notifText .= " Note: " . $notes;
+                            $pdo->prepare("INSERT INTO incident_notifications (user_id, message, read_status) VALUES (?, ?, 0)")
+                                ->execute([(int)$targetReq['citizen_user_id'], $notifText]);
+                        } catch (Throwable $e) {}
+                    }
                 }
             }
         } elseif ($action === 'reject') {
             $notes = trim((string)($_POST['review_notes'] ?? ''));
+            $reqStmt = $pdo->prepare("SELECT id, request_ref, asset_type, quantity, citizen_user_id FROM external_asset_requests WHERE id = ? LIMIT 1");
+            $reqStmt->execute([$id]);
+            $targetReq = $reqStmt->fetch(PDO::FETCH_ASSOC);
+
             $pdo->prepare("UPDATE external_asset_requests SET status = 'rejected', is_archived = 1, archived_at = NOW(), review_notes = ?, updated_at = NOW() WHERE id = ?")
                 ->execute([$notes ?: null, $id]);
             $successes[] = 'Request rejected and archived.';
+
+            if (!empty($targetReq['citizen_user_id'])) {
+                try {
+                    $notifText = "Your asset request [{$targetReq['request_ref']}] for {$targetReq['quantity']}x {$targetReq['asset_type']} has been REJECTED.";
+                    if ($notes !== '') $notifText .= " Reason: " . $notes;
+                    $pdo->prepare("INSERT INTO incident_notifications (user_id, message, read_status) VALUES (?, ?, 0)")
+                        ->execute([(int)$targetReq['citizen_user_id'], $notifText]);
+                } catch (Throwable $e) {}
+            }
         } elseif ($action === 'fulfill') {
             $assetId = (int)($_POST['fulfilled_asset_id'] ?? 0);
             $notes = trim((string)($_POST['review_notes'] ?? ''));
             if ($assetId <= 0) {
                 $errors[] = 'Select a utility asset to fulfill this request.';
             } else {
-                $req = $pdo->prepare("SELECT id, request_ref, cprf_facility_id, facility_name FROM external_asset_requests WHERE id = ? LIMIT 1");
+                $req = $pdo->prepare("SELECT id, request_ref, cprf_facility_id, citizen_user_id, asset_type, quantity, facility_name FROM external_asset_requests WHERE id = ? LIMIT 1");
                 $req->execute([$id]);
                 $reqRow = $req->fetch(PDO::FETCH_ASSOC);
                 $facilityId = (int)($reqRow['cprf_facility_id'] ?? 0);
-                $facilityName = (string)($reqRow['facility_name'] ?? ('CPRF Facility #' . $facilityId));
+                $facilityName = (string)($reqRow['facility_name'] ?? ('Facility #' . $facilityId));
                 $requestRef = (string)($reqRow['request_ref'] ?? '');
                 $actor = current_actor_label();
 
@@ -231,6 +257,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 try {
                     $pdo->prepare("UPDATE external_asset_requests SET status = 'fulfilled', is_archived = 1, archived_at = NOW(), fulfilled_asset_id = ?, review_notes = ?, updated_at = NOW() WHERE id = ?")
                         ->execute([$assetId, $notes ?: null, $id]);
+
+                    if (!empty($reqRow['citizen_user_id'])) {
+                        try {
+                            $metaAss = build_asset_meta($pdo, $assetId);
+                            $assetCodeStr = !empty($metaAss['asset_code']) ? " ({$metaAss['asset_code']})" : "";
+                            $notifText = "Your asset request [{$requestRef}] for {$reqRow['quantity']}x {$reqRow['asset_type']} has been FULFILLED! Assigned unit: " . ($metaAss['name'] ?? 'Asset') . $assetCodeStr . ".";
+                            $pdo->prepare("INSERT INTO incident_notifications (user_id, message, read_status) VALUES (?, ?, 0)")
+                                ->execute([(int)$reqRow['citizen_user_id'], $notifText]);
+                        } catch (Throwable $e) {}
+                    }
 
                     $upd = $pdo->prepare("
                         UPDATE utility_assets
@@ -536,6 +572,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Tab 1 — Asset Requests: data preload
 // ═════════════════════════════════════════════════════════════════════════════
 $filter = trim($_GET['status'] ?? '');
+$sourceFilter = trim($_GET['source'] ?? '');
 $showArchived = (($_GET['archived'] ?? '') === '1');
 
 // If filtering by fulfilled/rejected, implicitly switch to archived view
@@ -548,6 +585,11 @@ $params = [];
 if ($filter !== '' && in_array($filter, ['pending', 'approved', 'fulfilled', 'rejected'], true)) {
     $sql .= ' AND r.status = ?';
     $params[] = $filter;
+}
+if ($sourceFilter === 'citizen') {
+    $sql .= " AND (r.source_system = 'Citizen Portal' OR r.citizen_user_id IS NOT NULL)";
+} elseif ($sourceFilter === 'cprf') {
+    $sql .= " AND (r.source_system = 'CPRF' OR (r.source_system IS NULL AND r.citizen_user_id IS NULL))";
 }
 if ($showArchived) {
     $sql .= " AND (r.is_archived = 1 OR r.status IN ('fulfilled', 'rejected'))";
@@ -1209,8 +1251,15 @@ try {
                     <?php if ($showArchived): ?>
                         <input type="hidden" name="archived" value="1">
                     <?php endif; ?>
-                    <label style="margin:0; white-space:nowrap;"><i class="fas fa-filter"></i> Filter by Status:</label>
-                    <select name="status" onchange="this.form.submit()" class="form-control" style="flex:1; min-width:180px;">
+                    <label style="margin:0; white-space:nowrap;"><i class="fas fa-filter"></i> Filter Source:</label>
+                    <select name="source" onchange="this.form.submit()" class="form-control" style="flex:1; min-width:170px;">
+                        <option value="">All Sources (CPRF & Citizen)</option>
+                        <option value="citizen" <?= $sourceFilter === 'citizen' ? 'selected' : ''; ?>>Citizen Requests</option>
+                        <option value="cprf" <?= $sourceFilter === 'cprf' ? 'selected' : ''; ?>>CPRF Facility Requests</option>
+                    </select>
+
+                    <label style="margin:0; white-space:nowrap; margin-left:10px;"><i class="fas fa-tasks"></i> Status:</label>
+                    <select name="status" onchange="this.form.submit()" class="form-control" style="flex:1; min-width:170px;">
                         <option value="">All Statuses</option>
                         <?php 
                         $statusOptions = $showArchived ? ['fulfilled', 'rejected'] : ['pending', 'approved'];
@@ -1223,12 +1272,12 @@ try {
             </div>
 
             <div class="table-section">
-                <h3><i class="fas fa-list-alt"></i> <?= $showArchived ? 'Archived Asset Requests' : 'External Asset Requests'; ?></h3>
+                <h3><i class="fas fa-list-alt"></i> <?= $showArchived ? 'Archived Asset Requests' : 'Asset Requests Hub'; ?></h3>
 
                 <?php if (empty($requests)): ?>
                     <div class="empty-state">
                         <i class="fas fa-inbox"></i>
-                        <p>No external requests found.</p>
+                        <p>No requests found matching your filter criteria.</p>
                     </div>
                 <?php else: ?>
                     <?php if (!$showArchived): ?>
@@ -1236,7 +1285,7 @@ try {
                         <thead>
                             <tr>
                                 <th>Reference</th>
-                                <th>Facility (CPRF)</th>
+                                <th>Source & Requester / Location</th>
                                 <th>Asset Type</th>
                                 <th>Requested Qty</th>
                                 <th>Available in Stock</th>
@@ -1253,9 +1302,29 @@ try {
                                         <small><?= htmlspecialchars($req['created_at']); ?></small>
                                     </td>
                                     <td>
-                                        <?= htmlspecialchars($req['facility_name']); ?><br>
-                                        <small>CPRF ID: <?= (int)$req['cprf_facility_id']; ?></small>
-                                        <?php if (!empty($req['notes'])): ?><br><em><?= htmlspecialchars($req['notes']); ?></em><?php endif; ?>
+                                        <?php if ($req['source_system'] === 'Citizen Portal' || !empty($req['citizen_user_id'])): ?>
+                                            <span class="badge" style="background:linear-gradient(135deg,#e0f2fe,#bae6fd); color:#0369a1; border:1px solid #7dd3fc; font-weight:700; margin-bottom:4px;">
+                                                <i class="fas fa-user-circle"></i> Citizen Request
+                                            </span><br>
+                                            <strong style="color:#1e293b;"><i class="fas fa-user"></i> <?= htmlspecialchars($req['requester_name'] ?: 'Citizen Resident'); ?></strong><br>
+                                            <?php if (!empty($req['requester_contact'])): ?>
+                                                <small style="color:#64748b;"><i class="fas fa-address-card"></i> <?= htmlspecialchars($req['requester_contact']); ?></small><br>
+                                            <?php endif; ?>
+                                            <small style="color:#334155;">📍 Location: <strong><?= htmlspecialchars($req['facility_name']); ?></strong></small>
+                                            <?php if (!empty($req['event_purpose'])): ?>
+                                                <br><small style="color:#475569;">🎯 Purpose: <em><?= htmlspecialchars($req['event_purpose']); ?></em></small>
+                                            <?php endif; ?>
+                                            <?php if (!empty($req['notes'])): ?>
+                                                <br><em style="color:#64748b; font-size:11px;">"<?= htmlspecialchars($req['notes']); ?>"</em>
+                                            <?php endif; ?>
+                                        <?php else: ?>
+                                            <span class="badge" style="background:linear-gradient(135deg,#f3e8ff,#e9d5ff); color:#6b21a8; border:1px solid #c084fc; font-weight:700; margin-bottom:4px;">
+                                                <i class="fas fa-building"></i> CPRF Facility
+                                            </span><br>
+                                            <strong><?= htmlspecialchars($req['facility_name']); ?></strong><br>
+                                            <small>CPRF ID: <?= (int)$req['cprf_facility_id']; ?></small>
+                                            <?php if (!empty($req['notes'])): ?><br><em><?= htmlspecialchars($req['notes']); ?></em><?php endif; ?>
+                                        <?php endif; ?>
                                     </td>
                                     <td>
                                         <strong><?= htmlspecialchars($req['asset_type']); ?></strong>
@@ -1404,7 +1473,7 @@ try {
                         <thead>
                             <tr>
                                 <th>Reference</th>
-                                <th>Facility (CPRF)</th>
+                                <th>Source & Requester / Location</th>
                                 <th>Asset Type</th>
                                 <th>Qty</th>
                                 <th>Resolution</th>
@@ -1419,9 +1488,21 @@ try {
                                         <small><?= htmlspecialchars($req['created_at']); ?></small>
                                     </td>
                                     <td>
-                                        <span style="font-weight: 500;"><?= htmlspecialchars($req['facility_name']); ?></span><br>
-                                        <small>CPRF ID: <?= (int)$req['cprf_facility_id']; ?></small>
-                                        <?php if (!empty($req['notes'])): ?><br><em style="font-size:11px;"><?= htmlspecialchars($req['notes']); ?></em><?php endif; ?>
+                                        <?php if ($req['source_system'] === 'Citizen Portal' || !empty($req['citizen_user_id'])): ?>
+                                            <span class="badge" style="background:linear-gradient(135deg,#e0f2fe,#bae6fd); color:#0369a1; border:1px solid #7dd3fc; font-weight:700; margin-bottom:2px; font-size:10px;">
+                                                <i class="fas fa-user-circle"></i> Citizen Request
+                                            </span><br>
+                                            <strong><i class="fas fa-user"></i> <?= htmlspecialchars($req['requester_name'] ?: 'Citizen'); ?></strong><br>
+                                            <small>📍 <?= htmlspecialchars($req['facility_name']); ?></small>
+                                            <?php if (!empty($req['notes'])): ?><br><em style="font-size:11px;">"<?= htmlspecialchars($req['notes']); ?>"</em><?php endif; ?>
+                                        <?php else: ?>
+                                            <span class="badge" style="background:linear-gradient(135deg,#f3e8ff,#e9d5ff); color:#6b21a8; border:1px solid #c084fc; font-weight:700; margin-bottom:2px; font-size:10px;">
+                                                <i class="fas fa-building"></i> CPRF Facility
+                                            </span><br>
+                                            <span style="font-weight: 500;"><?= htmlspecialchars($req['facility_name']); ?></span><br>
+                                            <small>CPRF ID: <?= (int)$req['cprf_facility_id']; ?></small>
+                                            <?php if (!empty($req['notes'])): ?><br><em style="font-size:11px;"><?= htmlspecialchars($req['notes']); ?></em><?php endif; ?>
+                                        <?php endif; ?>
                                     </td>
                                     <td>
                                         <strong><?= htmlspecialchars($req['asset_type']); ?></strong>
