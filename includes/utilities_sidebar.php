@@ -9,7 +9,7 @@ if (!isLoggedIn()) {
     exit();
 }
 
-$userName  = htmlspecialchars($_SESSION['user_name'] ?? '', ENT_QUOTES, 'UTF-8');
+$userName  = htmlspecialchars($_SESSION['user_name'] ?? $_SESSION['full_name'] ?? 'Resident', ENT_QUOTES, 'UTF-8');
 $userType  = $_SESSION['user_type'] ?? '';
 $currentPage = basename($_SERVER['PHP_SELF']);
 // Allow subdirectory pages (e.g. admin/) to set a base path prefix.
@@ -21,6 +21,23 @@ if (!isset($sidebarBase)) {
 // Helper to mark active link
 function sidebarActive(string $page, string $current): string {
     return $page === $current ? ' active' : '';
+}
+
+// Fetch badge counts for citizen navigation
+$activeReportCount = 0;
+$unreadNotifCount = 0;
+if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
+    try {
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM utility_incidents WHERE resident_id = ? AND status NOT IN ('Resolved', 'Closed')");
+        $stmt->execute([$_SESSION['user_id']]);
+        $activeReportCount = (int)$stmt->fetchColumn();
+    } catch (Throwable $e) {}
+
+    try {
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM incident_notifications WHERE user_id = ? AND is_read = 0");
+        $stmt->execute([$_SESSION['user_id']]);
+        $unreadNotifCount = (int)$stmt->fetchColumn();
+    } catch (Throwable $e) {}
 }
 ?>
 <link rel="stylesheet" href="<?php echo $sidebarBase; ?>assets/css/responsive.css">
@@ -36,6 +53,314 @@ function sidebarActive(string $page, string $current): string {
 
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
+
+    /* ===== CITIZEN MODE BOTTOM NAV BAR OVERRIDES (Messenger Style - Photo 3) ===== */
+    <?php if ($userType !== 'employee'): ?>
+    .sidebar-nav {
+        display: none !important;
+    }
+    .sidebar-backdrop {
+        display: none !important;
+    }
+    .main-content {
+        margin-left: 0 !important;
+        padding-bottom: 95px !important;
+        width: 100% !important;
+        max-width: 100vw !important;
+    }
+    .main-content.collapsed {
+        margin-left: 0 !important;
+    }
+    .mobile-topbar {
+        display: flex !important;
+    }
+    .mobile-nav-toggle {
+        display: flex !important;
+    }
+    <?php endif; ?>
+
+    .citizen-bottom-nav {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 66px;
+        background: rgba(18, 24, 38, 0.95);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-top: 1px solid rgba(255, 255, 255, 0.12);
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+        padding: 0 10px;
+        z-index: 10000;
+        box-shadow: 0 -5px 25px rgba(0, 0, 0, 0.35);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        font-family: 'Poppins', sans-serif;
+    }
+
+    body:not(.dark-theme) .citizen-bottom-nav {
+        background: rgba(255, 255, 255, 0.96);
+        border-top: 1px solid rgba(0, 0, 0, 0.08);
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    .dark-theme .citizen-bottom-nav {
+        background: #111827;
+        border-top: 1px solid #1f2937;
+        box-shadow: 0 -5px 25px rgba(0, 0, 0, 0.5);
+    }
+
+    @media (min-width: 769px) {
+        .citizen-bottom-nav {
+            left: 50%;
+            transform: translateX(-50%);
+            right: auto;
+            width: 90%;
+            max-width: 640px;
+            bottom: 16px;
+            border-radius: 32px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.4);
+        }
+        body:not(.dark-theme) .citizen-bottom-nav {
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+        }
+    }
+
+    .citizen-bottom-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        color: #94a3b8;
+        font-size: 11px;
+        font-weight: 500;
+        padding: 6px 14px;
+        border-radius: 20px;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        line-height: 1.2;
+    }
+
+    .citizen-bottom-item i {
+        font-size: 18px;
+        margin-bottom: 3px;
+        transition: transform 0.2s ease, color 0.2s ease;
+    }
+
+    /* Active Capsule Pill (Photo 3 Highlighted Blue Style) */
+    .citizen-bottom-item.active {
+        color: #ffffff !important;
+        background: #3762c8 !important;
+        box-shadow: 0 4px 14px rgba(55, 98, 200, 0.4);
+        transform: translateY(-2px);
+        padding: 6px 18px;
+    }
+
+    .citizen-bottom-item.active i {
+        color: #ffffff !important;
+        transform: scale(1.1);
+    }
+
+    .citizen-bottom-item:hover:not(.active) {
+        color: #3762c8;
+        background: rgba(55, 98, 200, 0.1);
+    }
+
+    .dark-theme .citizen-bottom-item:hover:not(.active) {
+        color: #6384d2;
+        background: rgba(255, 255, 255, 0.08);
+    }
+
+    /* Notification / Counter Badge (Photo 3 Red Badge style) */
+    .citizen-bottom-badge {
+        position: absolute;
+        top: 2px;
+        right: 6px;
+        background: #ef4444;
+        color: #ffffff;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 1px 5px;
+        min-width: 16px;
+        height: 16px;
+        border-radius: 99px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid rgba(18, 24, 38, 0.95);
+        line-height: 1;
+        box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
+    }
+
+    body:not(.dark-theme) .citizen-bottom-badge {
+        border-color: #ffffff;
+    }
+
+    /* Slide-Up Citizen Action Menu Sheet */
+    .citizen-menu-sheet {
+        position: fixed;
+        bottom: -100%;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 100%;
+        max-width: 500px;
+        background: #ffffff;
+        border-radius: 24px 24px 0 0;
+        padding: 20px 20px 85px 20px;
+        box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.25);
+        z-index: 10001;
+        transition: bottom 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+        font-family: 'Poppins', sans-serif;
+    }
+
+    .dark-theme .citizen-menu-sheet {
+        background: #1e293b;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-bottom: none;
+        box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.6);
+    }
+
+    .citizen-menu-sheet.open {
+        bottom: 0;
+    }
+
+    .citizen-sheet-handle {
+        width: 42px;
+        height: 5px;
+        background: #cbd5e1;
+        border-radius: 99px;
+        margin: 0 auto 16px auto;
+    }
+
+    .dark-theme .citizen-sheet-handle {
+        background: #475569;
+    }
+
+    .citizen-sheet-header {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding-bottom: 14px;
+        border-bottom: 1px solid #f1f5f9;
+        margin-bottom: 14px;
+    }
+
+    .dark-theme .citizen-sheet-header {
+        border-bottom-color: #334155;
+    }
+
+    .citizen-sheet-avatar {
+        width: 46px;
+        height: 46px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #3762c8, #6384d2);
+        display: grid;
+        place-items: center;
+        color: #fff;
+        font-size: 18px;
+        box-shadow: 0 4px 12px rgba(55, 98, 200, 0.3);
+    }
+
+    .citizen-sheet-user-name {
+        font-size: 15px;
+        font-weight: 700;
+        color: #1e293b;
+    }
+
+    .dark-theme .citizen-sheet-user-name {
+        color: #f8fafc;
+    }
+
+    .citizen-sheet-user-role {
+        font-size: 12px;
+        color: #64748b;
+        font-weight: 500;
+    }
+
+    .dark-theme .citizen-sheet-user-role {
+        color: #94a3b8;
+    }
+
+    .citizen-sheet-menu {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .citizen-sheet-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        border-radius: 12px;
+        text-decoration: none;
+        color: #1e293b;
+        font-size: 13.5px;
+        font-weight: 600;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+
+    .dark-theme .citizen-sheet-item {
+        background: #0f172a;
+        border-color: #334155;
+        color: #f8fafc;
+    }
+
+    .citizen-sheet-item:hover {
+        background: #edf2f7;
+        transform: translateX(4px);
+    }
+
+    .dark-theme .citizen-sheet-item:hover {
+        background: #1e293b;
+    }
+
+    .citizen-sheet-item-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .citizen-sheet-item-left i {
+        width: 22px;
+        font-size: 16px;
+        color: #3762c8;
+        text-align: center;
+    }
+
+    .dark-theme .citizen-sheet-item-left i {
+        color: #6384d2;
+    }
+
+    .citizen-sheet-backdrop {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        z-index: 10000;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .citizen-sheet-backdrop.active {
+        display: block;
+        opacity: 1;
+    }
 
     /* ===== GLASSMORPHISM SIDEBAR — matches utilities_dashboard.php exactly ===== */
     .sidebar-nav {
@@ -1514,6 +1839,90 @@ function sidebarActive(string $page, string $current): string {
     </div>
 </nav>
 
+<?php if ($userType !== 'employee'): ?>
+<!-- ===== CITIZEN BOTTOM NAVIGATION BAR (Messenger Style - Photo 3) ===== -->
+<div class="citizen-bottom-nav" id="citizenBottomNav" role="navigation" aria-label="Citizen Bottom Navigation">
+    <a href="<?php echo $sidebarBase; ?>citizen.php" class="citizen-bottom-item<?php echo $currentPage === 'citizen.php' ? ' active' : ''; ?>">
+        <i class="fas fa-home"></i>
+        <span>Home</span>
+    </a>
+    <a href="<?php echo $sidebarBase; ?>citizen_reports.php" class="citizen-bottom-item<?php echo ($currentPage === 'citizen_reports.php' || $currentPage === 'citizen_submit_report.php') ? ' active' : ''; ?>">
+        <i class="fas fa-file-invoice"></i>
+        <span>Reports</span>
+        <?php if ($activeReportCount > 0): ?>
+            <span class="citizen-bottom-badge"><?php echo $activeReportCount; ?></span>
+        <?php endif; ?>
+    </a>
+    <a href="<?php echo $sidebarBase; ?>citizen_asset_request.php" class="citizen-bottom-item<?php echo $currentPage === 'citizen_asset_request.php' ? ' active' : ''; ?>">
+        <i class="fas fa-boxes-stacked"></i>
+        <span>Requests</span>
+    </a>
+    <a href="<?php echo $sidebarBase; ?>citizen_advisories.php" class="citizen-bottom-item<?php echo $currentPage === 'citizen_advisories.php' ? ' active' : ''; ?>">
+        <i class="fas fa-bullhorn"></i>
+        <span>Advisories</span>
+    </a>
+    <button type="button" class="citizen-bottom-item<?php echo ($currentPage === 'citizen_notifications.php' || $currentPage === 'citizen_profile.php') ? ' active' : ''; ?>" onclick="toggleCitizenMenuSheet()" aria-label="Open Menu">
+        <i class="fas fa-bars"></i>
+        <span>Menu</span>
+        <?php if ($unreadNotifCount > 0): ?>
+            <span class="citizen-bottom-badge"><?php echo $unreadNotifCount; ?></span>
+        <?php endif; ?>
+    </button>
+</div>
+
+<!-- Backdrop Overlay for Citizen Action Sheet -->
+<div class="citizen-sheet-backdrop" id="citizenSheetBackdrop" onclick="closeCitizenMenuSheet()"></div>
+
+<!-- ===== CITIZEN SLIDE-UP MENU SHEET ===== -->
+<div class="citizen-menu-sheet" id="citizenMenuSheet" role="dialog" aria-modal="true" aria-label="Citizen Menu">
+    <div class="citizen-sheet-handle"></div>
+    <div class="citizen-sheet-header">
+        <div class="citizen-sheet-avatar">
+            <i class="fas fa-user"></i>
+        </div>
+        <div>
+            <div class="citizen-sheet-user-name"><?php echo $userName; ?></div>
+            <div class="citizen-sheet-user-role"><i class="fas fa-shield-alt" style="margin-right:4px; color:#3762c8;"></i>Resident Portal</div>
+        </div>
+    </div>
+    <div class="citizen-sheet-menu">
+        <a href="<?php echo $sidebarBase; ?>citizen_notifications.php" class="citizen-sheet-item">
+            <div class="citizen-sheet-item-left">
+                <i class="fas fa-bell"></i>
+                <span>Notifications</span>
+            </div>
+            <?php if ($unreadNotifCount > 0): ?>
+                <span style="background:#ef4444; color:#fff; font-size:11px; padding:2px 8px; border-radius:99px; font-weight:700;"><?php echo $unreadNotifCount; ?> new</span>
+            <?php else: ?>
+                <i class="fas fa-chevron-right" style="color:#94a3b8; font-size:12px;"></i>
+            <?php endif; ?>
+        </a>
+        <a href="<?php echo $sidebarBase; ?>citizen_profile.php" class="citizen-sheet-item">
+            <div class="citizen-sheet-item-left">
+                <i class="fas fa-user-cog"></i>
+                <span>Profile Settings</span>
+            </div>
+            <i class="fas fa-chevron-right" style="color:#94a3b8; font-size:12px;"></i>
+        </a>
+        <button type="button" class="citizen-sheet-item" onclick="toggleTheme()" style="width:100%; text-align:left;">
+            <div class="citizen-sheet-item-left">
+                <i class="fas fa-moon" id="citizen-sheet-theme-icon"></i>
+                <span id="citizen-sheet-theme-text">Dark Mode</span>
+            </div>
+            <span style="font-size:12px; color:#64748b; font-weight:500;">Toggle</span>
+        </button>
+        <button type="button" class="citizen-sheet-item" onclick="confirmLogout()" style="width:100%; border-color:#fee2e2; background:#fef2f2; color:#dc2626;">
+            <div class="citizen-sheet-item-left">
+                <i class="fas fa-sign-out-alt" style="color:#dc2626;"></i>
+                <span style="color:#dc2626;">Logout</span>
+            </div>
+            <i class="fas fa-chevron-right" style="color:#dc2626; font-size:12px;"></i>
+        </button>
+    </div>
+</div>
+<?php endif; ?>
+
+
 <!-- Logout Confirmation Modal -->
 <div id="logoutConfirmModal" class="logout-modal">
     <div class="logout-modal-content">
@@ -1530,22 +1939,53 @@ function sidebarActive(string $page, string $current): string {
 </div>
 
 <script>
+function openCitizenMenuSheet() {
+    const sheet = document.getElementById('citizenMenuSheet');
+    const backdrop = document.getElementById('citizenSheetBackdrop');
+    if (sheet) sheet.classList.add('open');
+    if (backdrop) backdrop.classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeCitizenMenuSheet() {
+    const sheet = document.getElementById('citizenMenuSheet');
+    const backdrop = document.getElementById('citizenSheetBackdrop');
+    if (sheet) sheet.classList.remove('open');
+    if (backdrop) backdrop.classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+function toggleCitizenMenuSheet() {
+    const sheet = document.getElementById('citizenMenuSheet');
+    if (sheet && sheet.classList.contains('open')) {
+        closeCitizenMenuSheet();
+    } else {
+        openCitizenMenuSheet();
+    }
+}
+
 function applyTheme(theme) {
     const icon = document.getElementById('theme-toggle-icon');
     const mobIcon = document.getElementById('mobile-theme-icon');
     const text = document.getElementById('theme-toggle-text');
+    const sheetIcon = document.getElementById('citizen-sheet-theme-icon');
+    const sheetText = document.getElementById('citizen-sheet-theme-text');
     if (theme === 'dark') {
         document.body.classList.add('dark-theme');
         document.documentElement.classList.add('dark-theme');
         if (icon) icon.className = 'fas fa-sun';
         if (mobIcon) mobIcon.className = 'fas fa-sun';
         if (text) text.textContent = 'Light Mode';
+        if (sheetIcon) sheetIcon.className = 'fas fa-sun';
+        if (sheetText) sheetText.textContent = 'Light Mode';
     } else {
         document.body.classList.remove('dark-theme');
         document.documentElement.classList.remove('dark-theme');
         if (icon) icon.className = 'fas fa-moon';
         if (mobIcon) mobIcon.className = 'fas fa-moon';
         if (text) text.textContent = 'Dark Mode';
+        if (sheetIcon) sheetIcon.className = 'fas fa-moon';
+        if (sheetText) sheetText.textContent = 'Dark Mode';
     }
 }
 
@@ -1584,6 +2024,7 @@ window.addEventListener('click', function(event) {
     const mobileToggle = document.getElementById('mobile-nav-toggle');
     const backdrop    = document.getElementById('sidebar-backdrop');
     const mainContent = document.querySelector('.main-content');
+    const isCitizen   = <?php echo ($userType !== 'employee') ? 'true' : 'false'; ?>;
 
     // Desktop collapse toggle
     if (collapseBtn && sidebar) {
@@ -1611,6 +2052,10 @@ window.addEventListener('click', function(event) {
     if (mobileToggle) {
         mobileToggle.addEventListener('click', (e) => {
             e.stopPropagation();
+            if (isCitizen) {
+                toggleCitizenMenuSheet();
+                return;
+            }
             if (sidebar && sidebar.classList.contains('mobile-open')) {
                 closeMobileSidebar();
             } else {
@@ -1624,7 +2069,7 @@ window.addEventListener('click', function(event) {
     }
 
     // Auto-close drawer on link click on small screens
-    const navLinks = document.querySelectorAll('.sidebar-nav .nav-link');
+    const navLinks = document.querySelectorAll('.sidebar-nav .nav-link, .citizen-bottom-item');
     navLinks.forEach(link => {
         link.addEventListener('click', () => {
             if (window.innerWidth <= 992) {
@@ -1635,8 +2080,14 @@ window.addEventListener('click', function(event) {
 
     // Close on ESC key
     window.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && sidebar && sidebar.classList.contains('mobile-open')) {
-            closeMobileSidebar();
+        if (e.key === 'Escape') {
+            if (sidebar && sidebar.classList.contains('mobile-open')) {
+                closeMobileSidebar();
+            }
+            const sheet = document.getElementById('citizenMenuSheet');
+            if (sheet && sheet.classList.contains('open')) {
+                closeCitizenMenuSheet();
+            }
         }
     });
 
