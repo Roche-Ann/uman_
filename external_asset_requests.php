@@ -1223,6 +1223,7 @@ try {
                         <p>No external requests found.</p>
                     </div>
                 <?php else: ?>
+                    <?php if (!$showArchived): ?>
                     <table class="req-table">
                         <thead>
                             <tr>
@@ -1390,6 +1391,59 @@ try {
                             <?php endforeach; ?>
                         </tbody>
                     </table>
+                    <?php else: ?>
+                    <table class="req-table" style="opacity: 0.9;">
+                        <thead>
+                            <tr style="background-color: #f1f5f9; color: #475569;">
+                                <th>Reference</th>
+                                <th>Facility (CPRF)</th>
+                                <th>Asset Type</th>
+                                <th>Qty</th>
+                                <th>Resolution</th>
+                                <th>Archived At</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($requests as $req): ?>
+                                <tr style="background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                                    <td>
+                                        <strong style="color: #64748b;"><?= htmlspecialchars($req['request_ref']); ?></strong><br>
+                                        <small style="color: #94a3b8;"><?= htmlspecialchars($req['created_at']); ?></small>
+                                    </td>
+                                    <td>
+                                        <span style="color: #475569; font-weight: 500;"><?= htmlspecialchars($req['facility_name']); ?></span><br>
+                                        <small style="color: #94a3b8;">CPRF ID: <?= (int)$req['cprf_facility_id']; ?></small>
+                                        <?php if (!empty($req['notes'])): ?><br><em style="color:#64748b; font-size:11px;"><?= htmlspecialchars($req['notes']); ?></em><?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <strong style="color: #475569;"><?= htmlspecialchars($req['asset_type']); ?></strong>
+                                    </td>
+                                    <td>
+                                        <strong style="font-size:14px; color:#475569;"><?= (int)$req['quantity']; ?></strong> <span style="font-size:12px; color:#94a3b8;">unit<?= ((int)$req['quantity'] !== 1) ? 's' : ''; ?></span>
+                                    </td>
+                                    <td>
+                                        <?php if ($req['status'] === 'fulfilled'): ?>
+                                            <span class="badge fulfilled" style="opacity:0.85; border:none; background:#d1fae5; color:#065f46;"><i class="fas fa-check-circle"></i> Fulfilled</span>
+                                            <?php if (!empty($req['fulfilled_asset_name'])): ?>
+                                                <div class="fulfilled-link" style="opacity:0.85; font-size:11px; margin-top:3px;"><i class="fas fa-link"></i> <?= htmlspecialchars($req['fulfilled_asset_name']); ?></div>
+                                            <?php endif; ?>
+                                        <?php elseif ($req['status'] === 'rejected'): ?>
+                                            <span class="badge rejected" style="opacity:0.85; border:none; background:#fee2e2; color:#991b1b;"><i class="fas fa-ban"></i> Rejected</span>
+                                        <?php else: ?>
+                                            <span class="badge" style="background:#e2e8f0; color:#475569;"><i class="fas fa-archive"></i> Archived</span>
+                                        <?php endif; ?>
+                                        <?php if (!empty($req['review_notes'])): ?>
+                                            <div style="font-size:11px; margin-top:6px; color:#64748b; font-style:italic;">"<?= htmlspecialchars($req['review_notes']); ?>"</div>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <span style="color:#64748b; font-size:12px; white-space:nowrap;"><i class="far fa-clock"></i> <?= htmlspecialchars($req['archived_at'] ?? $req['updated_at']); ?></span>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                    <?php endif; ?>
                 <?php endif; ?>
             </div>
         </div>
