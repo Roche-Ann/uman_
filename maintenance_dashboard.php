@@ -139,12 +139,57 @@ function generateAISummary($requests) {
 
 $aiAnalysisOutput = generateAISummary($allRequests);
 
+// AI Analytics — Maintenance Intelligence
+$completionRate = ($totalRequests > 0) ? round(($completedRequests / $totalRequests) * 100) : 100;
+
+$maintAiRecs = [];
+if ($emergencyRequests > 0) {
+    $maintAiRecs[] = ['icon' => 'fa-exclamation-triangle', 'color' => '#e74c3c', 'priority' => 'High',
+        'title' => 'Emergency Dispatches Active',
+        'text' => "{$emergencyRequests} emergency maintenance request(s) flagged. Verify external dispatch systems have been notified."];
+}
+if ($pendingRequests > 3) {
+    $maintAiRecs[] = ['icon' => 'fa-clock', 'color' => '#f39c12', 'priority' => 'Medium',
+        'title' => 'Growing Request Backlog',
+        'text' => "{$pendingRequests} requests still in Created status. Pipeline may be experiencing delays."];
+} elseif ($pendingRequests > 0) {
+    $maintAiRecs[] = ['icon' => 'fa-clipboard-list', 'color' => '#f39c12', 'priority' => 'Medium',
+        'title' => 'Pending Requests',
+        'text' => "{$pendingRequests} maintenance request(s) awaiting forwarding. Process promptly to prevent service disruption."];
+}
+if ($completionRate < 50 && $totalRequests > 1) {
+    $maintAiRecs[] = ['icon' => 'fa-chart-line', 'color' => '#e74c3c', 'priority' => 'High',
+        'title' => 'Low Completion Rate',
+        'text' => "Only {$completionRate}% of maintenance tasks completed. Review workflow bottlenecks."];
+} elseif ($completionRate >= 80) {
+    $maintAiRecs[] = ['icon' => 'fa-trophy', 'color' => '#27ae60', 'priority' => 'Info',
+        'title' => 'Strong Completion Rate',
+        'text' => "Completion rate at {$completionRate}%. Maintenance coordination pipeline is efficient."];
+}
+if ($forwardedRequests > 0) {
+    $maintAiRecs[] = ['icon' => 'fa-paper-plane', 'color' => '#a55eea', 'priority' => 'Info',
+        'title' => 'Requests Forwarded',
+        'text' => "{$forwardedRequests} request(s) forwarded to external maintenance system for execution."];
+}
+if (empty($maintAiRecs)) {
+    $maintAiRecs[] = ['icon' => 'fa-check-circle', 'color' => '#27ae60', 'priority' => 'Info',
+        'title' => 'All Clear', 'text' => 'Maintenance pipeline is operating within normal parameters.'];
+}
+
 // Retrieve unread notifications count
 $unreadNotifications = $pdo->query("SELECT COUNT(*) FROM maintenance_notifications WHERE read_status = 0")->fetchColumn();
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark-theme');
+            }
+        })();
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LGU Maintenance Coordination Dashboard</title>
@@ -173,7 +218,7 @@ $unreadNotifications = $pdo->query("SELECT COUNT(*) FROM maintenance_notificatio
 
         body::before {
             content: "";
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
@@ -259,41 +304,68 @@ $unreadNotifications = $pdo->query("SELECT COUNT(*) FROM maintenance_notificatio
         }
 
         .stat-card {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            border-radius: 16px;
+            padding: 20px 18px;
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            border-left: 5px solid #cbd5e1;
+            gap: 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+            color: #fff;
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(135deg, #1a3e7a, #2a5fc2);
         }
 
-        .stat-card.total { border-left-color: #3762c8; }
-        .stat-card.pending { border-left-color: #f1c40f; }
-        .stat-card.forwarded { border-left-color: #a55eea; }
-        .stat-card.progress { border-left-color: #45aaf2; }
-        .stat-card.completed { border-left-color: #2ecc71; }
-        .stat-card.emergency { border-left-color: #e74c3c; }
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: -20px; right: -20px;
+            width: 90px; height: 90px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.08);
+            pointer-events: none;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 14px 32px rgba(0,0,0,0.25);
+        }
+
+        .stat-card.total     { background: linear-gradient(135deg, #1a3e7a, #2a5fc2); }
+        .stat-card.pending   { background: linear-gradient(135deg, #7a5c0d, #c4920e); }
+        .stat-card.forwarded { background: linear-gradient(135deg, #4c1d7a, #7c3dbf); }
+        .stat-card.progress  { background: linear-gradient(135deg, #0d4a7a, #1580cc); }
+        .stat-card.completed { background: linear-gradient(135deg, #1a6b38, #25a259); }
+        .stat-card.emergency { background: linear-gradient(135deg, #7a1a1a, #c22a2a); }
+
+        .stat-card-icon {
+            width: 52px; height: 52px;
+            border-radius: 14px;
+            background: rgba(255,255,255,0.18);
+            display: grid;
+            place-items: center;
+            font-size: 22px;
+            flex-shrink: 0;
+        }
 
         .stat-info h3 {
-            font-size: 26px;
+            font-size: 28px;
             font-weight: 700;
-            color: #2c3e50;
+            color: #fff;
+            line-height: 1;
         }
 
         .stat-info p {
             font-size: 11px;
-            color: #64748b;
+            color: rgba(255,255,255,0.8);
             text-transform: uppercase;
             font-weight: 600;
-            margin-top: 3px;
+            margin-top: 4px;
+            letter-spacing: 0.6px;
         }
 
-        .stat-icon {
-            font-size: 26px;
-            color: #cbd5e1;
-        }
+        .stat-icon { display: none; }
 
         .dashboard-layout {
             display: grid;
@@ -401,46 +473,28 @@ $unreadNotifications = $pdo->query("SELECT COUNT(*) FROM maintenance_notificatio
         <!-- Summary Cards Grid -->
         <div class="stats-grid">
             <div class="stat-card total">
-                <div class="stat-info">
-                    <h3><?php echo number_format($totalRequests); ?></h3>
-                    <p>Total Requests</p>
-                </div>
-                <div class="stat-icon"><i class="fas fa-clipboard-list"></i></div>
+                <div class="stat-card-icon"><i class="fas fa-clipboard-list"></i></div>
+                <div class="stat-info"><h3><?php echo number_format($totalRequests); ?></h3><p>Total Requests</p></div>
             </div>
             <div class="stat-card pending">
-                <div class="stat-info">
-                    <h3><?php echo number_format($pendingRequests); ?></h3>
-                    <p>Created</p>
-                </div>
-                <div class="stat-icon"><i class="fas fa-clock"></i></div>
+                <div class="stat-card-icon"><i class="fas fa-clock"></i></div>
+                <div class="stat-info"><h3><?php echo number_format($pendingRequests); ?></h3><p>Created</p></div>
             </div>
             <div class="stat-card forwarded">
-                <div class="stat-info">
-                    <h3><?php echo number_format($forwardedRequests); ?></h3>
-                    <p>Forwarded</p>
-                </div>
-                <div class="stat-icon"><i class="fas fa-paper-plane"></i></div>
+                <div class="stat-card-icon"><i class="fas fa-paper-plane"></i></div>
+                <div class="stat-info"><h3><?php echo number_format($forwardedRequests); ?></h3><p>Forwarded</p></div>
             </div>
             <div class="stat-card progress">
-                <div class="stat-info">
-                    <h3><?php echo number_format($inProgressRequests); ?></h3>
-                    <p>In Progress</p>
-                </div>
-                <div class="stat-icon"><i class="fas fa-cogs"></i></div>
+                <div class="stat-card-icon"><i class="fas fa-cogs"></i></div>
+                <div class="stat-info"><h3><?php echo number_format($inProgressRequests); ?></h3><p>In Progress</p></div>
             </div>
             <div class="stat-card completed">
-                <div class="stat-info">
-                    <h3><?php echo number_format($completedRequests); ?></h3>
-                    <p>Completed</p>
-                </div>
-                <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+                <div class="stat-card-icon"><i class="fas fa-check-circle"></i></div>
+                <div class="stat-info"><h3><?php echo number_format($completedRequests); ?></h3><p>Completed</p></div>
             </div>
             <div class="stat-card emergency">
-                <div class="stat-info">
-                    <h3><?php echo number_format($emergencyRequests); ?></h3>
-                    <p>Emergencies</p>
-                </div>
-                <div class="stat-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                <div class="stat-card-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                <div class="stat-info"><h3><?php echo number_format($emergencyRequests); ?></h3><p>Emergencies</p></div>
             </div>
         </div>
 
@@ -490,6 +544,60 @@ $unreadNotifications = $pdo->query("SELECT COUNT(*) FROM maintenance_notificatio
                             </div>
                         <?php endforeach; ?>
                     <?php endif; ?>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Recommendations Section -->
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:25px; margin-bottom:25px;">
+            <div class="box">
+                <h3><i class="fas fa-brain" style="color:#3762c8;"></i> AI Completion Pipeline
+                    <span style="font-size:11px;font-weight:400;color:#64748b;margin-left:auto;">Completion Rate: <strong style="color:<?php echo $completionRate >= 70 ? '#27ae60' : ($completionRate >= 40 ? '#f39c12' : '#e74c3c'); ?>;"><?php echo $completionRate; ?>%</strong></span>
+                </h3>
+                <div style="margin-bottom:14px;">
+                    <div style="display:flex;justify-content:space-between;font-size:12px;color:#64748b;margin-bottom:6px;"><span>Completed</span><span><?php echo $completedRequests; ?>/<?php echo $totalRequests; ?></span></div>
+                    <div style="height:12px;background:#e2e8f0;border-radius:99px;overflow:hidden;">
+                        <div style="height:100%;width:<?php echo $completionRate; ?>%;background:linear-gradient(90deg,#27ae60,#2ecc71);border-radius:99px;transition:width 1s;"></div>
+                    </div>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;text-align:center;">
+                    <div style="padding:8px;border-radius:8px;background:linear-gradient(135deg,#eff6ff,#dbeafe);">
+                        <div style="font-size:18px;font-weight:700;color:#2c3e50;"><?php echo $pendingRequests; ?></div>
+                        <div style="font-size:8px;text-transform:uppercase;font-weight:600;color:#64748b;">Created</div>
+                    </div>
+                    <div style="padding:8px;border-radius:8px;background:linear-gradient(135deg,#f3e8ff,#e9d5ff);">
+                        <div style="font-size:18px;font-weight:700;color:#2c3e50;"><?php echo $forwardedRequests; ?></div>
+                        <div style="font-size:8px;text-transform:uppercase;font-weight:600;color:#64748b;">Forwarded</div>
+                    </div>
+                    <div style="padding:8px;border-radius:8px;background:linear-gradient(135deg,#e0f2fe,#bae6fd);">
+                        <div style="font-size:18px;font-weight:700;color:#2c3e50;"><?php echo $inProgressRequests; ?></div>
+                        <div style="font-size:8px;text-transform:uppercase;font-weight:600;color:#64748b;">In Progress</div>
+                    </div>
+                    <div style="padding:8px;border-radius:8px;background:linear-gradient(135deg,#dcfce7,#bbf7d0);">
+                        <div style="font-size:18px;font-weight:700;color:#2c3e50;"><?php echo $completedRequests; ?></div>
+                        <div style="font-size:8px;text-transform:uppercase;font-weight:600;color:#64748b;">Completed</div>
+                    </div>
+                    <div style="padding:8px;border-radius:8px;background:linear-gradient(135deg,#fee2e2,#fecaca);">
+                        <div style="font-size:18px;font-weight:700;color:#e74c3c;"><?php echo $emergencyRequests; ?></div>
+                        <div style="font-size:8px;text-transform:uppercase;font-weight:600;color:#64748b;">Emergency</div>
+                    </div>
+                </div>
+            </div>
+            <div class="box">
+                <h3><i class="fas fa-lightbulb" style="color:#f59e0b;"></i> AI Recommendations <span style="background:#3762c8;color:#fff;font-size:10px;padding:2px 8px;border-radius:99px;margin-left:8px;"><?php echo count($maintAiRecs); ?></span></h3>
+                <div style="display:flex; flex-direction:column; gap:10px; max-height:220px; overflow-y:auto;">
+                    <?php foreach ($maintAiRecs as $rec): ?>
+                    <div style="padding:12px 14px; border-radius:10px; background:#f8fafc; border-left:4px solid <?php echo $rec['color']; ?>;">
+                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                            <div style="width:28px;height:28px;border-radius:7px;background:<?php echo $rec['color']; ?>;display:flex;align-items:center;justify-content:center;color:white;font-size:12px;flex-shrink:0;">
+                                <i class="fas <?php echo $rec['icon']; ?>"></i>
+                            </div>
+                            <span style="font-weight:600;font-size:13px;color:#2c3e50;"><?php echo $rec['title']; ?></span>
+                            <span style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;text-transform:uppercase;margin-left:auto;background:<?php echo $rec['color']; ?>20;color:<?php echo $rec['color']; ?>;"><?php echo $rec['priority']; ?></span>
+                        </div>
+                        <div style="font-size:12px;color:#64748b;line-height:1.5;padding-left:36px;"><?php echo $rec['text']; ?></div>
+                    </div>
+                    <?php endforeach; ?>
                 </div>
             </div>
         </div>

@@ -44,10 +44,23 @@ $pdo->exec("
       `status` ENUM('pending', 'approved', 'fulfilled', 'rejected') NOT NULL DEFAULT 'pending',
       `fulfilled_asset_id` INT NULL,
       `review_notes` TEXT NULL,
+      `is_archived` TINYINT(1) NOT NULL DEFAULT 0,
+      `archived_at` TIMESTAMP NULL,
       `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 ");
+// Self-healing: add is_archived and citizen columns if missing
+try { $pdo->query("SELECT `is_archived` FROM `external_asset_requests` LIMIT 1"); }
+catch (Throwable $e) {
+    try {
+        $pdo->exec("ALTER TABLE `external_asset_requests` ADD COLUMN `is_archived` TINYINT(1) NOT NULL DEFAULT 0 AFTER `review_notes`");
+        $pdo->exec("ALTER TABLE `external_asset_requests` ADD COLUMN `archived_at` TIMESTAMP NULL AFTER `is_archived`");
+    } catch (Throwable $ignored) {}
+}
+try { $pdo->exec("ALTER TABLE `external_asset_requests` ADD COLUMN `citizen_user_id` INT NULL AFTER `cprf_facility_id`"); } catch (Throwable $e) {}
+try { $pdo->exec("ALTER TABLE `external_asset_requests` ADD COLUMN `requester_name` VARCHAR(150) NULL AFTER `citizen_user_id`"); } catch (Throwable $e) {}
+try { $pdo->exec("ALTER TABLE `external_asset_requests` ADD COLUMN `requester_contact` VARCHAR(100) NULL AFTER `requester_name`"); } catch (Throwable $e) {}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers (shared between tabs)
@@ -76,11 +89,84 @@ function build_asset_meta(PDO $pdo, int $assetId): array
 
 function h(?string $v): string { return htmlspecialchars((string)$v, ENT_QUOTES); }
 
+/**
+ * Checks utility asset inventory for available stock matching an external request.
+ */
+function get_request_asset_availability(string $reqAssetType, int $reqQty, array $allAvailableAssets): array
+{
+    $reqTypeLower = mb_strtolower(trim($reqAssetType));
+    $reqTokens = array_filter(preg_split('/[\s,\-\/&]+/', $reqTypeLower), function($t) { return mb_strlen($t) >= 3; });
+
+    $matchingAssets = [];
+    $totalAvailableQty = 0;
+
+    foreach ($allAvailableAssets as $asset) {
+        $typeNameLower = mb_strtolower(trim((string)($asset['asset_type'] ?? '')));
+        $assetNameLower = mb_strtolower(trim((string)($asset['name'] ?? '')));
+        $qty = intval($asset['quantity'] ?? 1);
+
+        $matches = false;
+        if ($typeNameLower !== '' && $reqTypeLower !== '' && ($typeNameLower === $reqTypeLower || stripos($typeNameLower, $reqTypeLower) !== false || stripos($reqTypeLower, $typeNameLower) !== false)) {
+            $matches = true;
+        } elseif ($reqTypeLower !== '' && stripos($assetNameLower, $reqTypeLower) !== false) {
+            $matches = true;
+        } else {
+            foreach ($reqTokens as $token) {
+                if (($typeNameLower !== '' && stripos($typeNameLower, $token) !== false) || stripos($assetNameLower, $token) !== false) {
+                    $matches = true;
+                    break;
+                }
+            }
+        }
+
+        if ($matches) {
+            $matchingAssets[] = $asset;
+            $totalAvailableQty += $qty;
+        }
+    }
+
+    $isSufficient = ($totalAvailableQty >= $reqQty && $reqQty > 0);
+    $isPartial = ($totalAvailableQty > 0 && $totalAvailableQty < $reqQty);
+    $isUnavailable = ($totalAvailableQty === 0);
+
+    return [
+        'available_qty'   => $totalAvailableQty,
+        'requested_qty'   => $reqQty,
+        'is_sufficient'   => $isSufficient,
+        'is_partial'      => $isPartial,
+        'is_unavailable'  => $isUnavailable,
+        'matching_assets' => $matchingAssets,
+    ];
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // POST handlers (for BOTH tabs — action= determines which one)
 // ─────────────────────────────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = (string)($_POST['action'] ?? '');
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Archive handler
+    // ═════════════════════════════════════════════════════════════════════════
+    if ($action === 'archive') {
+        $archiveId = (int)($_POST['id'] ?? 0);
+        if ($archiveId > 0) {
+            try {
+                $archRow = $pdo->prepare("SELECT status, request_ref FROM external_asset_requests WHERE id = ? LIMIT 1");
+                $archRow->execute([$archiveId]);
+                $archData = $archRow->fetch(PDO::FETCH_ASSOC);
+                if ($archData && in_array($archData['status'], ['fulfilled', 'rejected'], true)) {
+                    $pdo->prepare("UPDATE external_asset_requests SET is_archived = 1, archived_at = NOW() WHERE id = ?")
+                        ->execute([$archiveId]);
+                    $successes[] = 'Request ' . htmlspecialchars($archData['request_ref']) . ' has been archived.';
+                } else {
+                    $errors[] = 'Only fulfilled or rejected requests can be archived.';
+                }
+            } catch (Throwable $e) {
+                $errors[] = 'Archive failed: ' . htmlspecialchars($e->getMessage());
+            }
+        }
+    }
 
     // ═════════════════════════════════════════════════════════════════════════
     // Tab 1 — Asset Requests handlers
@@ -91,32 +177,96 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors[] = 'Invalid request.';
         } elseif ($action === 'approve') {
             $notes = trim((string)($_POST['review_notes'] ?? ''));
-            $pdo->prepare("UPDATE external_asset_requests SET status = 'approved', review_notes = ?, updated_at = NOW() WHERE id = ?")
-                ->execute([$notes ?: null, $id]);
-            $successes[] = 'Request approved.';
+
+            // Check real-time inventory availability before approving
+            $reqStmt = $pdo->prepare("SELECT id, request_ref, asset_type, quantity, citizen_user_id FROM external_asset_requests WHERE id = ? LIMIT 1");
+            $reqStmt->execute([$id]);
+            $targetReq = $reqStmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$targetReq) {
+                $errors[] = 'Request not found.';
+            } else {
+                $currentStock = [];
+                try {
+                    $currentStock = $pdo->query("
+                        SELECT a.id, a.asset_id, a.name, a.quantity, a.condition_status,
+                               t.id AS type_id, t.name AS asset_type
+                        FROM utility_assets a
+                        JOIN asset_types t ON t.id = a.asset_type_id
+                        WHERE a.condition_status IN ('Operational', 'Needs Inspection')
+                          AND (a.cprf_custody_status IS NULL OR a.cprf_custody_status IN ('WAREHOUSED', 'LOAN_RETURNED'))
+                          AND (a.cprf_facility_id IS NULL OR a.cprf_facility_id = 0)
+                    ")->fetchAll(PDO::FETCH_ASSOC) ?: [];
+                } catch (Throwable $e) {
+                    $currentStock = [];
+                }
+
+                $availCheck = get_request_asset_availability($targetReq['asset_type'], (int)$targetReq['quantity'], $currentStock);
+
+                if (!$availCheck['is_sufficient']) {
+                    $errors[] = "Cannot approve request {$targetReq['request_ref']}: Insufficient stock. Only {$availCheck['available_qty']} of {$targetReq['quantity']} units of '{$targetReq['asset_type']}' are available in inventory.";
+                } else {
+                    $pdo->prepare("UPDATE external_asset_requests SET status = 'approved', review_notes = ?, updated_at = NOW() WHERE id = ?")
+                        ->execute([$notes ?: null, $id]);
+                    $successes[] = "Request {$targetReq['request_ref']} approved successfully (Stock verified: {$availCheck['available_qty']} units available).";
+
+                    // Citizen notification if applicable
+                    if (!empty($targetReq['citizen_user_id'])) {
+                        try {
+                            $notifText = "Your asset request [{$targetReq['request_ref']}] for {$targetReq['quantity']}x {$targetReq['asset_type']} has been APPROVED by LGU staff.";
+                            if ($notes !== '') $notifText .= " Note: " . $notes;
+                            $pdo->prepare("INSERT INTO incident_notifications (user_id, message, read_status) VALUES (?, ?, 0)")
+                                ->execute([(int)$targetReq['citizen_user_id'], $notifText]);
+                        } catch (Throwable $e) {}
+                    }
+                }
+            }
         } elseif ($action === 'reject') {
             $notes = trim((string)($_POST['review_notes'] ?? ''));
-            $pdo->prepare("UPDATE external_asset_requests SET status = 'rejected', review_notes = ?, updated_at = NOW() WHERE id = ?")
+            $reqStmt = $pdo->prepare("SELECT id, request_ref, asset_type, quantity, citizen_user_id FROM external_asset_requests WHERE id = ? LIMIT 1");
+            $reqStmt->execute([$id]);
+            $targetReq = $reqStmt->fetch(PDO::FETCH_ASSOC);
+
+            $pdo->prepare("UPDATE external_asset_requests SET status = 'rejected', is_archived = 1, archived_at = NOW(), review_notes = ?, updated_at = NOW() WHERE id = ?")
                 ->execute([$notes ?: null, $id]);
-            $successes[] = 'Request rejected.';
+            $successes[] = 'Request rejected and archived.';
+
+            if (!empty($targetReq['citizen_user_id'])) {
+                try {
+                    $notifText = "Your asset request [{$targetReq['request_ref']}] for {$targetReq['quantity']}x {$targetReq['asset_type']} has been REJECTED.";
+                    if ($notes !== '') $notifText .= " Reason: " . $notes;
+                    $pdo->prepare("INSERT INTO incident_notifications (user_id, message, read_status) VALUES (?, ?, 0)")
+                        ->execute([(int)$targetReq['citizen_user_id'], $notifText]);
+                } catch (Throwable $e) {}
+            }
         } elseif ($action === 'fulfill') {
             $assetId = (int)($_POST['fulfilled_asset_id'] ?? 0);
             $notes = trim((string)($_POST['review_notes'] ?? ''));
             if ($assetId <= 0) {
                 $errors[] = 'Select a utility asset to fulfill this request.';
             } else {
-                $req = $pdo->prepare("SELECT id, request_ref, cprf_facility_id, facility_name FROM external_asset_requests WHERE id = ? LIMIT 1");
+                $req = $pdo->prepare("SELECT id, request_ref, cprf_facility_id, citizen_user_id, asset_type, quantity, facility_name FROM external_asset_requests WHERE id = ? LIMIT 1");
                 $req->execute([$id]);
                 $reqRow = $req->fetch(PDO::FETCH_ASSOC);
                 $facilityId = (int)($reqRow['cprf_facility_id'] ?? 0);
-                $facilityName = (string)($reqRow['facility_name'] ?? ('CPRF Facility #' . $facilityId));
+                $facilityName = (string)($reqRow['facility_name'] ?? ('Facility #' . $facilityId));
                 $requestRef = (string)($reqRow['request_ref'] ?? '');
                 $actor = current_actor_label();
 
                 $pdo->beginTransaction();
                 try {
-                    $pdo->prepare("UPDATE external_asset_requests SET status = 'fulfilled', fulfilled_asset_id = ?, review_notes = ?, updated_at = NOW() WHERE id = ?")
+                    $pdo->prepare("UPDATE external_asset_requests SET status = 'fulfilled', is_archived = 1, archived_at = NOW(), fulfilled_asset_id = ?, review_notes = ?, updated_at = NOW() WHERE id = ?")
                         ->execute([$assetId, $notes ?: null, $id]);
+
+                    if (!empty($reqRow['citizen_user_id'])) {
+                        try {
+                            $metaAss = build_asset_meta($pdo, $assetId);
+                            $assetCodeStr = !empty($metaAss['asset_code']) ? " ({$metaAss['asset_code']})" : "";
+                            $notifText = "Your asset request [{$requestRef}] for {$reqRow['quantity']}x {$reqRow['asset_type']} has been FULFILLED! Assigned unit: " . ($metaAss['name'] ?? 'Asset') . $assetCodeStr . ".";
+                            $pdo->prepare("INSERT INTO incident_notifications (user_id, message, read_status) VALUES (?, ?, 0)")
+                                ->execute([(int)$reqRow['citizen_user_id'], $notifText]);
+                        } catch (Throwable $e) {}
+                    }
 
                     $upd = $pdo->prepare("
                         UPDATE utility_assets
@@ -422,24 +572,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Tab 1 — Asset Requests: data preload
 // ═════════════════════════════════════════════════════════════════════════════
 $filter = trim($_GET['status'] ?? '');
+$sourceFilter = trim($_GET['source'] ?? '');
+$showArchived = (($_GET['archived'] ?? '') === '1');
+
+// If filtering by fulfilled/rejected, implicitly switch to archived view
+if (in_array($filter, ['fulfilled', 'rejected'], true)) {
+    $showArchived = true;
+}
+
 $sql = 'SELECT r.*, a.name AS fulfilled_asset_name, a.asset_id AS fulfilled_asset_code FROM external_asset_requests r LEFT JOIN utility_assets a ON a.id = r.fulfilled_asset_id WHERE 1=1';
 $params = [];
 if ($filter !== '' && in_array($filter, ['pending', 'approved', 'fulfilled', 'rejected'], true)) {
     $sql .= ' AND r.status = ?';
     $params[] = $filter;
 }
+if ($sourceFilter === 'citizen') {
+    $sql .= " AND (r.source_system = 'Citizen Portal' OR r.citizen_user_id IS NOT NULL)";
+} elseif ($sourceFilter === 'cprf') {
+    $sql .= " AND (r.source_system = 'CPRF' OR (r.source_system IS NULL AND r.citizen_user_id IS NULL))";
+}
+if ($showArchived) {
+    $sql .= " AND (r.is_archived = 1 OR r.status IN ('fulfilled', 'rejected'))";
+} else {
+    $sql .= " AND (r.is_archived = 0 OR r.is_archived IS NULL) AND r.status NOT IN ('fulfilled', 'rejected')";
+}
 $sql .= ' ORDER BY r.created_at DESC LIMIT 100';
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $requests = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+// Count archived for badge
+$countArchived = 0;
+try { $countArchived = (int)$pdo->query("SELECT COUNT(*) FROM external_asset_requests WHERE is_archived = 1 OR status IN ('fulfilled', 'rejected')")->fetchColumn(); }
+catch (Throwable $e) { $countArchived = 0; }
 
-$assetsForFulfill = $pdo->query("
-    SELECT a.id, a.asset_id, a.name, t.name AS asset_type
-    FROM utility_assets a
-    JOIN asset_types t ON t.id = a.asset_type_id
-    WHERE a.condition_status IN ('Operational', 'Needs Inspection')
-    ORDER BY a.name ASC
-")->fetchAll(PDO::FETCH_ASSOC) ?: [];
+$allAvailableAssets = [];
+try {
+    $allAvailableAssets = $pdo->query("
+        SELECT a.id, a.asset_id, a.name, a.quantity, a.condition_status,
+               t.id AS type_id, t.name AS asset_type
+        FROM utility_assets a
+        JOIN asset_types t ON t.id = a.asset_type_id
+        WHERE a.condition_status IN ('Operational', 'Needs Inspection')
+          AND (a.cprf_custody_status IS NULL OR a.cprf_custody_status IN ('WAREHOUSED', 'LOAN_RETURNED'))
+          AND (a.cprf_facility_id IS NULL OR a.cprf_facility_id = 0)
+        ORDER BY t.name ASC, a.name ASC
+    ")->fetchAll(PDO::FETCH_ASSOC) ?: [];
+} catch (Throwable $e) {
+    $allAvailableAssets = [];
+}
+$assetsForFulfill = $allAvailableAssets;
 
 // ═════════════════════════════════════════════════════════════════════════════
 // Tab 2 — Facility Assignments: data preload (facilities + assignment panels)
@@ -583,18 +764,25 @@ try {
 
 // ── Count stats (for Tab-1 cards) ───────────────────────────────────────────
 $countPending = 0; $countApproved = 0; $countFulfilled = 0; $countRejected = 0;
-foreach ($requests as $r) {
-    switch ($r['status']) {
-        case 'pending':   $countPending++;   break;
-        case 'approved':  $countApproved++;  break;
-        case 'fulfilled': $countFulfilled++; break;
-        case 'rejected':  $countRejected++;  break;
-    }
-}
+try {
+    $counts = $pdo->query("SELECT status, COUNT(*) FROM external_asset_requests GROUP BY status")->fetchAll(PDO::FETCH_KEY_PAIR);
+    $countPending   = (int)($counts['pending'] ?? 0);
+    $countApproved  = (int)($counts['approved'] ?? 0);
+    $countFulfilled = (int)($counts['fulfilled'] ?? 0);
+    $countRejected  = (int)($counts['rejected'] ?? 0);
+} catch (Throwable $e) {}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark-theme');
+            }
+        })();
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CPRF Integration Hub | UMAN</title>
@@ -610,7 +798,7 @@ foreach ($requests as $r) {
             position: relative;
         }
         body::before {
-            content:""; position:absolute; inset:0;
+            content:""; position: fixed; inset:0;
             backdrop-filter: blur(6px);
             background: rgba(0,0,0,0.35); z-index:0;
         }
@@ -671,6 +859,38 @@ foreach ($requests as $r) {
         }
         .hub-panel { display:none; }
         .hub-panel.active { display: block; }
+        /* Archived Requests button (beside Facility Assignments tab) */
+        .hub-tab-archive {
+            padding: 8px 16px; border-radius: 8px; cursor: pointer;
+            font-size: 13px; font-weight: 600; color: #64748b;
+            border: 1px solid #e2e8f0; background: #f8fafc;
+            margin-bottom: 4px; margin-left: auto;
+            display: inline-flex; align-items: center; gap: 6px;
+            text-decoration: none; transition: all 0.2s ease;
+        }
+        .hub-tab-archive:hover { background:#fff7ed; border-color:#fed7aa; color:#9a3412; }
+        .hub-tab-archive.arch-active {
+            background: linear-gradient(135deg,#fff7ed,#ffedd5);
+            border-color:#fb923c; color:#9a3412;
+        }
+        .hub-tab-archive .arch-chip {
+            display:inline-block; padding:1px 7px; border-radius:999px;
+            background:#fee2e2; color:#991b1b; font-size:11px; font-weight:700;
+        }
+        .btn-archive {
+            background: linear-gradient(135deg, #fff7ed, #ffedd5);
+            color: #9a3412; border: 1px solid #fdba74;
+            padding: 6px 14px; border-radius: 8px; font-size: 12px;
+            font-weight: 600; cursor: pointer; display: inline-flex;
+            align-items: center; gap: 5px; transition: all 0.2s ease;
+        }
+        .btn-archive:hover { background: linear-gradient(135deg,#ffedd5,#fed7aa); border-color:#f97316; color:#7c2d12; transform: translateY(-1px); box-shadow: 0 3px 8px rgba(249,115,22,0.2); }
+        .archived-banner {
+            background: linear-gradient(135deg, #fff7ed, #ffedd5);
+            border: 1px solid #fed7aa; border-radius: 10px;
+            padding: 10px 16px; margin-bottom: 18px; font-size: 13px;
+            color: #9a3412; display: flex; align-items: center; gap: 8px;
+        }
 
         /* ── Tab 1: Asset Requests styles ──────────────────────────────── */
         .stats-grid {
@@ -754,6 +974,13 @@ foreach ($requests as $r) {
         .badge.count     { background:#e0e7ff; color:#3730a3; margin-left:6px; }
         .badge.ret-pending { background:#fecaca; color:#991b1b; margin-left:4px; }
         .badge.cant-assign { background:#e5e7eb; color:#475569; margin-left:6px; }
+        .badge.avail-sufficient { background: linear-gradient(135deg, #dcfce7, #bbf7d0); color: #166534; border: 1px solid #86efac; }
+        .badge.avail-partial    { background: linear-gradient(135deg, #fef3c7, #fde68a); color: #92400e; border: 1px solid #fcd34d; }
+        .badge.avail-none       { background: linear-gradient(135deg, #fee2e2, #fecaca); color: #991b1b; border: 1px solid #fca5a5; }
+        .avail-qty-sub { font-size: 11px; margin-top: 3px; }
+        .avail-match-chips { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 5px; }
+        .avail-chip { font-size: 10px; background: #f1f5f9; border: 1px solid #e2e8f0; padding: 2px 6px; border-radius: 4px; color: #475569; }
+        .dark-theme .avail-chip { background: #1e293b; border-color: #334155; color: #94a3b8; }
         .action-form {
             background: #f8fafc; border-radius: 10px; padding: 12px;
             margin-bottom: 8px; border: 1px solid #e2e8f0;
@@ -976,6 +1203,14 @@ foreach ($requests as $r) {
                 <i class="fas fa-warehouse icon"></i> Facility Assignments
                 <span class="count-chip"><?= count($cprfFacilities); ?> facilities</span>
             </div>
+            <a href="?archived=1<?= $filter !== '' ? '&status='.urlencode($filter) : ''; ?>"
+               class="hub-tab-archive<?= $showArchived ? ' arch-active' : ''; ?>"
+               title="View archived (completed) requests">
+                <i class="fas fa-archive"></i> Archived Requests
+                <?php if ($countArchived > 0): ?>
+                    <span class="arch-chip"><?= $countArchived; ?></span>
+                <?php endif; ?>
+            </a>
         </div>
 
         <!-- ══════════════════════════════════════════════════════════════
@@ -983,6 +1218,14 @@ foreach ($requests as $r) {
              ══════════════════════════════════════════════════════════ -->
         <div id="hub-requests" class="hub-panel active">
 
+            <?php if ($showArchived): ?>
+            <div class="archived-banner">
+                <i class="fas fa-archive"></i>
+                <span>Viewing <strong>archived requests</strong>. <a href="?" style="color:#b45309; font-weight:600;">&#8592; Back to active requests</a></span>
+            </div>
+            <?php endif; ?>
+
+            <?php if (!$showArchived): ?>
             <div class="stats-grid">
                 <div class="stat-card stat-pending">
                     <h3><?= $countPending; ?></h3>
@@ -1001,13 +1244,27 @@ foreach ($requests as $r) {
                     <p><i class="fas fa-times-circle"></i> Rejected</p>
                 </div>
             </div>
+            <?php endif; ?>
 
             <div class="filter-bar">
-                <label><i class="fas fa-filter"></i> Filter by Status:</label>
-                <form method="GET" style="margin:0;">
-                    <select name="status" onchange="this.form.submit()">
+                <form method="GET" style="margin:0; width:100%; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <?php if ($showArchived): ?>
+                        <input type="hidden" name="archived" value="1">
+                    <?php endif; ?>
+                    <label style="margin:0; white-space:nowrap;"><i class="fas fa-filter"></i> Filter Source:</label>
+                    <select name="source" onchange="this.form.submit()" class="form-control" style="flex:1; min-width:170px;">
+                        <option value="">All Sources (CPRF & Citizen)</option>
+                        <option value="citizen" <?= $sourceFilter === 'citizen' ? 'selected' : ''; ?>>Citizen Requests</option>
+                        <option value="cprf" <?= $sourceFilter === 'cprf' ? 'selected' : ''; ?>>CPRF Facility Requests</option>
+                    </select>
+
+                    <label style="margin:0; white-space:nowrap; margin-left:10px;"><i class="fas fa-tasks"></i> Status:</label>
+                    <select name="status" onchange="this.form.submit()" class="form-control" style="flex:1; min-width:170px;">
                         <option value="">All Statuses</option>
-                        <?php foreach (['pending', 'approved', 'fulfilled', 'rejected'] as $s): ?>
+                        <?php 
+                        $statusOptions = $showArchived ? ['fulfilled', 'rejected'] : ['pending', 'approved'];
+                        foreach ($statusOptions as $s): 
+                        ?>
                             <option value="<?= $s; ?>" <?= $filter === $s ? 'selected' : ''; ?>><?= ucfirst($s); ?></option>
                         <?php endforeach; ?>
                     </select>
@@ -1015,44 +1272,114 @@ foreach ($requests as $r) {
             </div>
 
             <div class="table-section">
-                <h3><i class="fas fa-list-alt"></i> External Asset Requests</h3>
+                <h3><i class="fas fa-list-alt"></i> <?= $showArchived ? 'Archived Asset Requests' : 'Asset Requests Hub'; ?></h3>
 
                 <?php if (empty($requests)): ?>
                     <div class="empty-state">
                         <i class="fas fa-inbox"></i>
-                        <p>No external requests found.</p>
+                        <p>No requests found matching your filter criteria.</p>
                     </div>
                 <?php else: ?>
+                    <?php if (!$showArchived): ?>
                     <table class="req-table">
                         <thead>
                             <tr>
                                 <th>Reference</th>
-                                <th>Facility (CPRF)</th>
+                                <th>Source & Requester / Location</th>
                                 <th>Asset Type</th>
-                                <th>Qty</th>
+                                <th>Requested Qty</th>
+                                <th>Available in Stock</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach ($requests as $req): ?>
+                                <?php $avail = get_request_asset_availability($req['asset_type'], (int)$req['quantity'], $allAvailableAssets); ?>
                                 <tr>
                                     <td>
                                         <strong><?= htmlspecialchars($req['request_ref']); ?></strong><br>
                                         <small><?= htmlspecialchars($req['created_at']); ?></small>
                                     </td>
                                     <td>
-                                        <?= htmlspecialchars($req['facility_name']); ?><br>
-                                        <small>CPRF ID: <?= (int)$req['cprf_facility_id']; ?></small>
-                                        <?php if (!empty($req['notes'])): ?><br><em><?= htmlspecialchars($req['notes']); ?></em><?php endif; ?>
+                                        <?php if ($req['source_system'] === 'Citizen Portal' || !empty($req['citizen_user_id'])): ?>
+                                            <span class="badge" style="background:linear-gradient(135deg,#e0f2fe,#bae6fd); color:#0369a1; border:1px solid #7dd3fc; font-weight:700; margin-bottom:4px;">
+                                                <i class="fas fa-user-circle"></i> Citizen Request
+                                            </span><br>
+                                            <strong style="color:#1e293b;"><i class="fas fa-user"></i> <?= htmlspecialchars($req['requester_name'] ?: 'Citizen Resident'); ?></strong><br>
+                                            <?php if (!empty($req['requester_contact'])): ?>
+                                                <small style="color:#64748b;"><i class="fas fa-address-card"></i> <?= htmlspecialchars($req['requester_contact']); ?></small><br>
+                                            <?php endif; ?>
+                                            <small style="color:#334155;">📍 Location: <strong><?= htmlspecialchars($req['facility_name']); ?></strong></small>
+                                            <?php if (!empty($req['event_purpose'])): ?>
+                                                <br><small style="color:#475569;">🎯 Purpose: <em><?= htmlspecialchars($req['event_purpose']); ?></em></small>
+                                            <?php endif; ?>
+                                            <?php if (!empty($req['notes'])): ?>
+                                                <br><em style="color:#64748b; font-size:11px;">"<?= htmlspecialchars($req['notes']); ?>"</em>
+                                            <?php endif; ?>
+                                        <?php else: ?>
+                                            <span class="badge" style="background:linear-gradient(135deg,#f3e8ff,#e9d5ff); color:#6b21a8; border:1px solid #c084fc; font-weight:700; margin-bottom:4px;">
+                                                <i class="fas fa-building"></i> CPRF Facility
+                                            </span><br>
+                                            <strong><?= htmlspecialchars($req['facility_name']); ?></strong><br>
+                                            <small>CPRF ID: <?= (int)$req['cprf_facility_id']; ?></small>
+                                            <?php if (!empty($req['notes'])): ?><br><em><?= htmlspecialchars($req['notes']); ?></em><?php endif; ?>
+                                        <?php endif; ?>
                                     </td>
-                                    <td><?= htmlspecialchars($req['asset_type']); ?></td>
-                                    <td><strong><?= (int)$req['quantity']; ?></strong></td>
+                                    <td>
+                                        <strong><?= htmlspecialchars($req['asset_type']); ?></strong>
+                                    </td>
+                                    <td>
+                                        <strong style="font-size:14px; color:#1e293b;"><?= (int)$req['quantity']; ?></strong> <span class="muted" style="font-size:12px;">unit<?= ((int)$req['quantity'] !== 1) ? 's' : ''; ?></span>
+                                    </td>
+                                    <td>
+                                        <?php if ($req['status'] === 'fulfilled'): ?>
+                                            <span class="badge fulfilled"><i class="fas fa-check-circle"></i> Fulfilled</span>
+                                            <?php if (!empty($req['fulfilled_asset_name'])): ?>
+                                                <div class="fulfilled-link"><i class="fas fa-link"></i> <?= htmlspecialchars($req['fulfilled_asset_name']); ?></div>
+                                            <?php endif; ?>
+                                        <?php elseif ($req['status'] === 'rejected'): ?>
+                                            <span class="badge rejected"><i class="fas fa-ban"></i> Closed</span>
+                                        <?php else: ?>
+                                            <?php if ($avail['is_sufficient']): ?>
+                                                <span class="badge avail-sufficient">
+                                                    <i class="fas fa-check-circle"></i> <?= $avail['available_qty']; ?> In Stock
+                                                </span>
+                                                <div class="avail-qty-sub" style="color:#16a34a; font-weight:500;">
+                                                    <i class="fas fa-cubes"></i> Sufficient stock (<?= $avail['available_qty']; ?> of <?= $avail['requested_qty']; ?>)
+                                                </div>
+                                            <?php elseif ($avail['is_partial']): ?>
+                                                <span class="badge avail-partial">
+                                                    <i class="fas fa-exclamation-triangle"></i> <?= $avail['available_qty']; ?> In Stock
+                                                </span>
+                                                <div class="avail-qty-sub" style="color:#d97706; font-weight:500;">
+                                                    <i class="fas fa-cubes"></i> Partial shortage (<?= $avail['available_qty']; ?> of <?= $avail['requested_qty']; ?>)
+                                                </div>
+                                            <?php else: ?>
+                                                <span class="badge avail-none">
+                                                    <i class="fas fa-times-circle"></i> 0 In Stock
+                                                </span>
+                                                <div class="avail-qty-sub" style="color:#dc2626; font-weight:500;">
+                                                    <i class="fas fa-times"></i> No matching units available
+                                                </div>
+                                            <?php endif; ?>
+
+                                            <?php if (!empty($avail['matching_assets'])): ?>
+                                                <div class="avail-match-chips" title="Matching available warehouse units">
+                                                    <?php foreach (array_slice($avail['matching_assets'], 0, 3) as $m): ?>
+                                                        <span class="avail-chip" title="<?= htmlspecialchars($m['name'] . ' (' . $m['condition_status'] . ')'); ?>">
+                                                            <?= htmlspecialchars($m['asset_id']); ?>: <strong><?= intval($m['quantity']); ?> qty</strong>
+                                                        </span>
+                                                    <?php endforeach; ?>
+                                                    <?php if (count($avail['matching_assets']) > 3): ?>
+                                                        <span class="avail-chip">+<?= count($avail['matching_assets']) - 3; ?> more</span>
+                                                    <?php endif; ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        <?php endif; ?>
+                                    </td>
                                     <td>
                                         <span class="badge <?= htmlspecialchars($req['status']); ?>"><?= ucfirst($req['status']); ?></span>
-                                        <?php if (!empty($req['fulfilled_asset_name'])): ?>
-                                            <div class="fulfilled-link"><i class="fas fa-link"></i> <?= htmlspecialchars($req['fulfilled_asset_name']); ?></div>
-                                        <?php endif; ?>
                                     </td>
                                     <td>
                                         <?php if ($req['status'] === 'pending'): ?>
@@ -1060,17 +1387,35 @@ foreach ($requests as $r) {
                                                 <form method="POST">
                                                     <input type="hidden" name="id" value="<?= (int)$req['id']; ?>">
                                                     <input type="hidden" name="action" value="approve">
-                                                    <textarea name="review_notes" rows="2" placeholder="Review notes (optional)"></textarea>
-                                                    <div class="btn-actions">
-                                                        <button class="btn btn-primary" type="submit"><i class="fas fa-check"></i> Approve</button>
-                                                    </div>
+                                                    <?php if ($avail['is_sufficient']): ?>
+                                                        <textarea name="review_notes" rows="2" placeholder="Approval notes (optional)"></textarea>
+                                                        <div class="btn-actions">
+                                                            <button class="btn btn-primary" type="submit"><i class="fas fa-check"></i> Approve</button>
+                                                        </div>
+                                                    <?php else: ?>
+                                                        <div style="background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:8px 10px; margin-bottom:8px;">
+                                                            <div style="font-size:11px; font-weight:600; color:#991b1b; display:flex; align-items:center; gap:5px;">
+                                                                <i class="fas fa-ban"></i> Cannot Approve (Stock Shortage)
+                                                            </div>
+                                                            <div style="font-size:11px; color:#b91c1c; margin-top:2px; line-height:1.35;">
+                                                                <?php if ($avail['available_qty'] > 0): ?>
+                                                                    Only <strong><?= $avail['available_qty']; ?></strong> of <strong><?= (int)$req['quantity']; ?></strong> units available in inventory.
+                                                                <?php else: ?>
+                                                                    <strong>0</strong> units available in inventory.
+                                                                <?php endif; ?>
+                                                            </div>
+                                                        </div>
+                                                        <div class="btn-actions">
+                                                            <button class="btn btn-primary" type="button" disabled style="opacity:0.5; cursor:not-allowed; background:#94a3b8; border-color:#94a3b8;"><i class="fas fa-lock"></i> Approval Blocked</button>
+                                                        </div>
+                                                    <?php endif; ?>
                                                 </form>
                                             </div>
                                             <div class="action-form">
                                                 <form method="POST">
                                                     <input type="hidden" name="id" value="<?= (int)$req['id']; ?>">
                                                     <input type="hidden" name="action" value="reject">
-                                                    <textarea name="review_notes" rows="1" placeholder="Rejection reason (optional)"></textarea>
+                                                    <textarea name="review_notes" rows="1" placeholder="Rejection reason (e.g. stock unavailable)"></textarea>
                                                     <div class="btn-actions">
                                                         <button class="btn btn-danger" type="submit"><i class="fas fa-times"></i> Reject</button>
                                                     </div>
@@ -1082,23 +1427,100 @@ foreach ($requests as $r) {
                                                     <input type="hidden" name="id" value="<?= (int)$req['id']; ?>">
                                                     <input type="hidden" name="action" value="fulfill">
                                                     <select name="fulfilled_asset_id" required>
-                                                        <option value="">Link asset…</option>
-                                                        <?php foreach ($assetsForFulfill as $a): ?>
-                                                            <option value="<?= (int)$a['id']; ?>"><?= htmlspecialchars($a['asset_id'] . ' — ' . $a['name']); ?></option>
-                                                        <?php endforeach; ?>
+                                                        <option value="">Select asset to fulfill…</option>
+                                                        <?php if (!empty($avail['matching_assets'])): ?>
+                                                            <?php foreach ($avail['matching_assets'] as $a): ?>
+                                                                <option value="<?= (int)$a['id']; ?>">
+                                                                    <?= htmlspecialchars($a['asset_id'] . ' — ' . $a['name'] . ' (' . $a['quantity'] . ' available)'); ?>
+                                                                </option>
+                                                            <?php endforeach; ?>
+                                                        <?php else: ?>
+                                                            <option value="" disabled>No matching assets available in stock</option>
+                                                        <?php endif; ?>
                                                     </select>
                                                     <textarea name="review_notes" rows="2" placeholder="Fulfillment notes"></textarea>
                                                     <button class="btn btn-success" type="submit"><i class="fas fa-check-double"></i> Mark Fulfilled</button>
                                                 </form>
                                             </div>
                                         <?php else: ?>
-                                            <span class="no-action">— No actions available</span>
+                                            <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-start;">
+                                                <?php if (empty($req['is_archived'])): ?>
+                                                <span class="no-action" style="font-size:12px;">— No actions available</span>
+                                                <?php else: ?>
+                                                <span class="no-action" style="font-size:12px; color:#fb923c;"><i class="fas fa-archive"></i> Archived</span>
+                                                <?php endif; ?>
+                                            </div>
                                         <?php endif; ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
                     </table>
+                    <?php else: ?>
+                    <table class="req-table archived-table" style="opacity: 0.8;">
+                        <thead>
+                            <tr>
+                                <th>Reference</th>
+                                <th>Source & Requester / Location</th>
+                                <th>Asset Type</th>
+                                <th>Qty</th>
+                                <th>Resolution</th>
+                                <th>Archived At</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($requests as $req): ?>
+                                <tr>
+                                    <td>
+                                        <strong><?= htmlspecialchars($req['request_ref']); ?></strong><br>
+                                        <small><?= htmlspecialchars($req['created_at']); ?></small>
+                                    </td>
+                                    <td>
+                                        <?php if ($req['source_system'] === 'Citizen Portal' || !empty($req['citizen_user_id'])): ?>
+                                            <span class="badge" style="background:linear-gradient(135deg,#e0f2fe,#bae6fd); color:#0369a1; border:1px solid #7dd3fc; font-weight:700; margin-bottom:2px; font-size:10px;">
+                                                <i class="fas fa-user-circle"></i> Citizen Request
+                                            </span><br>
+                                            <strong><i class="fas fa-user"></i> <?= htmlspecialchars($req['requester_name'] ?: 'Citizen'); ?></strong><br>
+                                            <small>📍 <?= htmlspecialchars($req['facility_name']); ?></small>
+                                            <?php if (!empty($req['notes'])): ?><br><em style="font-size:11px;">"<?= htmlspecialchars($req['notes']); ?>"</em><?php endif; ?>
+                                        <?php else: ?>
+                                            <span class="badge" style="background:linear-gradient(135deg,#f3e8ff,#e9d5ff); color:#6b21a8; border:1px solid #c084fc; font-weight:700; margin-bottom:2px; font-size:10px;">
+                                                <i class="fas fa-building"></i> CPRF Facility
+                                            </span><br>
+                                            <span style="font-weight: 500;"><?= htmlspecialchars($req['facility_name']); ?></span><br>
+                                            <small>CPRF ID: <?= (int)$req['cprf_facility_id']; ?></small>
+                                            <?php if (!empty($req['notes'])): ?><br><em style="font-size:11px;"><?= htmlspecialchars($req['notes']); ?></em><?php endif; ?>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <strong><?= htmlspecialchars($req['asset_type']); ?></strong>
+                                    </td>
+                                    <td>
+                                        <strong style="font-size:14px;"><?= (int)$req['quantity']; ?></strong> <span style="font-size:12px;">unit<?= ((int)$req['quantity'] !== 1) ? 's' : ''; ?></span>
+                                    </td>
+                                    <td>
+                                        <?php if ($req['status'] === 'fulfilled'): ?>
+                                            <span class="badge fulfilled"><i class="fas fa-check-circle"></i> Fulfilled</span>
+                                            <?php if (!empty($req['fulfilled_asset_name'])): ?>
+                                                <div class="fulfilled-link" style="font-size:11px; margin-top:3px;"><i class="fas fa-link"></i> <?= htmlspecialchars($req['fulfilled_asset_name']); ?></div>
+                                            <?php endif; ?>
+                                        <?php elseif ($req['status'] === 'rejected'): ?>
+                                            <span class="badge rejected"><i class="fas fa-ban"></i> Rejected</span>
+                                        <?php else: ?>
+                                            <span class="badge archived"><i class="fas fa-archive"></i> Archived</span>
+                                        <?php endif; ?>
+                                        <?php if (!empty($req['review_notes'])): ?>
+                                            <div style="font-size:11px; margin-top:6px; font-style:italic; opacity:0.8;">"<?= htmlspecialchars($req['review_notes']); ?>"</div>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <span style="font-size:12px; white-space:nowrap;"><i class="far fa-clock"></i> <?= htmlspecialchars($req['archived_at'] ?? $req['updated_at']); ?></span>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                    <?php endif; ?>
                 <?php endif; ?>
             </div>
         </div>

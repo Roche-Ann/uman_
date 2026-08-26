@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // energy_records.php
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
@@ -131,6 +131,14 @@ $assetsList = $pdo->query("SELECT id, name, asset_id FROM utility_assets ORDER B
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark-theme');
+            }
+        })();
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Electricity Consumption Logs</title>
@@ -155,7 +163,7 @@ $assetsList = $pdo->query("SELECT id, name, asset_id FROM utility_assets ORDER B
 
         body::before {
             content: "";
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;

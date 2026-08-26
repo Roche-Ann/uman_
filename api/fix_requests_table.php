@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // api/fix_requests_table.php - Fix corrupted records and auto_increment
 header('Content-Type: text/html; charset=utf-8');
 
@@ -14,6 +14,14 @@ if (!isLoggedIn() || !isEmployee()) {
 <!DOCTYPE html>
 <html>
 <head>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark-theme');
+            }
+        })();
+    </script>
     <title>Service Requests Table Cleanup</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }

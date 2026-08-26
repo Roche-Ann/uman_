@@ -47,6 +47,43 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             if ($userId) {
                 ensureAuthSchema();
 
+                // Check if device is trusted
+                $deviceToken = $_COOKIE['remember_device_token'] ?? '';
+                $deviceTrusted = false;
+                if (!empty($deviceToken)) {
+                    $tokenHash = hash('sha256', $deviceToken);
+                    global $pdo;
+                    $stmt = $pdo->prepare('SELECT id FROM trusted_devices WHERE user_id = :uid AND device_token = :token AND expires_at > UTC_TIMESTAMP()');
+                    $stmt->execute([
+                        ':uid' => $userId,
+                        ':token' => $tokenHash
+                    ]);
+                    if ($stmt->fetch()) {
+                        $deviceTrusted = true;
+                    }
+                }
+
+                if ($deviceTrusted) {
+                    // Log the user in officially, bypassing OTP
+                    $_SESSION['user_id']   = $userId;
+                    $_SESSION['user_type'] = $userType;
+                    $_SESSION['user_name'] = $fullName;
+                    $_SESSION['full_name'] = $fullName;
+                    $_SESSION['user_email']= $email;
+                    $_SESSION['logged_in'] = true;
+
+                    $stmt = $pdo->prepare("UPDATE users SET last_login = NOW() WHERE id = ?");
+                    $stmt->execute([$userId]);
+
+                    // Redirect based on user_type (role)
+                    if ($userType === 'employee') {
+                        header('Location: utilities_dashboard.php');
+                    } else {
+                        header('Location: citizen.php');
+                    }
+                    exit();
+                }
+
                 // 2. Generate OTP and Expiry
                 $otp = str_pad((string)mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
                 $otpHash = password_hash($otp, PASSWORD_DEFAULT);
@@ -106,6 +143,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark-theme');
+            }
+        })();
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LGU | Login</title>
@@ -117,6 +162,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&family=Urbanist:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/responsive.css">
 
     <style>
         /* ---------- DESIGN TOKENS (from the new UI) ---------- */
@@ -171,7 +217,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         /* Background overlay with blur */
         body::before {
             content: "";
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
@@ -831,12 +877,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 </ul>
             </div>
             <div>
-                <h4 class="footer-heading">Services</h4>
+                <h4 class="footer-heading">Core Services</h4>
                 <ul class="footer-links">
-                    <li><a href="#modules">Citizen Hub</a></li>
-                    <li><a href="#modules">Asset Tracking</a></li>
-                    <li><a href="#modules">Issue Reporting</a></li>
-                    <li><a href="#modules">Maintenance Logs</a></li>
+                    <li><a href="#modules">Asset Inventory</a></li>
+                    <li><a href="#modules">Incident Reporting</a></li>
+                    <li><a href="#modules">Maintenance Dispatch</a></li>
+                    <li><a href="#modules">Energy Monitoring</a></li>
                 </ul>
             </div>
             <div>
@@ -913,6 +959,60 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 });
             }
         })();
+    </script>
+    <!-- GLOBAL SPINNER -->
+    <div id="global-spinner" class="global-spinner-overlay">
+        <div class="spinner"></div>
+    </div>
+    <style>
+    .global-spinner-overlay {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        z-index: 999999;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        opacity: 1;
+        visibility: visible;
+        transition: opacity 0.25s ease, visibility 0.25s ease;
+    }
+    .dark-theme .global-spinner-overlay {
+        background: rgba(15, 23, 42, 0.8);
+    }
+    .global-spinner-overlay.hidden {
+        opacity: 0;
+        visibility: hidden;
+    }
+    .global-spinner-overlay .spinner {
+        width: 48px;
+        height: 48px;
+        border: 4px solid rgba(55, 98, 200, 0.2);
+        border-top-color: #3762c8;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+    .dark-theme .global-spinner-overlay .spinner {
+        border: 4px solid rgba(99, 132, 210, 0.2);
+        border-top-color: #6384d2;
+    }
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    </style>
+    <script>
+    window.addEventListener('load', function() {
+        const spinner = document.getElementById('global-spinner');
+        if (spinner) {
+            setTimeout(() => spinner.classList.add('hidden'), 100);
+        }
+    });
+    window.addEventListener('beforeunload', function() {
+        const spinner = document.getElementById('global-spinner');
+        if (spinner) spinner.classList.remove('hidden');
+    });
     </script>
 </body>
 </html>

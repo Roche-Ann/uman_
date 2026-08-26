@@ -3,7 +3,7 @@
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
 
-// Self-healing database repair for missing PRIMARY KEY or AUTO_INCREMENT on assets tables
+// Self-healing database repair for missing PRIMARY KEY or AUTO_INCREMENT on assets tables (ran on-demand)
 function ensureAssetsSchema($pdo) {
     $repairTable = function($pdo, $tableName) {
         try {
@@ -20,155 +20,15 @@ function ensureAssetsSchema($pdo) {
         } catch (Throwable $e) {}
     };
 
-    $needsTypeRepair = false;
-    try {
-        $col = $pdo->query("SHOW COLUMNS FROM asset_types LIKE 'id'")->fetch(PDO::FETCH_ASSOC);
-        if ($col && stripos((string)($col['Extra'] ?? ''), 'auto_increment') === false) {
-            $needsTypeRepair = true;
-        }
-    } catch (Throwable $e) {
-        $needsTypeRepair = true;
-    }
-
-    $needsAssetRepair = false;
-    try {
-        $col = $pdo->query("SHOW COLUMNS FROM utility_assets LIKE 'id'")->fetch(PDO::FETCH_ASSOC);
-        if ($col && stripos((string)($col['Extra'] ?? ''), 'auto_increment') === false) {
-            $needsAssetRepair = true;
-        }
-    } catch (Throwable $e) {
-        $needsAssetRepair = true;
-    }
-
-    // Repair secondary tables if they are missing auto_increment
     $repairTable($pdo, 'asset_status_logs');
     $repairTable($pdo, 'asset_notifications');
     $repairTable($pdo, 'asset_images');
     $repairTable($pdo, 'asset_locations');
-
-    if (!$needsTypeRepair && !$needsAssetRepair) {
-        return; // Schema is already correct
-    }
-
-    $pdo->exec("SET FOREIGN_KEY_CHECKS = 0");
-    $pdo->exec("SET SESSION sql_mode = REPLACE(@@sql_mode, 'NO_AUTO_VALUE_ON_ZERO', '')");
-
-    if ($needsTypeRepair) {
-        $types = $pdo->query("SELECT * FROM asset_types")->fetchAll();
-        $pdo->exec("TRUNCATE TABLE asset_types");
-        
-        $typeIdMap = [];
-        $nextId = 1;
-        foreach ($types as $t) {
-            $name = trim($t['name']);
-            if (isset($typeIdMap[$name])) {
-                continue;
-            }
-            $pdo->prepare("INSERT INTO asset_types (id, name, description, created_at) VALUES (?, ?, ?, ?)")
-                ->execute([$nextId, $name, $t['description'] ?? null, $t['created_at'] ?? date('Y-m-d H:i:s')]);
-            $typeIdMap[$name] = $nextId;
-            $nextId++;
-        }
-        
-        try {
-            $pdo->exec("ALTER TABLE asset_types ADD PRIMARY KEY (id)");
-        } catch (Throwable $ignored) {}
-        
-        try {
-            $pdo->exec("ALTER TABLE asset_types MODIFY id INT NOT NULL AUTO_INCREMENT");
-        } catch (Throwable $ignored) {}
-    } else {
-        $typeIdMap = $pdo->query("SELECT name, id FROM asset_types")->fetchAll(PDO::FETCH_KEY_PAIR);
-    }
-
-    if ($needsAssetRepair) {
-        $assets = $pdo->query("SELECT * FROM utility_assets")->fetchAll();
-        $pdo->exec("TRUNCATE TABLE utility_assets");
-        
-        try {
-            $pdo->exec("ALTER TABLE utility_assets ADD PRIMARY KEY (id)");
-        } catch (Throwable $ignored) {}
-        
-        try {
-            $pdo->exec("ALTER TABLE utility_assets MODIFY id INT NOT NULL AUTO_INCREMENT");
-        } catch (Throwable $ignored) {}
-        
-        $assetIdMap = [];
-        $nextAssetId = 1;
-        foreach ($assets as $idx => $a) {
-            $matchedTypeId = 1;
-            $assetName = $a['name'];
-            foreach ($typeIdMap as $typeName => $typeId) {
-                if (stripos($assetName, $typeName) !== false) {
-                    $matchedTypeId = $typeId;
-                    break;
-                }
-            }
-            if ($matchedTypeId === 1) {
-                if (stripos($assetName, 'Drainage') !== false) {
-                    $matchedTypeId = $typeIdMap['Drainage System'] ?? 1;
-                } elseif (stripos($assetName, 'Pipeline') !== false || stripos($assetName, 'Water') !== false) {
-                    $matchedTypeId = $typeIdMap['Water Pipeline'] ?? 1;
-                } elseif (stripos($assetName, 'Pole') !== false || stripos($assetName, 'Electrical') !== false) {
-                    $matchedTypeId = $typeIdMap['Electrical Utility Pole'] ?? 1;
-                } elseif (stripos($assetName, 'Pump') !== false || stripos($assetName, 'Reservoir') !== false) {
-                    $matchedTypeId = $typeIdMap['Public Utility Infrastructure'] ?? 1;
-                }
-            }
-            
-            $stmt = $pdo->prepare("
-                INSERT INTO utility_assets (id, asset_id, name, asset_type_id, quantity, location, latitude, longitude, date_installed, condition_status, description, responsible_office, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ");
-            $stmt->execute([
-                $nextAssetId,
-                $a['asset_id'],
-                $a['name'],
-                $matchedTypeId,
-                $a['quantity'] ?? 1,
-                $a['location'],
-                $a['latitude'] ?? null,
-                $a['longitude'] ?? null,
-                $a['date_installed'],
-                $a['condition_status'],
-                $a['description'] ?? null,
-                $a['responsible_office'] ?? null,
-                $a['created_at'] ?? date('Y-m-d H:i:s'),
-                $a['updated_at'] ?? date('Y-m-d H:i:s')
-            ]);
-            
-            $assetIdMap[$idx] = $nextAssetId;
-            $nextAssetId++;
-        }
-        
-        try {
-            $logs = $pdo->query("SELECT id, utility_asset_id FROM asset_status_logs ORDER BY id ASC")->fetchAll();
-            if (count($logs) === count($assetIdMap)) {
-                $i = 0;
-                foreach ($assetIdMap as $idx => $newId) {
-                    if (isset($logs[$i])) {
-                        $pdo->prepare("UPDATE asset_status_logs SET utility_asset_id = ? WHERE id = ?")
-                            ->execute([$newId, $logs[$i]['id']]);
-                    }
-                    $i++;
-                }
-            } else {
-                $pdo->prepare("UPDATE asset_status_logs SET utility_asset_id = 1 WHERE utility_asset_id = 0")->execute();
-            }
-        } catch (Throwable $e) {}
-        
-        try { $pdo->exec("UPDATE asset_locations SET utility_asset_id = 1 WHERE utility_asset_id = 0"); } catch (Throwable $e) {}
-        try { $pdo->exec("UPDATE asset_images SET utility_asset_id = 1 WHERE utility_asset_id = 0"); } catch (Throwable $e) {}
-        try { $pdo->exec("UPDATE incident_asset_links SET utility_asset_id = 1 WHERE utility_asset_id = 0"); } catch (Throwable $e) {}
-        try { $pdo->exec("UPDATE maintenance_asset_links SET utility_asset_id = 1 WHERE utility_asset_id = 0"); } catch (Throwable $e) {}
-        try { $pdo->exec("UPDATE maintenance_requests SET utility_asset_id = 1 WHERE utility_asset_id = 0"); } catch (Throwable $e) {}
-        try { $pdo->exec("UPDATE energy_consumption_records SET utility_asset_id = 1 WHERE utility_asset_id = 0"); } catch (Throwable $e) {}
-    }
-
-    $pdo->exec("SET FOREIGN_KEY_CHECKS = 1");
 }
 
-ensureAssetsSchema($pdo);
+if (isset($_GET['repair_schema'])) {
+    ensureAssetsSchema($pdo);
+}
 
 if (!isLoggedIn()) {
     header('Location: login.php');
@@ -176,7 +36,16 @@ if (!isLoggedIn()) {
 }
 
 $userType = $_SESSION['user_type'] ?? '';
-$userId = $_SESSION['user_id'] ?? 1;
+$userId = intval($_SESSION['user_id'] ?? 1);
+if ($userId <= 0) $userId = 1;
+try {
+    $chkUser = $pdo->prepare("SELECT id FROM users WHERE id = ?");
+    $chkUser->execute([$userId]);
+    if (!$chkUser->fetch()) {
+        $firstU = $pdo->query("SELECT id FROM users ORDER BY id ASC LIMIT 1")->fetchColumn();
+        if ($firstU) $userId = intval($firstU);
+    }
+} catch (Throwable $e) {}
 
 $error = $_SESSION['flash_error'] ?? '';
 $success = $_SESSION['flash_success'] ?? '';
@@ -304,12 +173,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 } catch (Throwable $ignored) {}
 
-                // Log Status (non-critical)
+                // Log creation with full snapshot (non-critical)
                 try {
+                    $snapshot = json_encode([
+                        'asset_id'           => $asset_id,
+                        'name'               => $name,
+                        'quantity'           => $quantity,
+                        'location'           => $location,
+                        'condition_status'   => $condition_status,
+                        'date_installed'     => $date_installed,
+                        'responsible_office' => $responsible_office,
+                        'description'        => $description,
+                    ], JSON_UNESCAPED_UNICODE);
                     $pdo->prepare("
-                        INSERT INTO asset_status_logs (utility_asset_id, old_status, new_status, changed_by, notes) 
-                        VALUES (?, NULL, ?, ?, 'Asset registered in system.')
-                    ")->execute([$id, $condition_status, $userId]);
+                        INSERT INTO asset_status_logs (utility_asset_id, action_type, old_status, new_status, changed_by, notes, changed_fields) 
+                        VALUES (?, 'asset_created', NULL, ?, ?, 'Asset registered in system.', ?)
+                    ")->execute([$id, $condition_status, $userId, $snapshot]);
                 } catch (Throwable $ignored) {}
 
                 // Create alert notification (non-critical)
@@ -335,6 +214,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $asset_type_id = $_POST['asset_type_id'] ?? '';
         $new_category_name = trim($_POST['new_category_name'] ?? '');
         $quantity = max(1, intval($_POST['quantity'] ?? 1));
+        $affected_quantity = max(0, intval($_POST['affected_quantity'] ?? 0));
         $location = trim($_POST['location'] ?? '');
         $date_installed = $_POST['date_installed'] ?? date('Y-m-d');
         $condition_status = $_POST['condition_status'] ?? 'Operational';
@@ -370,16 +250,94 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             try {
                 // Get current status & location to log changes
-                $curr = $pdo->prepare("SELECT asset_id, condition_status, location, latitude, longitude FROM utility_assets WHERE id = ?");
+                $curr = $pdo->prepare("
+                    SELECT asset_id, condition_status, location, latitude, longitude,
+                           quantity, parent_asset_id, name, asset_type_id,
+                           date_installed, description, responsible_office
+                    FROM utility_assets WHERE id = ?
+                ");
                 $curr->execute([$id]);
                 $oldAsset = $curr->fetch();
 
                 if ($oldAsset) {
                     $asset_id = $oldAsset['asset_id'];
-                    $latitude = $oldAsset['latitude'];
-                    $longitude = $oldAsset['longitude'];
+                    $latitude = (isset($oldAsset['latitude']) && is_numeric($oldAsset['latitude'])) ? (float)$oldAsset['latitude'] : null;
+                    $longitude = (isset($oldAsset['longitude']) && is_numeric($oldAsset['longitude'])) ? (float)$oldAsset['longitude'] : null;
+                    $total_qty = intval($oldAsset['quantity']);
+                    $is_non_operational = in_array($condition_status, ['Damaged', 'Needs Inspection', 'Under Maintenance']);
+                    $is_child = !empty($oldAsset['parent_asset_id']);
 
-                    // Update core details
+                    // ---- AUTO-MERGE: child offshoot restored to Operational ----
+                    if ($is_child && $condition_status === 'Operational') {
+                        try {
+                            $parentId = intval($oldAsset['parent_asset_id']);
+                            $pdo->prepare("UPDATE utility_assets SET quantity = quantity + ? WHERE id = ?")
+                                ->execute([$total_qty, $parentId]);
+                            $parentCodeStmt = $pdo->prepare("SELECT asset_id FROM utility_assets WHERE id = ?");
+                            $parentCodeStmt->execute([$parentId]);
+                            $parentCode = $parentCodeStmt->fetchColumn() ?: 'parent';
+                            try {
+                                $pdo->prepare("INSERT INTO asset_status_logs (utility_asset_id, action_type, old_status, new_status, changed_by, notes) VALUES (?, 'split_merged', ?, ?, ?, ?)")
+                                    ->execute([$id, $oldAsset['condition_status'], 'Operational (Merged)', $userId,
+                                        "{$total_qty} unit(s) restored to Operational and merged back into {$parentCode}. " . ($status_notes ?: '')]);
+                            } catch (Throwable $ignored) {}
+                            try {
+                                $pdo->prepare("INSERT INTO asset_notifications (type, message) VALUES (?, ?)")
+                                    ->execute(['status_changed', "Asset {$asset_id}: {$total_qty} unit(s) restored and merged back into {$parentCode}."]);
+                            } catch (Throwable $ignored) {}
+                            $pdo->prepare("DELETE FROM utility_assets WHERE id = ?")->execute([$id]);
+                            $_SESSION['flash_success'] = "{$total_qty} unit(s) of {$asset_id} restored to Operational and merged back into {$parentCode}.";
+                        } catch (PDOException $e) {
+                            $_SESSION['flash_error'] = "Auto-merge failed: " . $e->getMessage();
+                        }
+                        header('Location: ' . $_SERVER['PHP_SELF']);
+                        exit();
+                    }
+
+                    // ---- SPLIT: partial quantity changing to a non-operational status ----
+                    $doSplit = ($is_non_operational && !$is_child && $affected_quantity > 0 && $affected_quantity < $total_qty);
+                    if ($doSplit) {
+                        try {
+                            $newParentQty = $total_qty - $affected_quantity;
+                            $pdo->prepare("UPDATE utility_assets SET quantity = ? WHERE id = ?")
+                                ->execute([$newParentQty, $id]);
+
+                            // Generate unique child asset_id: e.g. ELEC-0012-M1, -M2, etc.
+                            $baseAssetId = $oldAsset['asset_id'];
+                            $countStmt = $pdo->prepare("SELECT COUNT(*) FROM utility_assets WHERE asset_id LIKE ?");
+                            $countStmt->execute([$baseAssetId . '-M%']);
+                            $offshotCount = intval($countStmt->fetchColumn());
+                            $childAssetId = $baseAssetId . '-M' . ($offshotCount + 1);
+
+                            $pdo->prepare("
+                                INSERT INTO utility_assets
+                                    (asset_id, parent_asset_id, name, asset_type_id, quantity, location, latitude, longitude, date_installed, condition_status, description, responsible_office)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            ")->execute([
+                                $childAssetId, $id, $name, $asset_type_id, $affected_quantity,
+                                $location, $latitude, $longitude, $date_installed,
+                                $condition_status, $description, $responsible_office
+                            ]);
+                            $childId = $pdo->lastInsertId();
+
+                            try {
+                                $pdo->prepare("INSERT INTO asset_status_logs (utility_asset_id, action_type, old_status, new_status, changed_by, notes) VALUES (?, 'split_created', NULL, ?, ?, ?)")
+                                    ->execute([$childId, $condition_status, $userId,
+                                        "Offshoot created from {$baseAssetId}: {$affected_quantity} unit(s) marked as {$condition_status}. " . ($status_notes ?: '')]);
+                            } catch (Throwable $ignored) {}
+                            try {
+                                $pdo->prepare("INSERT INTO asset_notifications (type, message) VALUES (?, ?)")
+                                    ->execute(['status_changed', "Asset {$baseAssetId}: {$affected_quantity} unit(s) split off as {$childAssetId} with status {$condition_status}."]);
+                            } catch (Throwable $ignored) {}
+                            $_SESSION['flash_success'] = "{$affected_quantity} unit(s) split from {$baseAssetId} as {$childAssetId} (Status: {$condition_status}). {$newParentQty} unit(s) remain Operational.";
+                        } catch (PDOException $e) {
+                            $_SESSION['flash_error'] = "Split failed: " . $e->getMessage();
+                        }
+                        header('Location: ' . $_SERVER['PHP_SELF']);
+                        exit();
+                    }
+
+                    // Update core details (normal full-batch update)
                     $stmt = $pdo->prepare("
                         UPDATE utility_assets 
                         SET name = ?, asset_type_id = ?, quantity = ?, location = ?, latitude = ?, longitude = ?, date_installed = ?, condition_status = ?, description = ?, responsible_office = ?
@@ -387,34 +345,95 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ");
                     $stmt->execute([$name, $asset_type_id, $quantity, $location, $latitude, $longitude, $date_installed, $condition_status, $description, $responsible_office, $id]);
 
-                    // Log status change (non-critical)
-                    if ($oldAsset['condition_status'] !== $condition_status) {
+                    // --- Unified field-diff audit log (non-critical) ---
+                    try {
+                        // Fetch type name for comparison
+                        $oldTypeName = '';
+                        $newTypeName = '';
                         try {
-                            $pdo->prepare("
-                                INSERT INTO asset_status_logs (utility_asset_id, old_status, new_status, changed_by, notes) 
-                                VALUES (?, ?, ?, ?, ?)
-                            ")->execute([$id, $oldAsset['condition_status'], $condition_status, $userId, $status_notes ?: 'Status modified by administrator.']);
+                            $tStmt = $pdo->prepare("SELECT id, name FROM asset_types WHERE id IN (?, ?)");
+                            $tStmt->execute([$oldAsset['asset_type_id'] ?? 0, $asset_type_id]);
+                            foreach ($tStmt->fetchAll() as $t) {
+                                if ($t['id'] == ($oldAsset['asset_type_id'] ?? 0)) $oldTypeName = $t['name'];
+                                if ($t['id'] == $asset_type_id) $newTypeName = $t['name'];
+                            }
                         } catch (Throwable $ignored) {}
 
-                        // Trigger notification (non-critical)
-                        try {
-                            $notifType = ($condition_status === 'Damaged') ? 'reported_damaged' : 'status_changed';
-                            $pdo->prepare("
-                                INSERT INTO asset_notifications (type, message) 
-                                VALUES (?, ?)
-                            ")->execute([$notifType, "Asset {$asset_id} status changed from {$oldAsset['condition_status']} to {$condition_status}."]);
-                        } catch (Throwable $ignored) {}
-                    }
+                        $fieldLabels = [
+                            'name'               => ['Name',               $oldAsset['name'] ?? '',                $name],
+                            'quantity'           => ['Quantity',            $total_qty,                             $quantity],
+                            'location'           => ['Location',            $oldAsset['location'] ?? '',            $location],
+                            'condition_status'   => ['Status',              $oldAsset['condition_status'] ?? '',    $condition_status],
+                            'asset_type'         => ['Category',            $oldTypeName,                          $newTypeName],
+                            'date_installed'     => ['Acquired Date',      $oldAsset['date_installed'] ?? '',      $date_installed],
+                            'responsible_office' => ['Vendor',  $oldAsset['responsible_office'] ?? '', $responsible_office],
+                            'description'        => ['Description',         $oldAsset['description'] ?? '',        $description],
+                        ];
 
-                    // Log location change (non-critical)
-                    if ($oldAsset['location'] !== $location) {
+                        $diff = [];
+                        foreach ($fieldLabels as $key => [$label, $old, $new]) {
+                            if (trim(strval($old)) !== trim(strval($new))) {
+                                $diff[$label] = ['old' => strval($old), 'new' => strval($new)];
+                            }
+                        }
+
+                        $isStatusChanged = (trim(strval($oldAsset['condition_status'] ?? '')) !== trim(strval($condition_status)));
+                        $actionType = $isStatusChanged ? 'status_changed' : 'asset_edited';
+                        $finalNotes = $status_notes ?: ($isStatusChanged ? "Status changed from {$oldAsset['condition_status']} to {$condition_status}." : (empty($diff) ? "Asset record updated." : "Asset details modified."));
+                        $diffJson = !empty($diff) ? json_encode($diff, JSON_UNESCAPED_UNICODE) : null;
+
+                        // Insert audit log (guaranteed execution)
+                        $logged = false;
                         try {
                             $pdo->prepare("
-                                INSERT INTO asset_locations (utility_asset_id, old_location, new_location, old_latitude, new_latitude, old_longitude, new_longitude, changed_by) 
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                            ")->execute([$id, $oldAsset['location'], $location, $oldAsset['latitude'], $latitude, $oldAsset['longitude'], $longitude, $userId]);
-                        } catch (Throwable $ignored) {}
-                    }
+                                INSERT INTO asset_status_logs (utility_asset_id, action_type, old_status, new_status, changed_by, notes, changed_fields)
+                                VALUES (?, ?, ?, ?, ?, ?, ?)
+                            ")->execute([
+                                $id,
+                                $actionType,
+                                $oldAsset['condition_status'] ?? 'Operational',
+                                $condition_status,
+                                $userId,
+                                $finalNotes,
+                                $diffJson
+                            ]);
+                            $logged = true;
+                        } catch (Throwable $e) {}
+
+                        if (!$logged) {
+                            try {
+                                $pdo->prepare("
+                                    INSERT INTO asset_status_logs (utility_asset_id, old_status, new_status, changed_by, notes)
+                                    VALUES (?, ?, ?, ?, ?)
+                                ")->execute([
+                                    $id,
+                                    $oldAsset['condition_status'] ?? 'Operational',
+                                    $condition_status,
+                                    $userId,
+                                    $finalNotes
+                                ]);
+                            } catch (Throwable $ignored) {}
+                        }
+
+                        // Trigger notification only for status changes (non-critical)
+                        if ($oldAsset['condition_status'] !== $condition_status) {
+                            try {
+                                $notifType = ($condition_status === 'Damaged') ? 'reported_damaged' : 'status_changed';
+                                $pdo->prepare("INSERT INTO asset_notifications (type, message) VALUES (?, ?)")
+                                    ->execute([$notifType, "Asset {$asset_id} status changed from {$oldAsset['condition_status']} to {$condition_status}."]);
+                            } catch (Throwable $ignored) {}
+                        }
+
+                        // Log location change in asset_locations table too (non-critical)
+                        if ($oldAsset['location'] !== $location) {
+                            try {
+                                $pdo->prepare("
+                                    INSERT INTO asset_locations (utility_asset_id, old_location, new_location, old_latitude, new_latitude, old_longitude, new_longitude, changed_by)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                                ")->execute([$id, $oldAsset['location'], $location, $oldAsset['latitude'], $latitude, $oldAsset['longitude'], $longitude, $userId]);
+                            } catch (Throwable $ignored) {}
+                        }
+                    } catch (Throwable $ignored) {}
 
                     // Handle Image Upload (non-critical)
                     try {
@@ -425,7 +444,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     } catch (Throwable $ignored) {}
 
                     $_SESSION['flash_success'] = "Asset {$asset_id} updated successfully!";
-                    header('Location: ' . $_SERVER['PHP_SELF']);
+                    header('Location: ' . $_SERVER['PHP_SELF'] . ($condition_status === 'Retired' ? '?tab=retired' : ''));
                     exit();
                 }
             } catch (PDOException $e) {
@@ -434,25 +453,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit();
             }
         }
-    } elseif ($action === 'delete') {
-        $id = intval($_POST['id'] ?? 0);
-        if ($id > 0) {
+    } elseif ($action === 'reactivate') {
+        $reactivateId = intval($_POST['id'] ?? 0);
+        $reactivateNote = trim($_POST['reactivate_notes'] ?? 'Asset restored from Retired status to Operational.');
+        if ($reactivateId > 0) {
             try {
-                $curr = $pdo->prepare("SELECT asset_id, name FROM utility_assets WHERE id = ?");
-                $curr->execute([$id]);
-                $asset = $curr->fetch();
-                
-                if ($asset) {
-                    $pdo->prepare("DELETE FROM utility_assets WHERE id = ?")->execute([$id]);
-                    $_SESSION['flash_success'] = "Asset {$asset['asset_id']} ({$asset['name']}) has been successfully deleted.";
-                    header('Location: ' . $_SERVER['PHP_SELF']);
-                    exit();
+                $aStmt = $pdo->prepare("SELECT asset_id, condition_status FROM utility_assets WHERE id = ?");
+                $aStmt->execute([$reactivateId]);
+                $targetAsset = $aStmt->fetch();
+                if ($targetAsset) {
+                    $pdo->prepare("UPDATE utility_assets SET condition_status = 'Operational' WHERE id = ?")->execute([$reactivateId]);
+                    
+                    // Log status change
+                    try {
+                        $diff = ['Status' => ['old' => $targetAsset['condition_status'], 'new' => 'Operational']];
+                        $pdo->prepare("
+                            INSERT INTO asset_status_logs (utility_asset_id, action_type, old_status, new_status, changed_by, notes, changed_fields)
+                            VALUES (?, 'status_changed', ?, 'Operational', ?, ?, ?)
+                        ")->execute([
+                            $reactivateId,
+                            $targetAsset['condition_status'],
+                            $userId,
+                            $reactivateNote,
+                            json_encode($diff, JSON_UNESCAPED_UNICODE)
+                        ]);
+                    } catch (Throwable $e) {}
+                    
+                    $_SESSION['flash_success'] = "Asset {$targetAsset['asset_id']} has been restored to Operational status.";
                 }
             } catch (PDOException $e) {
-                $_SESSION['flash_error'] = "Failed to delete asset: " . $e->getMessage();
-                header('Location: ' . $_SERVER['PHP_SELF']);
-                exit();
+                $_SESSION['flash_error'] = "Failed to reactivate asset: " . $e->getMessage();
             }
+            header('Location: ' . $_SERVER['PHP_SELF']);
+            exit();
         }
     } elseif ($action === 'delete_category') {
         $category_id = intval($_POST['category_id'] ?? 0);
@@ -473,19 +506,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // ------------------------------------------------------------------------
-// Get Search / Filter / Pagination parameters
+// Get Search / Filter / Tab / Pagination parameters
 // ------------------------------------------------------------------------
-$search = trim($_GET['search'] ?? '');
-$type_filter = !empty($_GET['type_id']) ? intval($_GET['type_id']) : null;
+$currentTab    = ($_GET['tab'] ?? 'active') === 'retired' ? 'retired' : 'active';
+$search        = trim($_GET['search'] ?? '');
+$type_filter   = !empty($_GET['type_id']) ? intval($_GET['type_id']) : null;
 $status_filter = !empty($_GET['status']) ? trim($_GET['status']) : null;
+
+// Tab counts
+$activeCount  = 0;
+$retiredCount = 0;
+try {
+    $activeCount  = intval($pdo->query("SELECT COUNT(*) FROM utility_assets WHERE condition_status != 'Retired'")->fetchColumn() ?: 0);
+    $retiredCount = intval($pdo->query("SELECT COUNT(*) FROM utility_assets WHERE condition_status = 'Retired'")->fetchColumn() ?: 0);
+} catch (Throwable $e) {}
 
 // Build asset WHERE conditions
 $conditions = [];
 $params = [];
 
+if ($currentTab === 'retired') {
+    $conditions[] = "a.condition_status = 'Retired'";
+} else {
+    $conditions[] = "a.condition_status != 'Retired'";
+    if ($status_filter) {
+        $conditions[] = "a.condition_status = ?";
+        $params[] = $status_filter;
+    }
+}
+
 if (!empty($search)) {
-    $conditions[] = "(a.name LIKE ? OR a.asset_id LIKE ?)";
+    $conditions[] = "(a.name LIKE ? OR a.asset_id LIKE ? OR a.location LIKE ?)";
     $searchWildcard = '%' . $search . '%';
+    $params[] = $searchWildcard;
     $params[] = $searchWildcard;
     $params[] = $searchWildcard;
 }
@@ -493,11 +546,6 @@ if (!empty($search)) {
 if ($type_filter) {
     $conditions[] = "a.asset_type_id = ?";
     $params[] = $type_filter;
-}
-
-if ($status_filter) {
-    $conditions[] = "a.condition_status = ?";
-    $params[] = $status_filter;
 }
 
 $whereClause = !empty($conditions) ? 'WHERE ' . implode(' AND ', $conditions) : '';
@@ -558,10 +606,29 @@ if (!empty($search) || $status_filter) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manage Utility Assets</title>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark-theme');
+            }
+        })();
+    </script>
     <link rel="icon" type="image/png" href="assets/images/logocityhall.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/responsive.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+        .dark-theme body::before {
+            background: rgba(15, 23, 42, 0.85) !important;
+        }
+        .dark-theme .card {
+            background: rgba(30, 41, 59, 0.9) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            color: #f8fafc !important;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+        }
 
         /* Review changes modal and comparison table CSS */
         .review-table {
@@ -676,7 +743,7 @@ if (!empty($search) || $status_filter) {
 
         body::before {
             content: "";
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
@@ -689,10 +756,11 @@ if (!empty($search) || $status_filter) {
         .main-content {
             flex: 1;
             margin-left: 280px;
-            padding: 30px 40px;
+            padding: 24px 32px;
             transition: margin-left 0.25s ease;
             z-index: 1;
             position: relative;
+            min-height: 100vh;
         }
 
         .main-content.collapsed {
@@ -705,7 +773,7 @@ if (!empty($search) || $status_filter) {
             background: rgba(255, 255, 255, 0.85);
             backdrop-filter: blur(15px);
             border-radius: 18px;
-            padding: 40px;
+            padding: 30px 32px;
             color: #000;
             box-shadow: 0 6px 20px rgba(0,0,0,0.2);
             border: 1px solid rgba(255,255,255,0.25);
@@ -1029,47 +1097,73 @@ if (!empty($search) || $status_filter) {
         /* =========== ACCORDION TABLE STYLES =========== */
         .group-header-row {
             cursor: pointer;
-            background: #f8faff;
-            border-left: 4px solid transparent;
-            transition: background 0.15s, border-color 0.15s;
+            background: #ffffff;
+            border-left: 3px solid transparent;
+            transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
         }
         .group-header-row:hover {
-            background: #eef2ff;
-            border-left-color: #6366f1;
+            background: #f5f7ff;
+            border-left-color: #3762c8;
         }
         .group-header-row.expanded {
-            background: #eef2ff;
-            border-left-color: #6366f1;
+            background: #f0f4ff;
+            border-left-color: #3762c8;
+            box-shadow: inset 0 -1px 0 #dbeafe;
         }
         .accordion-icon {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            background: #e0e7ff;
-            color: #6366f1;
+            width: 26px;
+            height: 26px;
+            border-radius: 8px;
+            background: #e8eeff;
+            color: #3762c8;
             font-size: 10px;
-            transition: transform 0.25s ease;
+            transition: transform 0.22s ease, background 0.18s ease;
+            border: 1px solid #c7d7fb;
+        }
+        .group-header-row:hover .accordion-icon {
+            background: #dbeafe;
         }
         .group-header-row.expanded .accordion-icon {
             transform: rotate(90deg);
+            background: #3762c8;
+            color: #ffffff;
+            border-color: #3762c8;
         }
         .category-label {
             font-size: 14px;
+            font-weight: 600;
             color: #1e293b;
             letter-spacing: 0.01em;
         }
         .asset-count-badge {
-            display: inline-block;
-            background: #6366f1;
-            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #eff6ff;
+            color: #3762c8;
+            border: 1px solid #bfdbfe;
             border-radius: 20px;
-            padding: 2px 10px;
+            padding: 3px 11px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+        }
+        /* expand hint */
+        .expand-hint {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
             font-size: 12px;
-            font-weight: 600;
-            letter-spacing: 0.02em;
+            color: #94a3b8;
+            font-weight: 500;
+            transition: color 0.15s;
+        }
+        .group-header-row:hover .expand-hint,
+        .group-header-row.expanded .expand-hint {
+            color: #3762c8;
         }
         /* Child row container */
         .group-child-row {
@@ -1080,20 +1174,22 @@ if (!empty($search) || $status_filter) {
         }
         /* Child table inside expanded row */
         .child-table-wrapper {
-            padding: 0 0 8px 40px;
-            background: #f9fafb;
+            padding: 0 12px 12px 52px;
+            background: #fafbff;
             border-top: 1px solid #e2e8f0;
-            border-bottom: 2px solid #e0e7ff;
+            border-bottom: 2px solid #dbeafe;
         }
         .child-table {
             width: 100%;
             border-collapse: collapse;
+            border-radius: 8px;
+            overflow: hidden;
         }
         .child-table thead tr {
             background: #f1f5f9;
         }
         .child-table thead th {
-            padding: 9px 12px;
+            padding: 10px 14px;
             font-size: 11px;
             font-weight: 700;
             text-transform: uppercase;
@@ -1106,16 +1202,327 @@ if (!empty($search) || $status_filter) {
             transition: background 0.1s;
         }
         .child-table tbody tr:hover {
-            background: #f0f4ff;
+            background: #eff6ff;
         }
         .child-table td {
-            padding: 9px 12px;
+            padding: 11px 14px;
             font-size: 13px;
             color: #334155;
         }
         .child-asset-row.search-highlight {
             background: #fefce8 !important;
             border-left: 3px solid #eab308;
+        }
+        /* ---- Offshoot / split child rows ---- */
+        .child-asset-row.is-offshoot {
+            background: #fffbeb !important;
+            border-left: 3px solid #f59e0b !important;
+        }
+        .child-asset-row.is-offshoot:hover {
+            background: #fef3c7 !important;
+        }
+        .offshoot-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 10px;
+            color: #92400e;
+            background: #fef3c7;
+            border: 1px solid #fde68a;
+            border-radius: 4px;
+            padding: 2px 6px;
+            margin-top: 3px;
+        }
+        .offshoot-merge-notice {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            border-radius: 8px;
+            padding: 12px 15px;
+            margin-bottom: 14px;
+            font-size: 13px;
+            color: #78350f;
+            display: none;
+        }
+        .split-panel {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            display: none;
+        }
+        .split-panel label.panel-title {
+            font-weight: 700;
+            color: #166534;
+            font-size: 13px;
+        }
+        .split-panel p.panel-hint {
+            font-size: 11px;
+            color: #166534;
+            margin: 4px 0 10px;
+        }
+        /* Inventory Tabs CSS */
+        .inventory-tabs {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 22px;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        .inventory-tab {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            color: #64748b;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            transition: all 0.2s ease;
+        }
+        .inventory-tab:hover {
+            color: #3762c8;
+            background: #eff6ff;
+            border-color: #bfdbfe;
+        }
+        .inventory-tab.active {
+            background: #3762c8;
+            color: #ffffff;
+            border-color: #3762c8;
+            box-shadow: 0 4px 12px rgba(55, 98, 200, 0.25);
+        }
+        .inventory-tab .tab-badge {
+            background: #e2e8f0;
+            color: #475569;
+            padding: 2px 8px;
+            border-radius: 99px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .inventory-tab.active .tab-badge {
+            background: rgba(255, 255, 255, 0.25);
+            color: #ffffff;
+        }
+        .inventory-tab.tab-retired.active {
+            background: #475569;
+            border-color: #475569;
+            box-shadow: 0 4px 12px rgba(71, 85, 105, 0.25);
+        }
+        .dark-theme .inventory-tabs {
+            border-bottom-color: #334155 !important;
+        }
+        .dark-theme .inventory-tab {
+            background: #1e293b !important;
+            border-color: #334155 !important;
+            color: #94a3b8 !important;
+        }
+        .dark-theme .inventory-tab:hover {
+            color: #93c5fd !important;
+            background: #151f32 !important;
+        }
+        .dark-theme .inventory-tab.active {
+            background: #3762c8 !important;
+            color: #ffffff !important;
+            border-color: #3762c8 !important;
+        }
+        .dark-theme .inventory-tab.tab-retired.active {
+            background: #334155 !important;
+            border-color: #475569 !important;
+        }
+        .dark-theme .inventory-tab .tab-badge {
+            background: #334155 !important;
+            color: #94a3b8 !important;
+        }
+
+        /* ===== ASSETS CRUD DARK THEME SYSTEM ===== */
+        .dark-theme .dashboard-header h1 {
+            color: #f8fafc !important;
+        }
+        .dark-theme .filter-container {
+            background: #1e293b !important;
+            border: 1px solid #334155 !important;
+            box-shadow: none !important;
+        }
+        .dark-theme .table-section {
+            background: #1e293b !important;
+            border: 1px solid #334155 !important;
+            box-shadow: none !important;
+        }
+        .dark-theme .form-control {
+            background: #0f172a !important;
+            color: #f8fafc !important;
+            border-color: #334155 !important;
+        }
+        .dark-theme .form-control:focus {
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25) !important;
+        }
+        .dark-theme .form-group label {
+            color: #94a3b8 !important;
+        }
+        .dark-theme th {
+            background: #0f172a !important;
+            color: #94a3b8 !important;
+            border-bottom-color: #334155 !important;
+        }
+        .dark-theme td {
+            border-bottom-color: #334155 !important;
+            color: #cbd5e1 !important;
+        }
+        .dark-theme .btn-outline {
+            color: #cbd5e1 !important;
+            border-color: #475569 !important;
+            background: transparent !important;
+        }
+        .dark-theme .btn-outline:hover {
+            background: #334155 !important;
+            color: #ffffff !important;
+        }
+        .dark-theme .page-link {
+            background: #1e293b !important;
+            border-color: #334155 !important;
+            color: #94a3b8 !important;
+        }
+        .dark-theme .page-link:hover {
+            background: #334155 !important;
+            color: #ffffff !important;
+        }
+        .dark-theme .page-link.active {
+            background: #3762c8 !important;
+            color: #ffffff !important;
+            border-color: #3762c8 !important;
+        }
+
+        /* Group / Accordion Rows in Dark Theme */
+        .dark-theme .group-header-row {
+            background: #1e293b !important;
+            border-left-color: transparent !important;
+        }
+        .dark-theme .group-header-row:hover {
+            background: #253356 !important;
+            border-left-color: #3b82f6 !important;
+        }
+        .dark-theme .group-header-row.expanded {
+            background: #1a2744 !important;
+            border-left-color: #3b82f6 !important;
+            box-shadow: inset 0 -1px 0 #334155 !important;
+        }
+        .dark-theme .category-label {
+            color: #f8fafc !important;
+        }
+        .dark-theme .accordion-icon {
+            background: #0f172a !important;
+            color: #93c5fd !important;
+            border-color: #334155 !important;
+        }
+        .dark-theme .group-header-row.expanded .accordion-icon {
+            background: #3762c8 !important;
+            color: #ffffff !important;
+            border-color: #3762c8 !important;
+        }
+        .dark-theme .asset-count-badge {
+            background: #1e3a6e !important;
+            color: #93c5fd !important;
+            border-color: #2d5099 !important;
+        }
+        .dark-theme .expand-hint {
+            color: #64748b !important;
+        }
+        .dark-theme .group-header-row:hover .expand-hint,
+        .dark-theme .group-header-row.expanded .expand-hint {
+            color: #93c5fd !important;
+        }
+
+        /* Child Table in Dark Theme */
+        .dark-theme .child-table-wrapper {
+            background: #0f172a !important;
+            border-top-color: #334155 !important;
+            border-bottom: 2px solid #2563eb !important;
+        }
+        .dark-theme .child-table thead tr {
+            background: #1e293b !important;
+        }
+        .dark-theme .child-table thead th {
+            color: #94a3b8 !important;
+            border-bottom-color: #334155 !important;
+        }
+        .dark-theme .child-table tbody tr {
+            border-bottom-color: #1e293b !important;
+        }
+        .dark-theme .child-table tbody tr:hover {
+            background: #1e293b !important;
+        }
+        .dark-theme .child-table td {
+            color: #cbd5e1 !important;
+        }
+        .dark-theme .btn-icon-view {
+            background: rgba(59, 130, 246, 0.2) !important;
+            color: #60a5fa !important;
+            border: 1px solid rgba(59, 130, 246, 0.3) !important;
+        }
+        .dark-theme .btn-icon-edit {
+            background: rgba(245, 158, 11, 0.2) !important;
+            color: #fbbf24 !important;
+            border: 1px solid rgba(245, 158, 11, 0.3) !important;
+        }
+        .dark-theme .btn-icon-delete {
+            background: rgba(239, 68, 68, 0.2) !important;
+            color: #f87171 !important;
+            border: 1px solid rgba(239, 68, 68, 0.3) !important;
+        }
+
+        /* Dark Theme Modals */
+        .dark-theme .modal-content {
+            background: #1e293b !important;
+            color: #f8fafc !important;
+            border: 1px solid rgba(255, 255, 255, 0.12) !important;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7) !important;
+        }
+        .dark-theme .modal-header {
+            background: #0f172a !important;
+            border-bottom-color: #334155 !important;
+        }
+        .dark-theme .modal-header h3 {
+            color: #f8fafc !important;
+        }
+        .dark-theme .modal-close {
+            color: #94a3b8 !important;
+        }
+        .dark-theme .modal-close:hover {
+            color: #f8fafc !important;
+        }
+        .dark-theme .modal-body {
+            color: #cbd5e1 !important;
+            background: #1e293b !important;
+        }
+        .dark-theme .modal-footer {
+            background: #0f172a !important;
+            border-top-color: #334155 !important;
+        }
+        .dark-theme .review-table th, 
+        .dark-theme .review-table td {
+            border-bottom-color: #334155 !important;
+            color: #cbd5e1 !important;
+        }
+        .dark-theme .review-field-name {
+            color: #f8fafc !important;
+        }
+        .dark-theme .custom-select-options {
+            background: #1e293b !important;
+            border-color: #334155 !important;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5) !important;
+        }
+        .dark-theme .custom-option {
+            color: #e2e8f0 !important;
+            border-bottom-color: #334155 !important;
+        }
+        .dark-theme .custom-option:hover {
+            background: #0f172a !important;
+            color: #ffffff !important;
         }
     </style>
 </head>
@@ -1129,11 +1536,12 @@ if (!empty($search) || $status_filter) {
         <!-- Header -->
         <div class="dashboard-header">
             <div>
-                <h1><i class="fas fa-boxes"></i> Utility Asset CRUD Management</h1>
+                <h1><i class="fas fa-boxes"></i> Utility Assets Management</h1>
                 <p style="color: #64748b; font-size: 14px; margin-top: 5px;">Register, edit, view, or remove LGU utility assets records.</p>
             </div>
-            <div>
+            <div class="header-action-group" style="display:flex; gap:10px;">
                 <button class="btn btn-primary" onclick="openAddModal()"><i class="fas fa-plus"></i> Register Asset</button>
+                <a href="assets_history.php" class="btn btn-outline"><i class="fas fa-scroll"></i> Activity Log</a>
                 <a href="assets_dashboard.php" class="btn btn-outline"><i class="fas fa-chevron-left"></i> Dashboard</a>
             </div>
         </div>
@@ -1146,8 +1554,21 @@ if (!empty($search) || $status_filter) {
             <div class="alert alert-success" id="flash-success"><i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($success); ?></div>
         <?php endif; ?>
 
+        <!-- Inventory Navigation Tabs -->
+        <div class="inventory-tabs">
+            <a href="assets_crud.php?tab=active<?php echo $search ? '&search='.urlencode($search) : ''; ?><?php echo $type_filter ? '&type_id='.$type_filter : ''; ?>" class="inventory-tab <?php echo $currentTab === 'active' ? 'active' : ''; ?>">
+                <i class="fas fa-boxes"></i> Active Inventory
+                <span class="tab-badge"><?php echo number_format($activeCount); ?></span>
+            </a>
+            <a href="assets_crud.php?tab=retired<?php echo $search ? '&search='.urlencode($search) : ''; ?><?php echo $type_filter ? '&type_id='.$type_filter : ''; ?>" class="inventory-tab tab-retired <?php echo $currentTab === 'retired' ? 'active' : ''; ?>">
+                <i class="fas fa-archive"></i> Retired &amp; Decommissioned
+                <span class="tab-badge"><?php echo number_format($retiredCount); ?></span>
+            </a>
+        </div>
+
         <!-- Filters Form -->
         <form method="GET" class="filter-container">
+            <input type="hidden" name="tab" value="<?php echo htmlspecialchars($currentTab); ?>">
             <div class="form-group" style="flex: 2;">
                 <label>Search Asset</label>
                 <input type="text" name="search" class="form-control" placeholder="Search by name, ID, or location..." value="<?php echo htmlspecialchars($search); ?>">
@@ -1183,20 +1604,22 @@ if (!empty($search) || $status_filter) {
                 </div>
             </div>
 
+            <?php if ($currentTab === 'active'): ?>
             <div class="form-group">
                 <label>Status</label>
                 <select name="status" class="form-control">
-                    <option value="">All Statuses</option>
+                    <option value="">All Active Statuses</option>
                     <option value="Operational" <?php echo $status_filter === 'Operational' ? 'selected' : ''; ?>>Operational</option>
                     <option value="Needs Inspection" <?php echo $status_filter === 'Needs Inspection' ? 'selected' : ''; ?>>Needs Inspection</option>
                     <option value="Damaged" <?php echo $status_filter === 'Damaged' ? 'selected' : ''; ?>>Damaged</option>
                     <option value="Under Maintenance" <?php echo $status_filter === 'Under Maintenance' ? 'selected' : ''; ?>>Under Maintenance</option>
                 </select>
             </div>
+            <?php endif; ?>
 
             <div style="display: flex; gap: 8px;">
                 <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> Apply</button>
-                <a href="assets_crud.php" class="btn btn-outline">Reset</a>
+                <a href="assets_crud.php?tab=<?php echo $currentTab; ?>" class="btn btn-outline">Reset</a>
             </div>
         </form>
 
@@ -1216,7 +1639,9 @@ if (!empty($search) || $status_filter) {
                     </thead>
                     <tbody>
                         <?php if (empty($pagedGroups)): ?>
-                            <tr><td colspan="6" style="text-align:center; padding:30px; color:#64748b;">No assets found matching filters.</td></tr>
+                            <tr><td colspan="6" style="text-align:center; padding:30px; color:#64748b;">
+                                <?php echo $currentTab === 'retired' ? 'No retired or decommissioned assets found.' : 'No active assets found matching filters.'; ?>
+                            </td></tr>
                         <?php else: ?>
                             <?php foreach ($pagedGroups as $catId => $group): ?>
                             <?php
@@ -1242,18 +1667,18 @@ if (!empty($search) || $status_filter) {
                                     </strong>
                                 </td>
                                 <td>
-                                    <span class="asset-count-badge"><?php echo $totalAssets; ?> Asset<?php echo $totalAssets !== 1 ? 's' : ''; ?></span>
+                                    <span class="asset-count-badge"><i class="fas fa-layer-group" style="font-size:9px;"></i> <?php echo $totalAssets; ?> Asset<?php echo $totalAssets !== 1 ? 's' : ''; ?></span>
                                 </td>
-                                <td><strong><?php echo $group['total_qty']; ?></strong></td>
+                                <td><strong style="color:#1e293b;"><?php echo $group['total_qty']; ?></strong></td>
                                 <td>
                                     <?php foreach ($statusCounts as $status => $count): ?>
-                                    <span class="badge badge-<?php echo strtolower(str_replace([' ','_'],'', $status)); ?>" style="margin-right:3px; font-size:10px;">
+                                    <span class="badge badge-<?php echo strtolower(str_replace([' ','_'],'', $status)); ?>" style="margin-right:4px; font-size:10px;">
                                         <?php echo htmlspecialchars($status); ?> (<?php echo $count; ?>)
                                     </span>
                                     <?php endforeach; ?>
                                 </td>
-                                <td style="text-align:right; color:#94a3b8; font-size:12px;">
-                                    <span style="pointer-events:none;">Click to expand</span>
+                                <td style="text-align:right;">
+                                    <span class="expand-hint"><i class="fas fa-chevron-down" style="font-size:10px;"></i> Expand</span>
                                 </td>
                             </tr>
                             <!-- Expanded Child Rows -->
@@ -1272,8 +1697,14 @@ if (!empty($search) || $status_filter) {
                                             </thead>
                                             <tbody>
                                                 <?php foreach ($group['assets'] as $asset): ?>
-                                                <tr class="child-asset-row <?php echo (!empty($search) && (stripos($asset['name'], $search) !== false || stripos($asset['asset_id'], $search) !== false)) ? 'search-highlight' : ''; ?>">
-                                                    <td><strong><?php echo htmlspecialchars($asset['asset_id']); ?></strong></td>
+                                                <?php $isOffshoot = !empty($asset['parent_asset_id']); ?>
+                                                <tr class="child-asset-row <?php echo $isOffshoot ? 'is-offshoot' : ''; ?> <?php echo (!empty($search) && (stripos($asset['name'], $search) !== false || stripos($asset['asset_id'], $search) !== false)) ? 'search-highlight' : ''; ?>">
+                                                    <td>
+                                                        <strong><?php echo htmlspecialchars($asset['asset_id']); ?></strong>
+                                                        <?php if ($isOffshoot): ?>
+                                                        <br><span class="offshoot-badge"><i class="fas fa-link"></i> Offshoot</span>
+                                                        <?php endif; ?>
+                                                    </td>
                                                     <td><?php echo htmlspecialchars($asset['name']); ?></td>
                                                     <td><?php echo intval($asset['quantity']); ?></td>
                                                     <td>
@@ -1283,8 +1714,10 @@ if (!empty($search) || $status_filter) {
                                                     </td>
                                                     <td style="text-align:right;">
                                                         <button class="btn-icon btn-icon-view" onclick='viewAsset(<?php echo json_encode($asset); ?>)' title="View Details"><i class="fas fa-eye"></i></button>
+                                                        <?php if ($currentTab === 'retired'): ?>
+                                                            <button class="btn-icon" style="color:#10b981;border-color:#a7f3d0;background:#ecfdf5;" onclick='openReactivateModal(<?php echo json_encode($asset); ?>)' title="Restore to Operational"><i class="fas fa-undo"></i></button>
+                                                        <?php endif; ?>
                                                         <button class="btn-icon btn-icon-edit" onclick='editAsset(<?php echo json_encode($asset); ?>)' title="Edit Asset"><i class="fas fa-edit"></i></button>
-                                                        <button class="btn-icon btn-icon-delete" onclick="confirmDelete(<?php echo $asset['id']; ?>, '<?php echo htmlspecialchars($asset['asset_id']); ?>')" title="Delete"><i class="fas fa-trash-alt"></i></button>
                                                     </td>
                                                 </tr>
                                                 <?php endforeach; ?>
@@ -1307,7 +1740,7 @@ if (!empty($search) || $status_filter) {
                 </div>
                 <div class="pagination-links">
                     <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-                        <a href="assets_crud.php?page=<?php echo $i; ?>&search=<?php echo urlencode($search); ?>&type_id=<?php echo $type_filter; ?>&status=<?php echo urlencode($status_filter); ?>" class="page-link <?php echo $page == $i ? 'active' : ''; ?>">
+                        <a href="assets_crud.php?page=<?php echo $i; ?>&tab=<?php echo $currentTab; ?>&search=<?php echo urlencode($search); ?>&type_id=<?php echo $type_filter; ?>&status=<?php echo urlencode($status_filter); ?>" class="page-link <?php echo $page == $i ? 'active' : ''; ?>">
                             <?php echo $i; ?>
                         </a>
                     <?php endfor; ?>
@@ -1358,6 +1791,7 @@ if (!empty($search) || $status_filter) {
                             <option value="Needs Inspection">Needs Inspection</option>
                             <option value="Damaged">Damaged</option>
                             <option value="Under Maintenance">Under Maintenance</option>
+                            <option value="Retired">Retired</option>
                         </select>
                     </div>
                 </div>
@@ -1368,7 +1802,7 @@ if (!empty($search) || $status_filter) {
                 </div>
 
                 <div class="form-group" style="margin-bottom:15px;">
-                    <label>Installation Date *</label>
+                    <label>Acquired Date *</label>
                     <input type="date" name="date_installed" class="form-control" required value="<?php echo date('Y-m-d'); ?>">
                 </div>
 
@@ -1379,11 +1813,11 @@ if (!empty($search) || $status_filter) {
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Responsible Office / Department</label>
-                        <input type="text" name="responsible_office" class="form-control" placeholder="e.g. City Engineering Office">
+                        <label>Vendor</label>
+                        <input type="text" name="responsible_office" class="form-control" placeholder="Supplier">
                     </div>
                     <div class="form-group">
-                        <label>Asset Representative Image</label>
+                        <label>Asset Image</label>
                         <input type="file" name="image" class="form-control" accept="image/*">
                     </div>
                 </div>
@@ -1440,12 +1874,36 @@ if (!empty($search) || $status_filter) {
                     </div>
                     <div class="form-group">
                         <label>Condition Status *</label>
-                        <select id="edit-status" name="condition_status" class="form-control" required>
+                        <select id="edit-status" name="condition_status" class="form-control" required
+                            onchange="toggleSplitPanel(this.value, parseInt(document.getElementById('edit-quantity').value)||1, !!(currentEditingAsset && currentEditingAsset.parent_asset_id))">
                             <option value="Operational">Operational</option>
                             <option value="Needs Inspection">Needs Inspection</option>
                             <option value="Damaged">Damaged</option>
                             <option value="Under Maintenance">Under Maintenance</option>
+                            <option value="Retired">Retired</option>
                         </select>
+                    </div>
+                </div>
+
+                <!-- Merge notice (shown only for child offshoots) -->
+                <div id="edit-merge-notice" class="offshoot-merge-notice">
+                    <i class="fas fa-link"></i>
+                    <strong>This is an offshoot record.</strong>
+                    Setting the status back to <strong>Operational</strong> will automatically merge it back into its parent asset and restore the quantity.
+                </div>
+
+                <!-- Partial split panel (shown only when qty > 1 and non-operational status is selected) -->
+                <div id="edit-split-wrapper" class="split-panel">
+                    <label class="panel-title"><i class="fas fa-scissors"></i> Partial Status Change — How many items are affected?</label>
+                    <p class="panel-hint">Only some items in this batch need this status. The rest will remain Operational as a separate record.</p>
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <div style="flex:1;">
+                            <label style="font-size:12px; color:#166534; font-weight:600;">Affected Items <span style="font-weight:400;">(out of <strong id="edit-split-max">1</strong> total)</span></label>
+                            <input type="number" id="edit-affected-quantity" name="affected_quantity" class="form-control" min="1" value="1" style="margin-top:4px;">
+                        </div>
+                        <div style="padding-top:22px; font-size:12px; color:#166534;">
+                            <i class="fas fa-info-circle"></i> Set equal to total to update all without splitting
+                        </div>
                     </div>
                 </div>
 
@@ -1455,7 +1913,7 @@ if (!empty($search) || $status_filter) {
                 </div>
 
                 <div class="form-group" style="margin-bottom:15px;">
-                    <label>Installation Date *</label>
+                    <label>Acquired Date *</label>
                     <input type="date" id="edit-date-installed" name="date_installed" class="form-control" required>
                 </div>
 
@@ -1466,7 +1924,7 @@ if (!empty($search) || $status_filter) {
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Responsible Office</label>
+                        <label>Vendor</label>
                         <input type="text" id="edit-office" name="responsible_office" class="form-control">
                     </div>
                     <div class="form-group">
@@ -1532,11 +1990,11 @@ if (!empty($search) || $status_filter) {
                         <td id="view-gps-text"></td>
                     </tr>
                     <tr>
-                        <td style="font-weight:600; color:#64748b;">Date Installed</td>
+                        <td style="font-weight:600; color:#64748b;">Acquired Date</td>
                         <td id="view-date-text"></td>
                     </tr>
                     <tr>
-                        <td style="font-weight:600; color:#64748b;">Responsible Office</td>
+                        <td style="font-weight:600; color:#64748b;">Vendor</td>
                         <td id="view-office-text"></td>
                     </tr>
                     <tr>
@@ -1552,26 +2010,6 @@ if (!empty($search) || $status_filter) {
     </div>
 </div>
 
-<!-- DELETE CONFIRM MODAL -->
-<div id="deleteModal" class="modal">
-    <div class="modal-content" style="max-width: 450px;">
-        <div class="modal-header" style="background:#fde8e8;">
-            <h3 style="color:#bd2130;"><i class="fas fa-exclamation-triangle"></i> Delete Asset Record</h3>
-            <button class="modal-close" onclick="closeModal('deleteModal')">&times;</button>
-        </div>
-        <form method="POST">
-            <input type="hidden" name="action" value="delete">
-            <input type="hidden" id="delete-id" name="id">
-            <div class="modal-body" style="padding: 20px 24px;">
-                <p>Are you sure you want to delete asset <strong id="delete-asset-id-text"></strong>? This will permanently remove its inventory records and history logs from the database.</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-outline" onclick="closeModal('deleteModal')">Cancel</button>
-                <button type="submit" class="btn btn-danger">Confirm Delete</button>
-            </div>
-        </form>
-    </div>
-</div>
 
 <!-- REVIEW CHANGES CONFIRM MODAL -->
 <div id="reviewChangesModal" class="modal">
@@ -1602,6 +2040,33 @@ if (!empty($search) || $status_filter) {
     </div>
 </div>
 
+<!-- REACTIVATE ASSET MODAL -->
+<div id="reactivateModal" class="modal">
+    <div class="modal-content" style="max-width: 480px;">
+        <div class="modal-header" style="background:#ecfdf5;">
+            <h3 style="color:#065f46;"><i class="fas fa-undo"></i> Reactivate Asset</h3>
+            <button type="button" class="modal-close" onclick="closeModal('reactivateModal')">&times;</button>
+        </div>
+        <form method="POST">
+            <input type="hidden" name="action" value="reactivate">
+            <input type="hidden" id="reactivate-id" name="id">
+            <div class="modal-body" style="padding:20px 24px;">
+                <p style="font-size:13px; color:#475569; margin-bottom:14px;">
+                    You are restoring <strong id="reactivate-asset-title"></strong> back to <strong>Operational</strong> status. It will move to the Active Inventory tab.
+                </p>
+                <div class="form-group">
+                    <label>Recommissioning Reason / Notes</label>
+                    <input type="text" name="reactivate_notes" class="form-control" placeholder="e.g. Asset repaired / recommissioned into service" required value="Asset repaired and recommissioned into service.">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeModal('reactivateModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary" style="background:#10b981;border-color:#10b981;"><i class="fas fa-check"></i> Confirm Reactivation</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- HIDDEN FORM FOR CATEGORY DELETION -->
 <form id="delete-category-form" method="POST" style="display:none;">
     <input type="hidden" name="action" value="delete_category">
@@ -1610,6 +2075,12 @@ if (!empty($search) || $status_filter) {
 
 <script>
     let currentEditingAsset = null;
+
+    function openReactivateModal(asset) {
+        document.getElementById('reactivate-id').value = asset.id;
+        document.getElementById('reactivate-asset-title').textContent = asset.name + ' (' + asset.asset_id + ')';
+        document.getElementById('reactivateModal').classList.add('open');
+    }
 
     // Searchable Category Dropdown Logic
     document.addEventListener('DOMContentLoaded', () => {
@@ -1733,7 +2204,30 @@ if (!empty($search) || $status_filter) {
         document.getElementById('edit-location').value = asset.location;
         document.getElementById('edit-office').value = asset.responsible_office || '';
         document.getElementById('edit-description').value = asset.description || '';
+
+        // --- Partial-split / merge-notice wiring ---
+        const qty   = parseInt(asset.quantity) || 1;
+        const isChild = !!asset.parent_asset_id;
+
+        // Merge notice: visible only for child offshoots
+        const mergeNotice = document.getElementById('edit-merge-notice');
+        if (mergeNotice) mergeNotice.style.display = isChild ? 'block' : 'none';
+
+        // Split panel: set max and default, then show/hide
+        const splitMax = document.getElementById('edit-split-max');
+        const affectedInput = document.getElementById('edit-affected-quantity');
+        if (splitMax) splitMax.textContent = qty;
+        if (affectedInput) { affectedInput.max = qty; affectedInput.value = qty; }
+
+        toggleSplitPanel(asset.condition_status, qty, isChild);
         document.getElementById('editModal').classList.add('open');
+    }
+
+    function toggleSplitPanel(status, qty, isChild) {
+        const nonOp = ['Damaged', 'Needs Inspection', 'Under Maintenance'].includes(status);
+        const wrapper = document.getElementById('edit-split-wrapper');
+        // Show split panel only for parent assets (not children) with qty > 1 and a non-operational status
+        if (wrapper) wrapper.style.display = (nonOp && qty > 1 && !isChild) ? 'block' : 'none';
     }
 
     function showReviewChanges() {
@@ -1746,9 +2240,9 @@ if (!empty($search) || $status_filter) {
             { id: 'edit-name', name: 'Asset Name', key: 'name' },
             { id: 'edit-quantity', name: 'Quantity', key: 'quantity' },
             { id: 'edit-status', name: 'Condition Status', key: 'condition_status' },
-            { id: 'edit-date-installed', name: 'Installation Date', key: 'date_installed' },
+            { id: 'edit-date-installed', name: 'Acquired Date', key: 'date_installed' },
             { id: 'edit-location', name: 'Location', key: 'location' },
-            { id: 'edit-office', name: 'Responsible Office', key: 'responsible_office' },
+            { id: 'edit-office', name: 'Vendor', key: 'responsible_office' },
             { id: 'edit-description', name: 'Description & Notes', key: 'description' }
         ];
 
@@ -1779,6 +2273,17 @@ if (!empty($search) || $status_filter) {
             }
             appendReviewRow('Asset Type / Category', oldCatName, newCatName);
             changesCount++;
+        }
+
+        // Include affected qty row in review if split panel is active
+        const splitWrapper = document.getElementById('edit-split-wrapper');
+        if (splitWrapper && splitWrapper.style.display !== 'none') {
+            const affectedQty = parseInt(document.getElementById('edit-affected-quantity').value) || 0;
+            const totalQty    = parseInt(document.getElementById('edit-quantity').value) || 1;
+            if (affectedQty > 0 && affectedQty < totalQty) {
+                appendReviewRow('Affected Items (Split Off)', 'All ' + totalQty + ' items', affectedQty + ' item(s) — rest remain Operational');
+                changesCount++;
+            }
         }
 
         if (changesCount > 0) {
@@ -1852,11 +2357,6 @@ if (!empty($search) || $status_filter) {
         document.getElementById('viewModal').classList.add('open');
     }
 
-    function confirmDelete(id, assetId) {
-        document.getElementById('delete-id').value = id;
-        document.getElementById('delete-asset-id-text').textContent = assetId;
-        document.getElementById('deleteModal').classList.add('open');
-    }
 
     function toggleGroup(catId) {
         const headerRow = document.querySelector('.group-header-row[data-cat-id="' + catId + '"]');

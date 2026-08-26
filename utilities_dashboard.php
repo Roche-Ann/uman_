@@ -17,7 +17,6 @@ $incidents = ['total_incidents' => 0, 'submitted_incidents' => 0, 'review_incide
 $maintenance = ['total_requests' => 0, 'pending_requests' => 0, 'progress_requests' => 0, 'completed_requests' => 0, 'emergency_requests' => 0];
 $energy = ['total_consumption' => 0, 'total_cost' => 0, 'total_records' => 0];
 
-
 try {
     $assets = $pdo->query("SELECT * FROM aggregated_assets_view")->fetch() ?: $assets;
 } catch (Throwable $e) {}
@@ -33,8 +32,6 @@ try {
 try {
     $energy = $pdo->query("SELECT * FROM aggregated_energy_view")->fetch() ?: $energy;
 } catch (Throwable $e) {}
-
-
 
 // ⭐ FIX: Get successful sync count
 $successfulSyncs = 0;
@@ -104,6 +101,14 @@ $incidentData = json_encode([$incidents['submitted_incidents'] ?? 0, $incidents[
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark-theme');
+            }
+        })();
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LGU Central Command Center</title>
@@ -132,7 +137,7 @@ $incidentData = json_encode([$incidents['submitted_incidents'] ?? 0, $incidents[
 
         body::before {
             content: "";
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
@@ -216,32 +221,62 @@ $incidentData = json_encode([$incidents['submitted_incidents'] ?? 0, $incidents[
         }
 
         .stat-card {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-            border-left: 5px solid #cbd5e1;
+            border-radius: 16px;
+            padding: 22px 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+            color: #fff;
+            position: relative;
+            overflow: hidden;
         }
 
-        .stat-card.assets { border-left-color: #3762c8; }
-        .stat-card.incidents { border-left-color: #f1c40f; }
-        .stat-card.maintenance { border-left-color: #e74c3c; }
-        .stat-card.planning { border-left-color: #2ecc71; }
-        .stat-card.energy { border-left-color: #a55eea; }
-        .stat-card.facilities { border-left-color: #45aaf2; }
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: -20px; right: -20px;
+            width: 90px; height: 90px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.08);
+            pointer-events: none;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 14px 32px rgba(0,0,0,0.25);
+        }
+
+        .stat-card.assets      { background: linear-gradient(135deg, #1a6b38, #25a259); }
+        .stat-card.incidents   { background: linear-gradient(135deg, #7a2f0d, #c0440f); }
+        .stat-card.maintenance { background: linear-gradient(135deg, #1a3e7a, #2a5fc2); }
+        .stat-card.energy      { background: linear-gradient(135deg, #4c1d7a, #7c3dbf); }
+
+        .stat-card-icon {
+            width: 52px; height: 52px;
+            border-radius: 14px;
+            background: rgba(255,255,255,0.18);
+            display: grid;
+            place-items: center;
+            font-size: 22px;
+            flex-shrink: 0;
+        }
 
         .stat-info h3 {
-            font-size: 24px;
+            font-size: 30px;
             font-weight: 700;
-            color: #2c3e50;
+            color: #fff;
+            line-height: 1;
         }
 
         .stat-info p {
             font-size: 11px;
-            color: #64748b;
+            color: rgba(255,255,255,0.8);
             text-transform: uppercase;
             font-weight: 600;
-            margin-top: 3px;
+            margin-top: 4px;
+            letter-spacing: 0.6px;
         }
 
         /* Tab Layout */
@@ -440,7 +475,7 @@ $incidentData = json_encode([$incidents['submitted_incidents'] ?? 0, $incidents[
         <div class="dashboard-header">
             <div>
                 <h1><i class="fas fa-satellite-dish"></i> LGU Central Command Dashboard</h1>
-                <p style="color: #64748b; font-size: 14px; margin-top: 5px;">Unified monitoring center for inventory, resident complaints, dispatches, coverage, and energy audits.</p>
+                <p style="color: #64748b; font-size: 14px; margin-top: 5px;">Unified monitoring center for inventory, resident complaints, dispatches, and energy audits.</p>
             </div>
             <div>
                 <button class="btn btn-primary" onclick="generateReport()"><i class="fas fa-file-download"></i> Generate System Report</button>
@@ -450,36 +485,33 @@ $incidentData = json_encode([$incidents['submitted_incidents'] ?? 0, $incidents[
         <!-- Central Summary Metrics Cards -->
         <div class="stats-grid">
             <div class="stat-card assets">
+                <div class="stat-card-icon"><i class="fas fa-boxes"></i></div>
                 <div class="stat-info">
                     <h3><?php echo number_format($assets['total_assets'] ?? 0); ?></h3>
                     <p>Total Assets</p>
                 </div>
             </div>
             <div class="stat-card incidents">
+                <div class="stat-card-icon"><i class="fas fa-bullhorn"></i></div>
                 <div class="stat-info">
                     <h3><?php echo number_format($incidents['total_incidents'] ?? 0); ?></h3>
-                    <p>Active Incidents</p>
+                    <p>Total Incidents</p>
                 </div>
             </div>
             <div class="stat-card maintenance">
+                <div class="stat-card-icon"><i class="fas fa-tools"></i></div>
                 <div class="stat-info">
-                    <h3><?php echo number_format($maintenance['pending_requests'] ?? 0); ?></h3>
-                    <p>Pending Maintenance</p>
-                </div>
-            </div>
-            <div class="stat-card planning">
-                <div class="stat-info">
-                    <h3><?php echo number_format($energy['total_records'] ?? 0); ?></h3>
-                    <p>Energy Records</p>
+                    <h3><?php echo number_format($maintenance['total_requests'] ?? 0); ?></h3>
+                    <p>Total Maintenance</p>
                 </div>
             </div>
             <div class="stat-card energy">
+                <div class="stat-card-icon"><i class="fas fa-bolt"></i></div>
                 <div class="stat-info">
-                    <h3><?php echo number_format($energy['total_consumption'] ?? 0, 1); ?> <span style="font-size:11px;">kWh</span></h3>
+                    <h3><?php echo number_format($energy['total_consumption'] ?? 0, 1); ?> <span style="font-size:12px;">kWh</span></h3>
                     <p>Energy Consumption</p>
                 </div>
             </div>
-
         </div>
 
         <!-- AI Digest Row -->
@@ -515,7 +547,6 @@ $incidentData = json_encode([$incidents['submitted_incidents'] ?? 0, $incidents[
         <div class="tab-buttons">
             <button class="tab-btn active" onclick="switchTab(event, 'assets-pane')"><i class="fas fa-warehouse"></i> Asset Analytics</button>
             <button class="tab-btn" onclick="switchTab(event, 'incidents-pane')"><i class="fas fa-bullhorn"></i> Incidents & Maintenance</button>
-
             <button class="tab-btn" onclick="switchTab(event, 'energy-pane')"><i class="fas fa-bolt"></i> Energy Sync</button>
         </div>
 
@@ -553,8 +584,7 @@ $incidentData = json_encode([$incidents['submitted_incidents'] ?? 0, $incidents[
             </div>
         </div>
 
-
-        <!-- 4. Energy Sync Pane -->
+        <!-- 3. Energy Sync Pane -->
         <div id="energy-pane" class="tab-pane">
             <div class="dashboard-layout" style="grid-template-columns: 1fr;">
                 <div class="box">
@@ -614,8 +644,6 @@ $incidentData = json_encode([$incidents['submitted_incidents'] ?? 0, $incidents[
             plugins: { legend: { display: false } }
         }
     });
-
-
 </script>
 
 <?php if (isset($_SESSION['show_welcome_modal']) && $_SESSION['show_welcome_modal'] === true): ?>

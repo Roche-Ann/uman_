@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // forgot.php 
 require_once 'includes/auth.php';          // provides $pdo and session handling
 require_once __DIR__ . '/includes/mailer.php';
@@ -119,6 +119,14 @@ if ($status === 'sent') {
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark-theme');
+            }
+        })();
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LGU | Forgot Password</title>
@@ -130,6 +138,7 @@ if ($status === 'sent') {
     <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&family=Urbanist:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/responsive.css">
 
     <style>
         /* ---------- DESIGN TOKENS (from new login) ---------- */
@@ -183,7 +192,7 @@ if ($status === 'sent') {
 
         body::before {
             content: "";
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
@@ -776,14 +785,14 @@ if ($status === 'sent') {
             </ul>
         </div>
         <div>
-            <h4 class="footer-heading">Services</h4>
-            <ul class="footer-links">
-                <li><a href="#modules">Citizen Hub</a></li>
-                <li><a href="#modules">Asset Tracking</a></li>
-                <li><a href="#modules">Issue Reporting</a></li>
-                <li><a href="#modules">Maintenance Logs</a></li>
-            </ul>
-        </div>
+                <h4 class="footer-heading">Core Services</h4>
+                <ul class="footer-links">
+                    <li><a href="#modules">Asset Inventory</a></li>
+                    <li><a href="#modules">Incident Reporting</a></li>
+                    <li><a href="#modules">Maintenance Dispatch</a></li>
+                    <li><a href="#modules">Energy Monitoring</a></li>
+                </ul>
+            </div>
         <div>
             <h4 class="footer-heading">Contact Us</h4>
             <ul class="footer-links">

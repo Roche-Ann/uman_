@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // assets_map.php
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
@@ -31,6 +31,14 @@ $assetTypes = $pdo->query("SELECT * FROM asset_types ORDER BY name ASC")->fetchA
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark-theme');
+            }
+        })();
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Asset Location Map</title>
@@ -60,7 +68,7 @@ $assetTypes = $pdo->query("SELECT * FROM asset_types ORDER BY name ASC")->fetchA
 
         body::before {
             content: "";
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;

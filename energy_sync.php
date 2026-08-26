@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // energy_sync.php
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
@@ -66,6 +66,14 @@ if (isset($_GET['fetch_payload_id'])) {
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark-theme');
+            }
+        })();
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Energy Efficiency Integration Synchronization</title>
@@ -90,7 +98,7 @@ if (isset($_GET['fetch_payload_id'])) {
 
         body::before {
             content: "";
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;

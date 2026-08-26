@@ -14,6 +14,45 @@ if (isset($_GET['cancel']) || isset($_GET['back'])) {
     exit();
 }
 
+// Check for action=trust_device AJAX call (happens after successful OTP verification, while logged in)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['action'] === 'trust_device') {
+    header('Content-Type: application/json');
+    if (!isset($_SESSION['user_id']) || !isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
+        echo json_encode(['success' => false, 'error' => 'Unauthorized']);
+        exit();
+    }
+    
+    $userId = $_SESSION['user_id'];
+    
+    try {
+        $token = bin2hex(random_bytes(32));
+    } catch (Exception $e) {
+        $token = bin2hex(openssl_random_pseudo_bytes(32));
+    }
+    $tokenHash = hash('sha256', $token);
+    
+    $expiresAt = (new DateTime('+30 days', new DateTimeZone('UTC')))->format('Y-m-d H:i:s');
+    
+    $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? null;
+    $ipAddress = $_SERVER['REMOTE_ADDR'] ?? null;
+    
+    $stmt = $pdo->prepare('INSERT INTO trusted_devices (user_id, device_token, user_agent, ip_address, expires_at) VALUES (:uid, :token, :ua, :ip, :exp)');
+    $stmt->execute([
+        ':uid' => $userId,
+        ':token' => $tokenHash,
+        ':ua' => $userAgent ? substr($userAgent, 0, 255) : null,
+        ':ip' => $ipAddress ? substr($ipAddress, 0, 45) : null,
+        ':exp' => $expiresAt
+    ]);
+    
+    $cookieExpire = time() + (30 * 24 * 60 * 60);
+    $isSecure = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on';
+    setcookie('remember_device_token', $token, $cookieExpire, '/', '', $isSecure, true);
+    
+    echo json_encode(['success' => true]);
+    exit();
+}
+
 // Check if there's a pending login
 if (!isset($_SESSION['pending_login'])) {
     header('Location: login.php');
@@ -27,9 +66,15 @@ $resendMessage = '';
 // Handle OTP verification
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['otp'])) {
     $otp = trim($_POST['otp'] ?? '');
+    $isAjax = isset($_POST['ajax']) && $_POST['ajax'] == 1;
     
     if (empty($otp) || !ctype_digit($otp) || strlen($otp) !== 6) {
         $error = 'Please enter a valid 6-digit OTP code.';
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => $error]);
+            exit();
+        }
     } else {
         // Find valid OTP for this user in the new `otps` table
         $stmt = $pdo->prepare('SELECT * FROM otps WHERE user_id = :uid AND used = 0 AND expires_at > UTC_TIMESTAMP() ORDER BY id DESC LIMIT 1');
@@ -38,8 +83,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['otp'])) {
         
         if (!$otpRow) {
             $error = 'OTP has expired or is invalid. Please request a new one.';
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'error' => $error]);
+                exit();
+            }
         } elseif (!password_verify($otp, $otpRow['otp_hash'])) {
             $error = 'Invalid OTP code. Please try again.';
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'error' => $error]);
+                exit();
+            }
         } else {
             // Mark OTP as used
             $pdo->prepare('UPDATE otps SET used = 1 WHERE id = :id')->execute([':id' => $otpRow['id']]);
@@ -51,16 +106,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['otp'])) {
             $_SESSION['full_name'] = $pendingUser['name'];
             $_SESSION['user_email']= $pendingUser['email'];
             $_SESSION['logged_in'] = true;
+
+            $stmt = $pdo->prepare("UPDATE users SET last_login = NOW() WHERE id = ?");
+            $stmt->execute([$pendingUser['id']]);
             
             unset($_SESSION['pending_login']);
             
-            // Redirect based on user_type (role)
-            if ($pendingUser['role'] === 'employee') {
-                header('Location: utilities_dashboard.php');
+            $redirectUrl = ($pendingUser['role'] === 'employee') ? 'utilities_dashboard.php' : 'citizen.php';
+            
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => true, 'redirect' => $redirectUrl]);
+                exit();
             } else {
-                header('Location: citizen.php');
+                header('Location: ' . $redirectUrl);
+                exit();
             }
-            exit();
         }
     }
 }
@@ -107,6 +168,14 @@ $expiryTimestamp = $otpData ? strtotime($otpData['expires_at']) : 0; // 0 means 
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark-theme');
+            }
+        })();
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Verify OTP | LGU Portal</title>
@@ -118,6 +187,7 @@ $expiryTimestamp = $otpData ? strtotime($otpData['expires_at']) : 0; // 0 means 
     <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&family=Urbanist:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/responsive.css">
 
     <style>
         /* DESIGN TOKENS (identical to login/register) */
@@ -171,7 +241,7 @@ $expiryTimestamp = $otpData ? strtotime($otpData['expires_at']) : 0; // 0 means 
 
         body::before {
             content: "";
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
@@ -360,6 +430,117 @@ $expiryTimestamp = $otpData ? strtotime($otpData['expires_at']) : 0; // 0 means 
             color: rgba(47, 72, 88, 0.7);
             font-size: 0.9rem;
         }
+
+        /* Modal Container Styling */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .trust-modal {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: var(--radius-modern);
+            box-shadow: var(--shadow-elevated);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            padding: 2.5rem;
+            width: 90%;
+            max-width: 450px;
+            text-align: center;
+            transform: scale(0.9) translateY(-20px);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .modal-overlay.active .trust-modal {
+            transform: scale(1) translateY(0);
+        }
+
+        .trust-modal-icon {
+            font-size: 3.5rem;
+            color: var(--civic-sapphire);
+            margin-bottom: 1.25rem;
+            background: linear-gradient(135deg, var(--civic-sapphire), var(--utility-teal));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            display: inline-block;
+        }
+
+        .trust-modal h3 {
+            font-family: var(--font-heading);
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--municipal-slate);
+            margin-bottom: 0.75rem;
+        }
+
+        .trust-modal p {
+            color: rgba(47, 72, 88, 0.85);
+            font-size: 0.95rem;
+            line-height: 1.5;
+            margin-bottom: 1.75rem;
+        }
+
+        .trust-modal-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .btn-trust {
+            width: 100%;
+            padding: 0.9rem;
+            background: linear-gradient(135deg, var(--civic-sapphire), var(--utility-teal));
+            color: white;
+            border: none;
+            border-radius: var(--radius-pill);
+            font-family: var(--font-heading);
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            box-shadow: 0 4px 15px rgba(11, 61, 145, 0.2);
+        }
+
+        .btn-trust:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(11, 61, 145, 0.3);
+        }
+
+        .btn-dont-trust {
+            width: 100%;
+            padding: 0.9rem;
+            background: transparent;
+            color: var(--municipal-slate);
+            border: 2px solid rgba(47, 72, 88, 0.25);
+            border-radius: var(--radius-pill);
+            font-family: var(--font-heading);
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+        }
+
+        .btn-dont-trust:hover {
+            background: rgba(47, 72, 88, 0.05);
+            border-color: rgba(47, 72, 88, 0.45);
+        }
     </style>
 </head>
 <body>
@@ -454,5 +635,136 @@ $expiryTimestamp = $otpData ? strtotime($otpData['expires_at']) : 0; // 0 means 
             this.value = this.value.replace(/[^0-9]/g, '');
         });
     </script>
+
+    <!-- JS for AJAX and Trust Device Modal -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const otpInput = document.querySelector('input[name="otp"]');
+            const otpForm = otpInput ? otpInput.closest('form') : null;
+            const modalOverlay = document.getElementById('trustModalOverlay');
+            const trustBtn = document.getElementById('trustDeviceBtn');
+            const dontTrustBtn = document.getElementById('dontTrustDeviceBtn');
+            const verifyBtn = document.getElementById('verifyBtn');
+            
+            let redirectDestination = '';
+            
+            if (otpForm) {
+                otpForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    
+                    const otpValue = otpInput.value.trim();
+                    if (otpValue.length !== 6) {
+                        showError('Please enter a valid 6-digit OTP code.');
+                        return;
+                    }
+                    
+                    // Clear messages
+                    clearMessages();
+                    
+                    // Disable button
+                    const originalBtnText = verifyBtn.textContent;
+                    verifyBtn.disabled = true;
+                    verifyBtn.textContent = 'Verifying...';
+                    
+                    // Send request
+                    const formData = new FormData();
+                    formData.append('otp', otpValue);
+                    formData.append('ajax', '1');
+                    
+                    fetch('verify-otp.php', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            redirectDestination = data.redirect;
+                            // Show modal
+                            modalOverlay.classList.add('active');
+                        } else {
+                            showError(data.error || 'Invalid verification code. Please try again.');
+                            verifyBtn.disabled = false;
+                            verifyBtn.textContent = originalBtnText;
+                        }
+                    })
+                    .catch(err => {
+                        console.error('OTP error:', err);
+                        showError('An error occurred during verification. Please try again.');
+                        verifyBtn.disabled = false;
+                        verifyBtn.textContent = originalBtnText;
+                    });
+                });
+            }
+            
+            function showError(message) {
+                let errorDiv = document.querySelector('.error-message');
+                if (!errorDiv) {
+                    errorDiv = document.createElement('div');
+                    errorDiv.className = 'error-message';
+                    const card = document.querySelector('.verify-card');
+                    const header = document.querySelector('.verify-header');
+                    header.parentNode.insertBefore(errorDiv, header.nextSibling);
+                }
+                errorDiv.textContent = message;
+                errorDiv.style.display = 'block';
+                
+                // Hide other messages
+                const infoDiv = document.querySelector('.info-message');
+                if (infoDiv) infoDiv.style.display = 'none';
+                const successDiv = document.querySelector('.success-message');
+                if (successDiv) successDiv.style.display = 'none';
+            }
+            
+            function clearMessages() {
+                const errorDiv = document.querySelector('.error-message');
+                if (errorDiv) errorDiv.style.display = 'none';
+                const infoDiv = document.querySelector('.info-message');
+                if (infoDiv) infoDiv.style.display = 'none';
+                const successDiv = document.querySelector('.success-message');
+                if (successDiv) successDiv.style.display = 'none';
+            }
+            
+            if (trustBtn) {
+                trustBtn.addEventListener('click', function() {
+                    trustBtn.disabled = true;
+                    dontTrustBtn.disabled = true;
+                    trustBtn.textContent = 'Saving...';
+                    
+                    fetch('verify-otp.php?action=trust_device', {
+                        method: 'POST'
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        window.location.href = redirectDestination;
+                    })
+                    .catch(err => {
+                        console.error('Trust device error:', err);
+                        window.location.href = redirectDestination;
+                    });
+                });
+            }
+            
+            if (dontTrustBtn) {
+                dontTrustBtn.addEventListener('click', function() {
+                    window.location.href = redirectDestination;
+                });
+            }
+        });
+    </script>
+
+    <!-- TRUST DEVICE MODAL OVERLAY -->
+    <div class="modal-overlay" id="trustModalOverlay">
+        <div class="trust-modal">
+            <div class="trust-modal-icon">
+                <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <h3>Trust This Device?</h3>
+            <p>If you trust this device, you won't need to enter a verification code the next time you log in from this browser.</p>
+            <div class="trust-modal-buttons">
+                <button class="btn-trust" id="trustDeviceBtn">Yes, trust this device</button>
+                <button class="btn-dont-trust" id="dontTrustDeviceBtn">No, not now</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

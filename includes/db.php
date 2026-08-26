@@ -228,4 +228,24 @@ function checkOverdueBills() {
     ");
     return $stmt->rowCount();
 }
+
+// Auto-ensure Water Schema is initialized
+function ensureWaterSchema(): void {
+    global $pdo;
+    static $done = false;
+    if ($done || !($pdo instanceof PDO)) {
+        return;
+    }
+    
+    try {
+        $pdo->query("SELECT 1 FROM water_consumption_records LIMIT 1");
+    } catch (Throwable $e) {
+        $sqlPath = dirname(__DIR__) . '/sql/utility_water.sql';
+        if (file_exists($sqlPath)) {
+            $sql = file_get_contents($sqlPath);
+            $pdo->exec($sql);
+        }
+    }
+    $done = true;
+}
 ?>

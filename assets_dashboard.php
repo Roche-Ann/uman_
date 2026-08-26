@@ -69,10 +69,71 @@ $recentLogs = $pdo->query("
 
 // 6. Notifications count
 $unreadNotifications = $pdo->query("SELECT COUNT(*) FROM asset_notifications WHERE read_status = 0")->fetchColumn();
+
+// 7. AI Analytics — Asset Intelligence
+$assetHealthScore = ($totalAssets > 0) ? round(($operationalAssets / $totalAssets) * 100) : 100;
+$damagedNoMaint = 0;
+try {
+    $damagedNoMaint = (int)$pdo->query("
+        SELECT COUNT(*) FROM utility_assets a 
+        WHERE a.condition_status = 'Damaged' 
+        AND a.id NOT IN (
+            SELECT DISTINCT COALESCE(asset_id, 0) FROM maintenance_requests WHERE asset_id IS NOT NULL
+        )
+    ")->fetchColumn();
+} catch (Throwable $e) {}
+
+// AI Recommendations for assets
+$assetAiRecs = [];
+if ($damagedAssets > 0) {
+    $assetAiRecs[] = ['icon' => 'fa-exclamation-triangle', 'color' => '#e74c3c', 'priority' => 'High',
+        'title' => 'Damaged Assets Detected',
+        'text' => "{$damagedAssets} asset(s) are currently marked as Damaged. Coordinate with the Maintenance module to schedule repairs."];
+}
+if ($damagedNoMaint > 0) {
+    $assetAiRecs[] = ['icon' => 'fa-unlink', 'color' => '#e74c3c', 'priority' => 'High',
+        'title' => 'No Maintenance Dispatched',
+        'text' => "{$damagedNoMaint} damaged asset(s) have no linked maintenance request. Consider creating dispatch tickets immediately."];
+}
+if ($needsInspection > 0) {
+    $assetAiRecs[] = ['icon' => 'fa-search', 'color' => '#f39c12', 'priority' => 'Medium',
+        'title' => 'Inspections Pending',
+        'text' => "{$needsInspection} asset(s) require field inspection. Early inspections can prevent costly damage."];
+}
+if ($assetHealthScore >= 90) {
+    $assetAiRecs[] = ['icon' => 'fa-check-circle', 'color' => '#27ae60', 'priority' => 'Info',
+        'title' => 'Excellent Asset Health',
+        'text' => "Asset health score is at {$assetHealthScore}%. Infrastructure is in strong condition."];
+} elseif ($assetHealthScore < 60 && $totalAssets > 0) {
+    $assetAiRecs[] = ['icon' => 'fa-chart-line', 'color' => '#e74c3c', 'priority' => 'High',
+        'title' => 'Low Asset Health Score',
+        'text' => "Only {$assetHealthScore}% of assets are operational. A comprehensive maintenance audit is recommended."];
+}
+if (empty($assetAiRecs)) {
+    $assetAiRecs[] = ['icon' => 'fa-thumbs-up', 'color' => '#27ae60', 'priority' => 'Info',
+        'title' => 'All Clear', 'text' => 'No critical asset issues detected. All systems operating normally.'];
+}
+
+// AI Narrative for assets
+$assetAiNarrative = "<strong>AI Asset Intelligence Report — " . date('F d, Y') . "</strong><br><br>";
+$assetAiNarrative .= "📊 <strong>Health Score:</strong> <span style='font-size:18px;font-weight:700;'>{$assetHealthScore}%</span> of assets operational.<br><br>";
+if ($damagedNoMaint > 0) {
+    $assetAiNarrative .= "⚠️ <strong>Alert:</strong> {$damagedNoMaint} damaged asset(s) have no maintenance request linked. Immediate attention recommended.";
+} else {
+    $assetAiNarrative .= "✅ <strong>Status:</strong> All damaged assets have corresponding maintenance requests. Pipeline is functioning properly.";
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark-theme');
+            }
+        })();
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Utility Asset Management - Dashboard</title>
@@ -99,7 +160,7 @@ $unreadNotifications = $pdo->query("SELECT COUNT(*) FROM asset_notifications WHE
 
         body::before {
             content: "";
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
@@ -242,72 +303,59 @@ $unreadNotifications = $pdo->query("SELECT COUNT(*) FROM asset_notifications WHE
         }
 
         .stat-card {
-            border-radius: 12px;
-            padding: 22px 20px 18px;
-            background: #ffffff;
-            border: 1px solid #e9edf5;
-            border-left: 5px solid #3762c8;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+            border-radius: 16px;
+            padding: 22px 18px;
             display: flex;
-            flex-direction: column;
-            gap: 6px;
-            transition: transform 0.25s, box-shadow 0.25s;
+            align-items: center;
+            gap: 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+            color: #fff;
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(135deg, #1a3e7a, #2a5fc2);
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: -20px; right: -20px;
+            width: 90px; height: 90px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.08);
+            pointer-events: none;
         }
 
         .stat-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.11);
+            transform: translateY(-4px);
+            box-shadow: 0 14px 32px rgba(0,0,0,0.25);
         }
 
-        .stat-card.operational  { border-left-color: #27ae60; }
-        .stat-card.needs-inspection { border-left-color: #f39c12; }
-        .stat-card.damaged      { border-left-color: #e74c3c; }
-        .stat-card.maintenance  { border-left-color: #9b59b6; }
+        .stat-card.operational      { background: linear-gradient(135deg, #1a6b38, #25a259); }
+        .stat-card.needs-inspection { background: linear-gradient(135deg, #7a5c0d, #c4920e); }
+        .stat-card.damaged          { background: linear-gradient(135deg, #7a1a1a, #c22a2a); }
+        .stat-card.maintenance      { background: linear-gradient(135deg, #4c1d7a, #7c3dbf); }
+
+        .stat-card-icon {
+            width: 52px; height: 52px;
+            border-radius: 14px;
+            background: rgba(255,255,255,0.18);
+            display: grid;
+            place-items: center;
+            font-size: 22px;
+            flex-shrink: 0;
+        }
 
         .stat-info h3 {
-            font-size: 34px;
+            font-size: 30px;
             font-weight: 700;
             line-height: 1;
-            color: #1e293b;
+            color: #fff;
         }
 
         .stat-footer {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            margin-top: 4px;
+            display: none;
         }
-
-        .stat-footer .stat-icon {
-            font-size: 13px;
-        }
-
-        .stat-footer .stat-label {
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.6px;
-        }
-
-        /* Default (total) — blue */
-        .stat-card .stat-footer .stat-icon,
-        .stat-card .stat-footer .stat-label { color: #3762c8; }
-
-        /* Operational — green */
-        .stat-card.operational .stat-footer .stat-icon,
-        .stat-card.operational .stat-footer .stat-label { color: #27ae60; }
-
-        /* Needs Inspection — amber */
-        .stat-card.needs-inspection .stat-footer .stat-icon,
-        .stat-card.needs-inspection .stat-footer .stat-label { color: #f39c12; }
-
-        /* Damaged — red */
-        .stat-card.damaged .stat-footer .stat-icon,
-        .stat-card.damaged .stat-footer .stat-label { color: #e74c3c; }
-
-        /* Maintenance — purple */
-        .stat-card.maintenance .stat-footer .stat-icon,
-        .stat-card.maintenance .stat-footer .stat-label { color: #9b59b6; }
 
         /* Charts Section */
         .dashboard-layout {
@@ -508,45 +556,58 @@ $unreadNotifications = $pdo->query("SELECT COUNT(*) FROM asset_notifications WHE
                     <?php endif; ?>
                 </a>
                 <a href="assets_crud.php" class="btn-action btn-primary"><i class="fas fa-boxes"></i> Asset Inventory</a>
-                <a href="assets_reports.php" class="btn-action btn-secondary"><i class="fas fa-file-invoice"></i> Reports</a>
             </div>
         </div>
 
         <!-- Stats Overview Cards -->
         <div class="stats-grid">
             <div class="stat-card">
-                <div class="stat-info"><h3><?php echo number_format($totalAssets); ?></h3></div>
-                <div class="stat-footer">
-                    <i class="fas fa-boxes stat-icon"></i>
-                    <span class="stat-label">Total Assets</span>
-                </div>
+                <div class="stat-card-icon"><i class="fas fa-boxes"></i></div>
+                <div class="stat-info"><h3><?php echo number_format($totalAssets); ?></h3><p style="color:rgba(255,255,255,0.8);font-size:11px;text-transform:uppercase;font-weight:600;margin-top:4px;letter-spacing:.6px;">Total Assets</p></div>
             </div>
             <div class="stat-card operational">
-                <div class="stat-info"><h3><?php echo number_format($operationalAssets); ?></h3></div>
-                <div class="stat-footer">
-                    <i class="fas fa-check-circle stat-icon"></i>
-                    <span class="stat-label">Operational</span>
-                </div>
+                <div class="stat-card-icon"><i class="fas fa-check-circle"></i></div>
+                <div class="stat-info"><h3><?php echo number_format($operationalAssets); ?></h3><p style="color:rgba(255,255,255,0.8);font-size:11px;text-transform:uppercase;font-weight:600;margin-top:4px;letter-spacing:.6px;">Operational</p></div>
             </div>
             <div class="stat-card needs-inspection">
-                <div class="stat-info"><h3><?php echo number_format($needsInspection); ?></h3></div>
-                <div class="stat-footer">
-                    <i class="fas fa-search stat-icon"></i>
-                    <span class="stat-label">Needs Inspection</span>
-                </div>
+                <div class="stat-card-icon"><i class="fas fa-search"></i></div>
+                <div class="stat-info"><h3><?php echo number_format($needsInspection); ?></h3><p style="color:rgba(255,255,255,0.8);font-size:11px;text-transform:uppercase;font-weight:600;margin-top:4px;letter-spacing:.6px;">Needs Inspection</p></div>
             </div>
             <div class="stat-card damaged">
-                <div class="stat-info"><h3><?php echo number_format($damagedAssets); ?></h3></div>
-                <div class="stat-footer">
-                    <i class="fas fa-exclamation-triangle stat-icon"></i>
-                    <span class="stat-label">Damaged</span>
-                </div>
+                <div class="stat-card-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                <div class="stat-info"><h3><?php echo number_format($damagedAssets); ?></h3><p style="color:rgba(255,255,255,0.8);font-size:11px;text-transform:uppercase;font-weight:600;margin-top:4px;letter-spacing:.6px;">Damaged</p></div>
             </div>
             <div class="stat-card maintenance">
-                <div class="stat-info"><h3><?php echo number_format($underMaintenance); ?></h3></div>
-                <div class="stat-footer">
-                    <i class="fas fa-tools stat-icon"></i>
-                    <span class="stat-label">Under Maintenance</span>
+                <div class="stat-card-icon"><i class="fas fa-tools"></i></div>
+                <div class="stat-info"><h3><?php echo number_format($underMaintenance); ?></h3><p style="color:rgba(255,255,255,0.8);font-size:11px;text-transform:uppercase;font-weight:600;margin-top:4px;letter-spacing:.6px;">Under Maintenance</p></div>
+            </div>
+        </div>
+
+        <!-- AI Analytics Section -->
+        <div style="display:grid; grid-template-columns: 1.5fr 1fr; gap:25px; margin-bottom:35px;">
+            <div class="chart-box" style="background:linear-gradient(135deg,#1e3c72,#2a5298); border:none; color:white;">
+                <h3 style="color:white; border-bottom-color:rgba(255,255,255,0.15);">
+                    <i class="fas fa-brain" style="color:#45aaf2; animation:pulse 2s infinite;"></i> AI Asset Intelligence
+                </h3>
+                <div style="font-size:13px; line-height:1.7; background:rgba(0,0,0,0.2); padding:20px; border-radius:8px; border:1px solid rgba(255,255,255,0.15);">
+                    <?php echo $assetAiNarrative; ?>
+                </div>
+            </div>
+            <div class="chart-box">
+                <h3><i class="fas fa-lightbulb" style="color:#f59e0b;"></i> AI Recommendations <span style="background:#3762c8;color:#fff;font-size:10px;padding:2px 8px;border-radius:99px;margin-left:8px;"><?php echo count($assetAiRecs); ?></span></h3>
+                <div style="display:flex; flex-direction:column; gap:10px; max-height:250px; overflow-y:auto;">
+                    <?php foreach ($assetAiRecs as $rec): ?>
+                    <div style="padding:12px 14px; border-radius:10px; background:#f8fafc; border-left:4px solid <?php echo $rec['color']; ?>; transition:all 0.3s;">
+                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                            <div style="width:28px;height:28px;border-radius:7px;background:<?php echo $rec['color']; ?>;display:flex;align-items:center;justify-content:center;color:white;font-size:12px;flex-shrink:0;">
+                                <i class="fas <?php echo $rec['icon']; ?>"></i>
+                            </div>
+                            <span style="font-weight:600;font-size:13px;color:#2c3e50;"><?php echo $rec['title']; ?></span>
+                            <span style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;text-transform:uppercase;margin-left:auto;background:<?php echo $rec['color']; ?>20;color:<?php echo $rec['color']; ?>;"><?php echo $rec['priority']; ?></span>
+                        </div>
+                        <div style="font-size:12px;color:#64748b;line-height:1.5;padding-left:36px;"><?php echo $rec['text']; ?></div>
+                    </div>
+                    <?php endforeach; ?>
                 </div>
             </div>
         </div>

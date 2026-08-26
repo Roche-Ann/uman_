@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // Removed session_start() as it's handled in includes/auth.php
 require_once 'includes/auth.php';
 
@@ -87,10 +87,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark-theme');
+            }
+        })();
+    </script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Reset Password | LGU Portal</title>
 <link rel="stylesheet" href="assets/css/style.css">
+<link rel="stylesheet" href="assets/css/responsive.css">
 <link rel="icon" type="image/png" href="assets/images/logocityhall.png">
 <style>
 body {
@@ -104,7 +113,7 @@ body {
 }
 body::before {
     content: "";
-    position: absolute;
+    position: fixed;
     top: 0;
     left: 0;
     width: 100%;

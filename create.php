@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // create.php - REMOVE session_start() from here too
 require_once 'includes/auth.php';
 
@@ -46,6 +46,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark-theme');
+            }
+        })();
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create Account | LGU Portal</title>
@@ -56,6 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&family=Urbanist:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/responsive.css">
 
     <style>
         /* ---------- DESIGN TOKENS ---------- */
@@ -88,7 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
         html { scroll-behavior: smooth; scroll-padding-top: 80px; }
         body { font-family: var(--font-primary); min-height: 100vh; display: flex; flex-direction: column; background: url("assets/images/cityhall.jpeg") center/cover no-repeat fixed; position: relative; }
-        body::before { content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%; backdrop-filter: blur(6px); background: rgba(0, 0, 0, 0.35); z-index: 0; }
+        body::before { content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%; backdrop-filter: blur(6px); background: rgba(0, 0, 0, 0.35); z-index: 0; }
         .civic-navigation, .register-section, .civic-footer { position: relative; z-index: 1; }
 
         /* ---------- GLASS NAVIGATION ---------- */
@@ -356,12 +365,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 </ul>
             </div>
             <div>
-                <h4 class="footer-heading">Services</h4>
+                <h4 class="footer-heading">Core Services</h4>
                 <ul class="footer-links">
-                    <li><a href="#modules">Citizen Hub</a></li>
-                    <li><a href="#modules">Asset Tracking</a></li>
-                    <li><a href="#modules">Issue Reporting</a></li>
-                    <li><a href="#modules">Maintenance Logs</a></li>
+                    <li><a href="#modules">Asset Inventory</a></li>
+                    <li><a href="#modules">Incident Reporting</a></li>
+                    <li><a href="#modules">Maintenance Dispatch</a></li>
+                    <li><a href="#modules">Energy Monitoring</a></li>
                 </ul>
             </div>
             <div>
