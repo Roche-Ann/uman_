@@ -772,7 +772,7 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                         <td>
                                             <?php if ($aiScore !== null): ?>
                                                 <div class="score-pill <?php echo $scoreClass; ?>">
-                                                    <i class="fas fa-robot"></i> <?php echo (int)round($aiScore); ?>% (<?php echo htmlspecialchars($aiDecision ?? ''); ?>)
+                                                    <?php echo (int)round($aiScore); ?>%
                                                 </div>
                                                 <?php if ($aiDecision === 'Conditional'): ?>
                                                     <div style="margin-top: 4px;">
