@@ -537,6 +537,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // ═════════════════════════════════════════════════════════════════════════════
 $filter = trim($_GET['status'] ?? '');
 $showArchived = (($_GET['archived'] ?? '') === '1');
+
+// If filtering by fulfilled/rejected, implicitly switch to archived view
+if (in_array($filter, ['fulfilled', 'rejected'], true)) {
+    $showArchived = true;
+}
+
 $sql = 'SELECT r.*, a.name AS fulfilled_asset_name, a.asset_id AS fulfilled_asset_code FROM external_asset_requests r LEFT JOIN utility_assets a ON a.id = r.fulfilled_asset_id WHERE 1=1';
 $params = [];
 if ($filter !== '' && in_array($filter, ['pending', 'approved', 'fulfilled', 'rejected'], true)) {
@@ -544,9 +550,9 @@ if ($filter !== '' && in_array($filter, ['pending', 'approved', 'fulfilled', 're
     $params[] = $filter;
 }
 if ($showArchived) {
-    $sql .= ' AND r.is_archived = 1';
+    $sql .= " AND (r.is_archived = 1 OR r.status IN ('fulfilled', 'rejected'))";
 } else {
-    $sql .= ' AND (r.is_archived = 0 OR r.is_archived IS NULL)';
+    $sql .= " AND (r.is_archived = 0 OR r.is_archived IS NULL) AND r.status NOT IN ('fulfilled', 'rejected')";
 }
 $sql .= ' ORDER BY r.created_at DESC LIMIT 100';
 $stmt = $pdo->prepare($sql);
@@ -554,7 +560,7 @@ $stmt->execute($params);
 $requests = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 // Count archived for badge
 $countArchived = 0;
-try { $countArchived = (int)$pdo->query("SELECT COUNT(*) FROM external_asset_requests WHERE is_archived = 1")->fetchColumn(); }
+try { $countArchived = (int)$pdo->query("SELECT COUNT(*) FROM external_asset_requests WHERE is_archived = 1 OR status IN ('fulfilled', 'rejected')")->fetchColumn(); }
 catch (Throwable $e) { $countArchived = 0; }
 
 $allAvailableAssets = [];
@@ -716,14 +722,13 @@ try {
 
 // ── Count stats (for Tab-1 cards) ───────────────────────────────────────────
 $countPending = 0; $countApproved = 0; $countFulfilled = 0; $countRejected = 0;
-foreach ($requests as $r) {
-    switch ($r['status']) {
-        case 'pending':   $countPending++;   break;
-        case 'approved':  $countApproved++;  break;
-        case 'fulfilled': $countFulfilled++; break;
-        case 'rejected':  $countRejected++;  break;
-    }
-}
+try {
+    $counts = $pdo->query("SELECT status, COUNT(*) FROM external_asset_requests GROUP BY status")->fetchAll(PDO::FETCH_KEY_PAIR);
+    $countPending   = (int)($counts['pending'] ?? 0);
+    $countApproved  = (int)($counts['approved'] ?? 0);
+    $countFulfilled = (int)($counts['fulfilled'] ?? 0);
+    $countRejected  = (int)($counts['rejected'] ?? 0);
+} catch (Throwable $e) {}
 ?>
 <!DOCTYPE html>
 <html lang="en">
