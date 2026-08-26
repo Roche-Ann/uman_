@@ -111,6 +111,14 @@ try {
         exit;
     }
 
+    // Dual Compatibility: If request comes from UPAD system with application_id but without explicit scoring fields, supply defaults
+    if ((isset($input['application_id']) || isset($input['source_system'])) && !isset($input['coverage'])) {
+        $input['coverage']       = 'Fully Covered';
+        $input['asset_health']   = 90;
+        $input['capacity']       = 'Normal';
+        $input['incident_count'] = 0;
+    }
+
     // 4.1 Check Idempotency / Duplicate Inspection ID
     $dupStmt = $pdo->prepare("
         SELECT inspection_id, final_ai_score, ai_decision, factors_breakdown, created_at 
