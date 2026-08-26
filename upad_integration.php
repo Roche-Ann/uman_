@@ -108,8 +108,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             ];
 
             $callbackJson = json_encode($callbackPayload, JSON_UNESCAPED_UNICODE);
-            $callbackUrl  = !empty($req['callback_url']) ? $req['callback_url'] : UPAD_DEFAULT_CALLBACK_URL;
-            $signature    = hash_hmac('sha256', $callbackJson, UPAD_WEBHOOK_SECRET);
+            
+            // Normalize callback URL (fix legacy /api/webhooks/ or placeholder URLs)
+            $rawCallback = trim((string)($req['callback_url'] ?? ''));
+            if (empty($rawCallback) || str_contains($rawCallback, 'example.com') || str_contains($rawCallback, '/api/webhooks/')) {
+                $callbackUrl = 'https://upad.infragovservices.com/uman-integration/uman_inspection_result.php';
+            } else {
+                $callbackUrl = $rawCallback;
+            }
+            
+            $signature = hash_hmac('sha256', $callbackJson, UPAD_WEBHOOK_SECRET);
 
             $sendCurl = function($targetUrl) use ($callbackJson, $signature) {
                 $ch = curl_init($targetUrl);
