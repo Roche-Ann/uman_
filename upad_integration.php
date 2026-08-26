@@ -298,10 +298,23 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
             align-items: center;
             gap: 15px;
             border-left: 5px solid #3b82f6;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+        }
+        .stat-card.active-filter {
+            box-shadow: 0 0 0 2px #3b82f6, 0 8px 20px rgba(59, 130, 246, 0.2);
         }
         .stat-card.pending { border-left-color: #f59e0b; }
+        .stat-card.pending.active-filter { box-shadow: 0 0 0 2px #f59e0b, 0 8px 20px rgba(245, 158, 11, 0.2); }
         .stat-card.completed { border-left-color: #10b981; }
+        .stat-card.completed.active-filter { box-shadow: 0 0 0 2px #10b981, 0 8px 20px rgba(16, 185, 129, 0.2); }
         .stat-card.failed { border-left-color: #ef4444; }
+        .stat-card.failed.active-filter { box-shadow: 0 0 0 2px #ef4444, 0 8px 20px rgba(239, 68, 68, 0.2); }
         
         .stat-icon {
             width: 50px;
@@ -332,6 +345,8 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
             margin-bottom: 20px;
             padding-bottom: 12px;
             border-bottom: 1px solid #e2e8f0;
@@ -343,6 +358,51 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
             display: flex;
             align-items: center;
             gap: 8px;
+            margin: 0;
+        }
+
+        /* Filter Tabs */
+        .filter-tabs {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .filter-tab {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            color: #475569;
+            padding: 7px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+        .filter-tab:hover {
+            background: #e2e8f0;
+            color: #0f172a;
+        }
+        .filter-tab.active {
+            background: #3b82f6;
+            color: #ffffff;
+            border-color: #3b82f6;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+        }
+        .filter-tab .tab-badge {
+            background: rgba(0, 0, 0, 0.08);
+            padding: 2px 7px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .filter-tab.active .tab-badge {
+            background: rgba(255, 255, 255, 0.25);
+            color: #ffffff;
         }
 
         /* Buttons */
@@ -507,28 +567,28 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             <!-- Stats Overview -->
             <div class="stats-grid">
-                <div class="stat-card">
+                <div class="stat-card" data-filter="all" onclick="filterRequests('all', document.querySelector('.filter-tab[data-filter=\'all\']'))" title="Click to view all requests">
                     <div class="stat-icon"><i class="fas fa-clipboard-list"></i></div>
                     <div class="stat-info">
                         <h3><?php echo $totalCount; ?></h3>
                         <p>Total UPAD Requests</p>
                     </div>
                 </div>
-                <div class="stat-card pending">
+                <div class="stat-card pending" data-filter="pending" onclick="filterRequests('pending', document.querySelector('.filter-tab[data-filter=\'pending\']'))" title="Click to view awaiting inspection">
                     <div class="stat-icon"><i class="fas fa-hourglass-half"></i></div>
                     <div class="stat-info">
                         <h3><?php echo $pendingCount; ?></h3>
                         <p>Awaiting Inspection</p>
                     </div>
                 </div>
-                <div class="stat-card completed">
+                <div class="stat-card completed" data-filter="completed" onclick="filterRequests('completed', document.querySelector('.filter-tab[data-filter=\'completed\']'))" title="Click to view delivered callbacks">
                     <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
                     <div class="stat-info">
                         <h3><?php echo $completedCount; ?></h3>
                         <p>Callback Delivered</p>
                     </div>
                 </div>
-                <div class="stat-card failed">
+                <div class="stat-card failed" data-filter="failed" onclick="filterRequests('failed', document.querySelector('.filter-tab[data-filter=\'failed\']'))" title="Click to view failed deliveries">
                     <div class="stat-icon"><i class="fas fa-times-circle"></i></div>
                     <div class="stat-info">
                         <h3><?php echo $failedCount; ?></h3>
@@ -540,7 +600,23 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <!-- Requests List -->
             <div class="card">
                 <div class="card-header">
-                    <h2><i class="fas fa-list"></i> Real UPAD Inspection Requests & AI Decisions</h2>
+                    <h2><i class="fas fa-list" style="color: #3b82f6;"></i> UPAD Inspection Requests</h2>
+                    
+                    <!-- Clickable Filter Tabs -->
+                    <div class="filter-tabs">
+                        <button type="button" class="filter-tab active" data-filter="all" onclick="filterRequests('all', this)">
+                            <i class="fas fa-layer-group"></i> All <span class="tab-badge"><?php echo $totalCount; ?></span>
+                        </button>
+                        <button type="button" class="filter-tab" data-filter="pending" onclick="filterRequests('pending', this)">
+                            <i class="fas fa-hourglass-half"></i> Awaiting Inspection <span class="tab-badge"><?php echo $pendingCount; ?></span>
+                        </button>
+                        <button type="button" class="filter-tab" data-filter="completed" onclick="filterRequests('completed', this)">
+                            <i class="fas fa-check-circle"></i> Delivered <span class="tab-badge"><?php echo $completedCount; ?></span>
+                        </button>
+                        <button type="button" class="filter-tab" data-filter="failed" onclick="filterRequests('failed', this)">
+                            <i class="fas fa-times-circle"></i> Failed <span class="tab-badge"><?php echo $failedCount; ?></span>
+                        </button>
+                    </div>
                 </div>
                 <div class="table-responsive">
                     <table>
@@ -567,6 +643,12 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                     </td>
                                 </tr>
                             <?php else: ?>
+                                <tr id="noMatchingFilterRow" style="display: none;">
+                                    <td colspan="9" style="text-align: center; color: #94a3b8; padding: 40px;">
+                                        <i class="fas fa-filter" style="font-size: 28px; margin-bottom: 8px; display: block; color: #64748b;"></i>
+                                        No inspection requests match the selected filter tab.
+                                    </td>
+                                </tr>
                                 <?php foreach ($requests as $r): ?>
                                     <?php 
                                         $aiScore = isset($r['ai_score']) && $r['ai_score'] !== null ? (float)$r['ai_score'] : null;
@@ -579,8 +661,17 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                                 $scoreClass = 'score-conditional';
                                             }
                                         }
+
+                                        $rawStatus = strtolower(trim((string)($r['status'] ?? 'pending')));
+                                        if ($rawStatus === 'completed' || $rawStatus === 'delivered') {
+                                            $rowCategory = 'completed';
+                                        } elseif ($rawStatus === 'failed') {
+                                            $rowCategory = 'failed';
+                                        } else {
+                                            $rowCategory = 'pending';
+                                        }
                                     ?>
-                                    <tr>
+                                    <tr class="request-row" data-status="<?php echo $rowCategory; ?>">
                                         <td><strong><?php echo htmlspecialchars($r['reference_id'] ?? ''); ?></strong></td>
                                         <td>#<?php echo (int) ($r['application_id'] ?? 0); ?></td>
                                         <td>
@@ -723,6 +814,42 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
         function closeCallbackModal() {
             document.getElementById('callbackModal').classList.remove('show');
+        }
+
+        function filterRequests(status, element) {
+            // Update active filter tab style
+            document.querySelectorAll('.filter-tab').forEach(tab => tab.classList.remove('active'));
+            if (element) {
+                element.classList.add('active');
+            } else {
+                const targetTab = document.querySelector(`.filter-tab[data-filter="${status}"]`);
+                if (targetTab) targetTab.classList.add('active');
+            }
+
+            // Update stat card active outline
+            document.querySelectorAll('.stat-card').forEach(card => card.classList.remove('active-filter'));
+            const targetCard = document.querySelector(`.stat-card[data-filter="${status}"]`);
+            if (targetCard) targetCard.classList.add('active-filter');
+
+            // Filter table rows
+            const rows = document.querySelectorAll('.request-row');
+            let visibleCount = 0;
+
+            rows.forEach(row => {
+                const rowStatus = row.getAttribute('data-status');
+                if (status === 'all' || rowStatus === status) {
+                    row.style.display = '';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            // Toggle empty filter row visibility
+            const noMatchRow = document.getElementById('noMatchingFilterRow');
+            if (noMatchRow) {
+                noMatchRow.style.display = (visibleCount === 0 && rows.length > 0) ? '' : 'none';
+            }
         }
     </script>
 </body>
