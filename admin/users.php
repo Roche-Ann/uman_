@@ -61,6 +61,8 @@ $search = trim($_GET['search'] ?? '');
 $role_filter = trim($_GET['role'] ?? '');
 $status_filter = trim($_GET['status'] ?? 'active');
 
+$verif_filter = trim($_GET['verif'] ?? '');
+
 // Flash messages
 $error = $_SESSION['flash_error'] ?? '';
 $success = $_SESSION['flash_success'] ?? '';
@@ -84,6 +86,11 @@ if ($status_filter === 'archived') {
     $conditions[] = "is_archived = 0";
 }
 
+if ($verif_filter && in_array($verif_filter, ['unverified', 'pending', 'verified', 'rejected'])) {
+    $conditions[] = "verification_status = ?";
+    $params[] = $verif_filter;
+}
+
 $where = $conditions ? 'WHERE ' . implode(' AND ', $conditions) : '';
 
 // Pagination
@@ -95,8 +102,8 @@ $countStmt->execute($params);
 $total = $countStmt->fetchColumn();
 $totalPages = ceil($total / $limit);
 
-// Fetch users
-$stmt = $pdo->prepare("SELECT id, email, full_name, user_type, created_at, last_login, is_active, is_archived, verification_status, id_image_path, selfie_image_path FROM users $where ORDER BY id DESC LIMIT $limit OFFSET $offset");
+// Fetch users, prioritize pending verifications at the top
+$stmt = $pdo->prepare("SELECT id, email, full_name, user_type, created_at, last_login, is_active, is_archived, verification_status, id_image_path, selfie_image_path FROM users $where ORDER BY (verification_status = 'pending') DESC, id DESC LIMIT $limit OFFSET $offset");
 $stmt->execute($params);
 $users = $stmt->fetchAll();
 ?>
@@ -268,6 +275,13 @@ $users = $stmt->fetchAll();
                 <a href="users.php" class="btn btn-outline">Reset</a>
             </div>
         </form>
+        
+        <div class="tabs-container" style="display:flex; gap:10px; margin-bottom: 20px; border-bottom: 1px solid #cbd5e1; padding-bottom: 10px;">
+            <a href="users.php?verif=&search=<?= urlencode($search) ?>&role=<?= urlencode($role_filter) ?>&status=<?= urlencode($status_filter) ?>" class="btn <?= $verif_filter=='' ? 'btn-primary' : 'btn-outline' ?>" style="border:none; padding:8px 16px;">All Users</a>
+            <a href="users.php?verif=pending&search=<?= urlencode($search) ?>&role=<?= urlencode($role_filter) ?>&status=<?= urlencode($status_filter) ?>" class="btn <?= $verif_filter=='pending' ? 'btn-primary' : 'btn-outline' ?>" style="border:none; padding:8px 16px;"><i class="fas fa-clock"></i> Pending Verification</a>
+            <a href="users.php?verif=verified&search=<?= urlencode($search) ?>&role=<?= urlencode($role_filter) ?>&status=<?= urlencode($status_filter) ?>" class="btn <?= $verif_filter=='verified' ? 'btn-primary' : 'btn-outline' ?>" style="border:none; padding:8px 16px;"><i class="fas fa-check-circle"></i> Verified</a>
+            <a href="users.php?verif=unverified&search=<?= urlencode($search) ?>&role=<?= urlencode($role_filter) ?>&status=<?= urlencode($status_filter) ?>" class="btn <?= $verif_filter=='unverified' ? 'btn-primary' : 'btn-outline' ?>" style="border:none; padding:8px 16px;"><i class="fas fa-exclamation-circle"></i> Unverified</a>
+        </div>
 
         <div class="table-section">
             <div class="table-container">
@@ -326,7 +340,7 @@ $users = $stmt->fetchAll();
                     <div class="pagination-info">Showing <?php echo $offset+1; ?> to <?php echo min($total, $offset+$limit); ?> of <?php echo $total; ?></div>
                     <div class="pagination-links">
                         <?php for ($i=1; $i<=$totalPages; $i++): ?>
-                            <a href="users.php?page=<?php echo $i; ?>&search=<?php echo urlencode($search); ?>&role=<?php echo urlencode($role_filter); ?>&status=<?php echo urlencode($status_filter); ?>" class="page-link <?php echo $page==$i?'active':''; ?>"><?php echo $i; ?></a>
+                            <a href="users.php?page=<?php echo $i; ?>&search=<?php echo urlencode($search); ?>&role=<?php echo urlencode($role_filter); ?>&status=<?php echo urlencode($status_filter); ?>&verif=<?php echo urlencode($verif_filter); ?>" class="page-link <?php echo $page==$i?'active':''; ?>"><?php echo $i; ?></a>
                         <?php endfor; ?>
                     </div>
                 </div>
