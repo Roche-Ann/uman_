@@ -38,7 +38,7 @@ try {
           `description` TEXT NULL,
           `requested_by` VARCHAR(150) NULL,
           `callback_url` TEXT NULL,
-          `status` ENUM('pending','processing','completed','failed') NOT NULL DEFAULT 'pending',
+          `status` VARCHAR(50) NOT NULL DEFAULT 'pending',
           `ai_score` DECIMAL(5,2) NULL,
           `ai_decision` VARCHAR(50) NULL,
           `raw_payload` JSON NULL,
@@ -52,6 +52,9 @@ try {
           INDEX `idx_status` (`status`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     ");
+
+    // Self-healing migration: Convert ENUM status to VARCHAR(50) to support workflow statuses
+    $pdo->exec("ALTER TABLE `upad_inspection_requests` MODIFY COLUMN `status` VARCHAR(50) NOT NULL DEFAULT 'pending'");
 
     // Add missing columns if table already existed without them
     $existingCols = $pdo->query("SHOW COLUMNS FROM `upad_inspection_requests`")->fetchAll(PDO::FETCH_COLUMN);
