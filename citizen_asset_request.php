@@ -16,6 +16,19 @@ $userId = $_SESSION['user_id'] ?? 0;
 $userName = trim((string)($_SESSION['user_name'] ?? $_SESSION['full_name'] ?? 'Resident'));
 $userEmail = trim((string)($_SESSION['email'] ?? ''));
 
+// Identity Verification Check
+try {
+    $stmt = $pdo->prepare("SELECT verification_status FROM users WHERE id = ?");
+    $stmt->execute([$userId]);
+    $userVerifStatus = $stmt->fetchColumn() ?: 'unverified';
+    if ($userVerifStatus !== 'verified') {
+        header('Location: citizen_verification.php');
+        exit();
+    }
+} catch (Exception $e) {
+    // If column doesn't exist yet, ignore
+}
+
 // Self-healing DB Schema for external_asset_requests
 try {
     $pdo->exec("
