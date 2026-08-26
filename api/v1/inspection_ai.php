@@ -178,21 +178,38 @@ function runInspectionAIValidation(string $referenceId, PDO $pdo): array {
 
     $finalScore = round($weightedScore, 2);
 
+    // Generate factor-driven professional AI recommendation text
+    $recomActions = [];
+    if ($coverageScore < 100.0) {
+        $recomActions[] = "Verify utility service boundary coverage in " . ($barangay ?: 'target site');
+    }
+    if ($assetScore < 85.0) {
+        $recomActions[] = "Inspect local substation transformer and feeder line health";
+    }
+    if ($capacityScore < 100.0) {
+        $recomActions[] = "Perform peak-hour grid load balancing and capacity verification";
+    }
+    if ($incidentScore < 100.0) {
+        $recomActions[] = "Clear {$incidentCount} active open utility maintenance/hazard report(s)";
+    }
+
     if ($finalScore >= 80.0) {
         $decision = 'Approved';
         $overallCondition = 'Good';
-        $recommendation = 'Grid capacity verified. Approved for connection.';
         $severity = 'Low';
+        $recommendation = "Grid infrastructure and capacity verified. Approved for immediate utility connection in " . ($barangay ?: 'target site') . ".";
     } elseif ($finalScore >= 50.0) {
         $decision = 'Conditional';
         $overallCondition = 'Fair';
-        $recommendation = 'Approved conditional upon load compliance during peak hours.';
         $severity = 'Medium';
+        $actionList = !empty($recomActions) ? implode('; ', $recomActions) : "Conduct physical site inspection of local transformer load";
+        $recommendation = "Conditional Approval (Score: {$finalScore}% - Flagged for Manual Review). Recommended Action: {$actionList} prior to final energization.";
     } else {
         $decision = 'Rejected';
         $overallCondition = 'Poor';
-        $recommendation = 'Immediate Upgrade required. Feeder overload detected.';
         $severity = 'High';
+        $actionList = !empty($recomActions) ? implode('; ', $recomActions) : "Mandatory grid expansion and transformer upgrade required";
+        $recommendation = "Inspection Rejected (Score: {$finalScore}%). Recommended Action: {$actionList} before resubmitting request.";
     }
 
     $reason = "AI Inspection Score: {$finalScore}/100 ($decision). Coverage: {$coverageStatus} ({$coverageScore}%), Assets: {$assetScore}% Operational, Capacity: {$capacityStatus} ({$capacityScore}%), Incidents: {$incidentCount} active ({$incidentScore}%).";

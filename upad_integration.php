@@ -688,8 +688,15 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                         <td>
                                             <?php if ($aiScore !== null): ?>
                                                 <div class="score-pill <?php echo $scoreClass; ?>">
-                                                    <i class="fas fa-robot"></i> <?php echo $aiScore; ?>% (<?php echo htmlspecialchars($aiDecision ?? ''); ?>)
+                                                    <i class="fas fa-robot"></i> <?php echo (int)round($aiScore); ?>% (<?php echo htmlspecialchars($aiDecision ?? ''); ?>)
                                                 </div>
+                                                <?php if ($aiDecision === 'Conditional'): ?>
+                                                    <div style="margin-top: 4px;">
+                                                        <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.3); font-size: 10px; font-weight: 700;">
+                                                            <i class="fas fa-user-clock"></i> Manual Review
+                                                        </span>
+                                                    </div>
+                                                <?php endif; ?>
                                             <?php else: ?>
                                                 <small style="color:#94a3b8;"><i class="fas fa-hourglass-start"></i> Pending AI</small>
                                             <?php endif; ?>
@@ -703,16 +710,28 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                             <?php endif; ?>
                                         </td>
                                         <td>
-                                            <div style="display:flex; gap:6px;">
+                                            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                                                <button type="button" class="btn btn-outline" style="padding: 5px 10px; font-size: 11px;" 
+                                                        onclick="openDetailsModal(
+                                                            '<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>',
+                                                            '<?php echo htmlspecialchars($r['project_name'] ?? ''); ?>',
+                                                            '<?php echo htmlspecialchars($r['barangay'] ?? ''); ?>',
+                                                            '<?php echo $aiScore !== null ? (int)round($aiScore) : 'N/A'; ?>',
+                                                            '<?php echo htmlspecialchars($aiDecision ?? 'Pending'); ?>',
+                                                            '<?php echo htmlspecialchars(addslashes($r['remarks'] ?? 'AI evaluation completed. Inspection result generated.')); ?>'
+                                                        )">
+                                                    <i class="fas fa-file-alt"></i> Details
+                                                </button>
+
                                                 <form method="POST" style="display:inline;">
                                                     <input type="hidden" name="action" value="run_ai_validation">
                                                     <input type="hidden" name="reference_id" value="<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>">
-                                                    <button type="submit" class="btn btn-ai" title="Evaluate real grid data & deliver callback to UPAD">
-                                                        <i class="fas fa-robot"></i> AI Validate
+                                                    <button type="submit" class="btn btn-ai" style="padding: 5px 10px; font-size: 11px;" title="Evaluate grid data in background">
+                                                        <i class="fas fa-sync"></i> Re-Evaluate
                                                     </button>
                                                 </form>
 
-                                                <button type="button" class="btn btn-success" onclick="openCallbackModal('<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>')">
+                                                <button type="button" class="btn btn-success" style="padding: 5px 10px; font-size: 11px;" onclick="openCallbackModal('<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>')">
                                                     <i class="fas fa-paper-plane"></i> Callback
                                                 </button>
                                             </div>
@@ -807,6 +826,53 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
     </div>
 
+    <!-- Inspection Details Modal -->
+    <div class="modal" id="detailsModal">
+        <div class="modal-content" style="max-width: 620px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-microchip" style="color: #3b82f6;"></i> Inspection Result & Recommended Action</h3>
+                <button type="button" onclick="closeDetailsModal()" style="border:none; background:none; font-size:18px; cursor:pointer;">&times;</button>
+            </div>
+            <div style="padding: 10px 0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #e2e8f0;">
+                    <div>
+                        <small style="color: #64748b; font-weight: 600; text-transform: uppercase; font-size: 11px;">Reference ID</small>
+                        <h4 id="det_ref_id" style="margin: 2px 0 0 0; font-size: 18px; font-weight: 700; color: #0f172a;">-</h4>
+                    </div>
+                    <div style="text-align: right;">
+                        <small style="color: #64748b; font-weight: 600; text-transform: uppercase; font-size: 11px;">AI Inspection Score</small>
+                        <div id="det_score_badge" style="font-size: 22px; font-weight: 800; color: #3b82f6; font-family: monospace;">-%</div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 18px;">
+                    <label style="font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; display: block; margin-bottom: 6px;">Inspection Result</label>
+                    <div id="det_decision_box" style="padding: 14px 16px; border-radius: 10px; font-weight: 700; font-size: 15px; display: flex; align-items: center; justify-content: space-between;">
+                        <span id="det_decision_text">-</span>
+                        <span id="det_review_tag" style="display: none; font-size: 11px; padding: 4px 10px; border-radius: 6px; background: rgba(245, 158, 11, 0.2); color: #b45309; font-weight: 700;">
+                            <i class="fas fa-user-clock"></i> Flagged for Manual Review
+                        </span>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label style="font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; display: block; margin-bottom: 6px;">AI-Generated Recommended Action</label>
+                    <div style="background: rgba(59, 130, 246, 0.06); border-left: 4px solid #3b82f6; padding: 16px; border-radius: 8px; color: #1e293b; font-size: 13px; line-height: 1.6;">
+                        <i class="fas fa-lightbulb" style="color: #3b82f6; margin-right: 6px; font-size: 15px;"></i>
+                        <span id="det_recommendation_text">Evaluating recommendation...</span>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px;">
+                    <button type="button" class="btn btn-outline" onclick="closeDetailsModal()">Close</button>
+                    <button type="button" class="btn btn-success" onclick="closeDetailsModal(); openCallbackModal(document.getElementById('det_ref_id').innerText);">
+                        <i class="fas fa-paper-plane"></i> Proceed to Callback
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         function openCallbackModal(refId) {
             document.getElementById('modal_ref_id').value = refId;
@@ -814,6 +880,46 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
         function closeCallbackModal() {
             document.getElementById('callbackModal').classList.remove('show');
+        }
+
+        function openDetailsModal(refId, project, barangay, score, decision, recommendation) {
+            document.getElementById('det_ref_id').innerText = refId;
+            document.getElementById('det_score_badge').innerText = (score !== 'N/A') ? score + '%' : 'N/A';
+
+            const decisionBox = document.getElementById('det_decision_box');
+            const decisionText = document.getElementById('det_decision_text');
+            const reviewTag = document.getElementById('det_review_tag');
+
+            decisionText.innerText = decision;
+
+            if (decision === 'Approved') {
+                decisionBox.style.background = 'rgba(16, 185, 129, 0.12)';
+                decisionBox.style.color = '#065f46';
+                decisionBox.style.border = '1px solid rgba(16, 185, 129, 0.3)';
+                reviewTag.style.display = 'none';
+            } else if (decision === 'Conditional') {
+                decisionBox.style.background = 'rgba(245, 158, 11, 0.12)';
+                decisionBox.style.color = '#92400e';
+                decisionBox.style.border = '1px solid rgba(245, 158, 11, 0.3)';
+                reviewTag.style.display = 'inline-block';
+            } else if (decision === 'Rejected') {
+                decisionBox.style.background = 'rgba(239, 68, 68, 0.12)';
+                decisionBox.style.color = '#991b1b';
+                decisionBox.style.border = '1px solid rgba(239, 68, 68, 0.3)';
+                reviewTag.style.display = 'none';
+            } else {
+                decisionBox.style.background = '#f1f5f9';
+                decisionBox.style.color = '#64748b';
+                decisionBox.style.border = '1px solid #cbd5e1';
+                reviewTag.style.display = 'none';
+            }
+
+            document.getElementById('det_recommendation_text').innerText = recommendation;
+            document.getElementById('detailsModal').classList.add('show');
+        }
+
+        function closeDetailsModal() {
+            document.getElementById('detailsModal').classList.remove('show');
         }
 
         function filterRequests(status, element) {
