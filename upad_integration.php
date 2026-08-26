@@ -241,6 +241,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
+// ── Handle Manual Approve for Score 50-79 (Manual Check) ─────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'manual_approve') {
+    $refId = trim((string)($_POST['reference_id'] ?? ''));
+    if (!empty($refId)) {
+        $pdo->prepare("
+            UPDATE upad_inspection_requests 
+            SET ai_decision = 'Approved', status = 'completed' 
+            WHERE reference_id = ?
+        ")->execute([$refId]);
+
+        // Dispatch callback to UPAD
+        require_once __DIR__ . '/api/v1/inspection_ai.php';
+        dispatchUPADCallback($refId, $pdo, 'Approved', 75.0, 'Good', 'Manually reviewed and approved by authorized personnel.', []);
+        $successes[] = "Inspection request $refId manually checked and APPROVED. Callback dispatched to UPAD.";
+    }
+}
+
+// ── Handle Manual Reject for Score 50-79 (Manual Check) ──────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'manual_reject') {
+    $refId = trim((string)($_POST['reference_id'] ?? ''));
+    $recom = trim((string)($_POST['recommendation'] ?? 'Inspection rejected upon manual review. Corrective action required.'));
+    
+    if (!empty($refId)) {
+        $pdo->prepare("
+            UPDATE upad_inspection_requests 
+            SET ai_decision = 'Rejected', status = 'sent_for_correction', corrective_recommendation = ?, correction_requested_by = 'System Administrator', correction_requested_at = NOW() 
+            WHERE reference_id = ?
+        ")->execute([$recom, $refId]);
+
+        $successes[] = "Inspection request $refId manually REJECTED. Sent back for corrective action with AI recommendations.";
+    }
+}
+
 // ── Query statistics ─────────────────────────────────────────────────────────
 $totalCount     = (int) $pdo->query("SELECT COUNT(*) FROM upad_inspection_requests")->fetchColumn();
 $pendingCount   = (int) $pdo->query("SELECT COUNT(*) FROM upad_inspection_requests WHERE status = 'pending'")->fetchColumn();
@@ -766,6 +799,7 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                         </td>
                                         <td>
                                             <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                                                <!-- Details Action (Always Available) -->
                                                 <button type="button" class="btn btn-outline" style="padding: 5px 10px; font-size: 11px;" 
                                                         onclick="openDetailsModal(
                                                             '<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>',
@@ -778,36 +812,50 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                                     <i class="fas fa-file-alt"></i> Details
                                                 </button>
 
-                                                <?php if ($aiDecision === 'Rejected' || $rawStatus === 'sent_for_correction'): ?>
+                                                <?php if ($aiDecision === 'Conditional' || ($aiScore !== null && $aiScore >= 50.0 && $aiScore < 80.0)): ?>
+                                                    <!-- AI SCORE 50-79: MANUAL CHECK WORKFLOW (Approve or Reject) -->
+                                                    <form method="POST" style="display:inline;">
+                                                        <input type="hidden" name="action" value="manual_approve">
+                                                        <input type="hidden" name="reference_id" value="<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>">
+                                                        <button type="submit" class="btn btn-success" style="padding: 5px 10px; font-size: 11px; background: #10b981; color: white;" title="Manually approve this inspection after Manual Check">
+                                                            <i class="fas fa-check"></i> Approve
+                                                        </button>
+                                                    </form>
+
+                                                    <form method="POST" style="display:inline;">
+                                                        <input type="hidden" name="action" value="manual_reject">
+                                                        <input type="hidden" name="reference_id" value="<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>">
+                                                        <input type="hidden" name="recommendation" value="<?php echo htmlspecialchars($r['remarks'] ?? 'Inspection rejected upon manual review. Corrective action required.'); ?>">
+                                                        <button type="submit" class="btn btn-danger" style="padding: 5px 10px; font-size: 11px; background: #ef4444; color: white; border: none; border-radius: 8px;" title="Manually reject this inspection and request correction">
+                                                            <i class="fas fa-times"></i> Reject
+                                                        </button>
+                                                    </form>
+
+                                                <?php elseif ($aiDecision === 'Rejected' || $rawStatus === 'sent_for_correction'): ?>
+                                                    <!-- REJECTED WORKFLOW: SEND BACK / CALLBACK + RE-EVALUATE -->
                                                     <form method="POST" style="display:inline;">
                                                         <input type="hidden" name="action" value="request_correction">
                                                         <input type="hidden" name="reference_id" value="<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>">
                                                         <input type="hidden" name="recommendation" value="<?php echo htmlspecialchars($r['remarks'] ?? 'Corrective action required based on inspection findings.'); ?>">
-                                                        <button type="submit" class="btn btn-warning" style="padding: 5px 10px; font-size: 11px; background: #f59e0b; color: white;" title="Send inspection back to team with AI corrective recommendations">
-                                                            <i class="fas fa-reply"></i> Send for Correction
+                                                        <button type="submit" class="btn btn-warning" style="padding: 5px 10px; font-size: 11px; background: #f59e0b; color: white;" title="Send rejected inspection + AI recommendation back to team for correction">
+                                                            <i class="fas fa-reply"></i> Send Back / Callback
                                                         </button>
                                                     </form>
 
                                                     <form method="POST" style="display:inline;">
                                                         <input type="hidden" name="action" value="reinspect">
                                                         <input type="hidden" name="reference_id" value="<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>">
-                                                        <button type="submit" class="btn btn-ai" style="padding: 5px 10px; font-size: 11px; background: #8b5cf6; color: white;" title="Re-evaluate request after corrective work completed">
-                                                            <i class="fas fa-sync"></i> Reinspect
+                                                        <button type="submit" class="btn btn-ai" style="padding: 5px 10px; font-size: 11px; background: #8b5cf6; color: white;" title="Re-evaluate inspection using updated data after corrective work is completed">
+                                                            <i class="fas fa-sync"></i> Re-evaluate
                                                         </button>
                                                     </form>
-                                                <?php else: ?>
-                                                    <form method="POST" style="display:inline;">
-                                                        <input type="hidden" name="action" value="run_ai_validation">
-                                                        <input type="hidden" name="reference_id" value="<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>">
-                                                        <button type="submit" class="btn btn-ai" style="padding: 5px 10px; font-size: 11px;" title="Re-evaluate grid data">
-                                                            <i class="fas fa-sync"></i> Re-Evaluate
-                                                        </button>
-                                                    </form>
-                                                <?php endif; ?>
 
-                                                <button type="button" class="btn btn-success" style="padding: 5px 10px; font-size: 11px;" onclick="openCallbackModal('<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>')">
-                                                    <i class="fas fa-paper-plane"></i> Callback
-                                                </button>
+                                                <?php else: ?>
+                                                    <!-- AI SCORE 80-100 (AUTOMATICALLY APPROVED): CALLBACK -->
+                                                    <button type="button" class="btn btn-success" style="padding: 5px 10px; font-size: 11px;" onclick="openCallbackModal('<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>')">
+                                                        <i class="fas fa-paper-plane"></i> Callback
+                                                    </button>
+                                                <?php endif; ?>
                                             </div>
                                         </td>
                                     </tr>
@@ -939,7 +987,26 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
                 <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px;">
                     <button type="button" class="btn btn-outline" onclick="closeDetailsModal()">Close</button>
-                    <button type="button" class="btn btn-success" onclick="closeDetailsModal(); openCallbackModal(document.getElementById('det_ref_id').innerText);">
+
+                    <div id="det_manual_actions" style="display: none; gap: 8px;">
+                        <form method="POST" style="display:inline;">
+                            <input type="hidden" name="action" value="manual_approve">
+                            <input type="hidden" name="reference_id" id="det_ref_input_app">
+                            <button type="submit" class="btn btn-success" style="padding: 8px 14px; font-size: 12px;">
+                                <i class="fas fa-check"></i> Approve Inspection
+                            </button>
+                        </form>
+                        <form method="POST" style="display:inline;">
+                            <input type="hidden" name="action" value="manual_reject">
+                            <input type="hidden" name="reference_id" id="det_ref_input_rej">
+                            <input type="hidden" name="recommendation" id="det_recom_input_rej">
+                            <button type="submit" class="btn btn-danger" style="padding: 8px 14px; font-size: 12px; background: #ef4444; color: white; border: none; border-radius: 8px;">
+                                <i class="fas fa-times"></i> Reject Inspection
+                            </button>
+                        </form>
+                    </div>
+
+                    <button type="button" id="det_callback_btn" class="btn btn-success" onclick="closeDetailsModal(); openCallbackModal(document.getElementById('det_ref_id').innerText);">
                         <i class="fas fa-paper-plane"></i> Proceed to Callback
                     </button>
                 </div>
@@ -959,10 +1026,15 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
         function openDetailsModal(refId, project, barangay, score, decision, recommendation) {
             document.getElementById('det_ref_id').innerText = refId;
             document.getElementById('det_score_badge').innerText = (score !== 'N/A') ? score + '%' : 'N/A';
+            document.getElementById('det_ref_input_app').value = refId;
+            document.getElementById('det_ref_input_rej').value = refId;
+            document.getElementById('det_recom_input_rej').value = recommendation;
 
             const decisionBox = document.getElementById('det_decision_box');
             const decisionText = document.getElementById('det_decision_text');
             const reviewTag = document.getElementById('det_review_tag');
+            const manualActions = document.getElementById('det_manual_actions');
+            const callbackBtn = document.getElementById('det_callback_btn');
 
             decisionText.innerText = decision;
 
@@ -971,21 +1043,30 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 decisionBox.style.color = '#065f46';
                 decisionBox.style.border = '1px solid rgba(16, 185, 129, 0.3)';
                 reviewTag.style.display = 'none';
+                manualActions.style.display = 'none';
+                callbackBtn.style.display = 'inline-flex';
             } else if (decision === 'Conditional') {
                 decisionBox.style.background = 'rgba(245, 158, 11, 0.12)';
                 decisionBox.style.color = '#92400e';
                 decisionBox.style.border = '1px solid rgba(245, 158, 11, 0.3)';
+                reviewTag.innerText = 'Flagged for Manual Check';
                 reviewTag.style.display = 'inline-block';
+                manualActions.style.display = 'inline-flex';
+                callbackBtn.style.display = 'none';
             } else if (decision === 'Rejected') {
                 decisionBox.style.background = 'rgba(239, 68, 68, 0.12)';
                 decisionBox.style.color = '#991b1b';
                 decisionBox.style.border = '1px solid rgba(239, 68, 68, 0.3)';
                 reviewTag.style.display = 'none';
+                manualActions.style.display = 'none';
+                callbackBtn.style.display = 'none';
             } else {
                 decisionBox.style.background = '#f1f5f9';
                 decisionBox.style.color = '#64748b';
                 decisionBox.style.border = '1px solid #cbd5e1';
                 reviewTag.style.display = 'none';
+                manualActions.style.display = 'none';
+                callbackBtn.style.display = 'none';
             }
 
             document.getElementById('det_recommendation_text').innerText = recommendation;
