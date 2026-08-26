@@ -2142,7 +2142,6 @@ window.addEventListener('click', function(event) {
             }, 120);
         });
     });
-    });
 })();
 </script>
 
