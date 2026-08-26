@@ -1536,7 +1536,7 @@ if (!empty($search) || $status_filter) {
         <!-- Header -->
         <div class="dashboard-header">
             <div>
-                <h1><i class="fas fa-boxes"></i> Utility Asset CRUD Management</h1>
+                <h1><i class="fas fa-boxes"></i> Utility Assets Management</h1>
                 <p style="color: #64748b; font-size: 14px; margin-top: 5px;">Register, edit, view, or remove LGU utility assets records.</p>
             </div>
             <div class="header-action-group" style="display:flex; gap:10px;">
