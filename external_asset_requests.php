@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * UMAN staff: CPRF Integration Hub (tabs).
  *
@@ -44,10 +44,20 @@ $pdo->exec("
       `status` ENUM('pending', 'approved', 'fulfilled', 'rejected') NOT NULL DEFAULT 'pending',
       `fulfilled_asset_id` INT NULL,
       `review_notes` TEXT NULL,
+      `is_archived` TINYINT(1) NOT NULL DEFAULT 0,
+      `archived_at` TIMESTAMP NULL,
       `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 ");
+// Self-healing: add is_archived if missing
+try { $pdo->query("SELECT `is_archived` FROM `external_asset_requests` LIMIT 1"); }
+catch (Throwable $e) {
+    try {
+        $pdo->exec("ALTER TABLE `external_asset_requests` ADD COLUMN `is_archived` TINYINT(1) NOT NULL DEFAULT 0 AFTER `review_notes`");
+        $pdo->exec("ALTER TABLE `external_asset_requests` ADD COLUMN `archived_at` TIMESTAMP NULL AFTER `is_archived`");
+    } catch (Throwable $ignored) {}
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers (shared between tabs)
@@ -131,6 +141,29 @@ function get_request_asset_availability(string $reqAssetType, int $reqQty, array
 // ─────────────────────────────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = (string)($_POST['action'] ?? '');
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Archive handler
+    // ═════════════════════════════════════════════════════════════════════════
+    if ($action === 'archive') {
+        $archiveId = (int)($_POST['id'] ?? 0);
+        if ($archiveId > 0) {
+            try {
+                $archRow = $pdo->prepare("SELECT status, request_ref FROM external_asset_requests WHERE id = ? LIMIT 1");
+                $archRow->execute([$archiveId]);
+                $archData = $archRow->fetch(PDO::FETCH_ASSOC);
+                if ($archData && in_array($archData['status'], ['fulfilled', 'rejected'], true)) {
+                    $pdo->prepare("UPDATE external_asset_requests SET is_archived = 1, archived_at = NOW() WHERE id = ?")
+                        ->execute([$archiveId]);
+                    $successes[] = 'Request ' . htmlspecialchars($archData['request_ref']) . ' has been archived.';
+                } else {
+                    $errors[] = 'Only fulfilled or rejected requests can be archived.';
+                }
+            } catch (Throwable $e) {
+                $errors[] = 'Archive failed: ' . htmlspecialchars($e->getMessage());
+            }
+        }
+    }
 
     // ═════════════════════════════════════════════════════════════════════════
     // Tab 1 — Asset Requests handlers
@@ -503,16 +536,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Tab 1 — Asset Requests: data preload
 // ═════════════════════════════════════════════════════════════════════════════
 $filter = trim($_GET['status'] ?? '');
+$showArchived = (($_GET['archived'] ?? '') === '1');
 $sql = 'SELECT r.*, a.name AS fulfilled_asset_name, a.asset_id AS fulfilled_asset_code FROM external_asset_requests r LEFT JOIN utility_assets a ON a.id = r.fulfilled_asset_id WHERE 1=1';
 $params = [];
 if ($filter !== '' && in_array($filter, ['pending', 'approved', 'fulfilled', 'rejected'], true)) {
     $sql .= ' AND r.status = ?';
     $params[] = $filter;
 }
+if ($showArchived) {
+    $sql .= ' AND r.is_archived = 1';
+} else {
+    $sql .= ' AND (r.is_archived = 0 OR r.is_archived IS NULL)';
+}
 $sql .= ' ORDER BY r.created_at DESC LIMIT 100';
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $requests = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+// Count archived for badge
+$countArchived = 0;
+try { $countArchived = (int)$pdo->query("SELECT COUNT(*) FROM external_asset_requests WHERE is_archived = 1")->fetchColumn(); }
+catch (Throwable $e) { $countArchived = 0; }
 
 $allAvailableAssets = [];
 try {
@@ -769,6 +812,38 @@ foreach ($requests as $r) {
         }
         .hub-panel { display:none; }
         .hub-panel.active { display: block; }
+        /* Archived Requests button (beside Facility Assignments tab) */
+        .hub-tab-archive {
+            padding: 8px 16px; border-radius: 8px; cursor: pointer;
+            font-size: 13px; font-weight: 600; color: #64748b;
+            border: 1px solid #e2e8f0; background: #f8fafc;
+            margin-bottom: 4px; margin-left: auto;
+            display: inline-flex; align-items: center; gap: 6px;
+            text-decoration: none; transition: all 0.2s ease;
+        }
+        .hub-tab-archive:hover { background:#fff7ed; border-color:#fed7aa; color:#9a3412; }
+        .hub-tab-archive.arch-active {
+            background: linear-gradient(135deg,#fff7ed,#ffedd5);
+            border-color:#fb923c; color:#9a3412;
+        }
+        .hub-tab-archive .arch-chip {
+            display:inline-block; padding:1px 7px; border-radius:999px;
+            background:#fee2e2; color:#991b1b; font-size:11px; font-weight:700;
+        }
+        .btn-archive {
+            background: linear-gradient(135deg, #fff7ed, #ffedd5);
+            color: #9a3412; border: 1px solid #fdba74;
+            padding: 6px 14px; border-radius: 8px; font-size: 12px;
+            font-weight: 600; cursor: pointer; display: inline-flex;
+            align-items: center; gap: 5px; transition: all 0.2s ease;
+        }
+        .btn-archive:hover { background: linear-gradient(135deg,#ffedd5,#fed7aa); border-color:#f97316; color:#7c2d12; transform: translateY(-1px); box-shadow: 0 3px 8px rgba(249,115,22,0.2); }
+        .archived-banner {
+            background: linear-gradient(135deg, #fff7ed, #ffedd5);
+            border: 1px solid #fed7aa; border-radius: 10px;
+            padding: 10px 16px; margin-bottom: 18px; font-size: 13px;
+            color: #9a3412; display: flex; align-items: center; gap: 8px;
+        }
 
         /* ── Tab 1: Asset Requests styles ──────────────────────────────── */
         .stats-grid {
@@ -1081,12 +1156,27 @@ foreach ($requests as $r) {
                 <i class="fas fa-warehouse icon"></i> Facility Assignments
                 <span class="count-chip"><?= count($cprfFacilities); ?> facilities</span>
             </div>
+            <a href="?archived=1<?= $filter !== '' ? '&status='.urlencode($filter) : ''; ?>"
+               class="hub-tab-archive<?= $showArchived ? ' arch-active' : ''; ?>"
+               title="View archived (completed) requests">
+                <i class="fas fa-archive"></i> Archived Requests
+                <?php if ($countArchived > 0): ?>
+                    <span class="arch-chip"><?= $countArchived; ?></span>
+                <?php endif; ?>
+            </a>
         </div>
 
         <!-- ══════════════════════════════════════════════════════════════
              HUB PANEL 1 — Asset Requests
              ══════════════════════════════════════════════════════════ -->
         <div id="hub-requests" class="hub-panel active">
+
+            <?php if ($showArchived): ?>
+            <div class="archived-banner">
+                <i class="fas fa-archive"></i>
+                <span>Viewing <strong>archived requests</strong>. <a href="?" style="color:#b45309; font-weight:600;">&#8592; Back to active requests</a></span>
+            </div>
+            <?php endif; ?>
 
             <div class="stats-grid">
                 <div class="stat-card stat-pending">
@@ -1282,7 +1372,20 @@ foreach ($requests as $r) {
                                                 </form>
                                             </div>
                                         <?php else: ?>
-                                            <span class="no-action">— No actions available</span>
+                                            <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-start;">
+                                                <?php if (empty($req['is_archived'])): ?>
+                                                <span class="no-action" style="font-size:12px;">— No actions available</span>
+                                                <form method="POST" style="margin:0;" onsubmit="return confirm('Archive this request? It will be hidden from the active list.');">
+                                                    <input type="hidden" name="action" value="archive">
+                                                    <input type="hidden" name="id" value="<?= (int)$req['id']; ?>">
+                                                    <button type="submit" class="btn-archive">
+                                                        <i class="fas fa-archive"></i> Archive
+                                                    </button>
+                                                </form>
+                                                <?php else: ?>
+                                                <span class="no-action" style="font-size:12px; color:#fb923c;"><i class="fas fa-archive"></i> Archived</span>
+                                                <?php endif; ?>
+                                            </div>
                                         <?php endif; ?>
                                     </td>
                                 </tr>
