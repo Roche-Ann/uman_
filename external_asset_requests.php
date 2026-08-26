@@ -1183,6 +1183,7 @@ try {
             </div>
             <?php endif; ?>
 
+            <?php if (!$showArchived): ?>
             <div class="stats-grid">
                 <div class="stat-card stat-pending">
                     <h3><?= $countPending; ?></h3>
@@ -1201,13 +1202,20 @@ try {
                     <p><i class="fas fa-times-circle"></i> Rejected</p>
                 </div>
             </div>
+            <?php endif; ?>
 
             <div class="filter-bar">
                 <form method="GET" style="margin:0; width:100%; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <?php if ($showArchived): ?>
+                        <input type="hidden" name="archived" value="1">
+                    <?php endif; ?>
                     <label style="margin:0; white-space:nowrap;"><i class="fas fa-filter"></i> Filter by Status:</label>
                     <select name="status" onchange="this.form.submit()" class="form-control" style="flex:1; min-width:180px;">
                         <option value="">All Statuses</option>
-                        <?php foreach (['pending', 'approved', 'fulfilled', 'rejected'] as $s): ?>
+                        <?php 
+                        $statusOptions = $showArchived ? ['fulfilled', 'rejected'] : ['pending', 'approved'];
+                        foreach ($statusOptions as $s): 
+                        ?>
                             <option value="<?= $s; ?>" <?= $filter === $s ? 'selected' : ''; ?>><?= ucfirst($s); ?></option>
                         <?php endforeach; ?>
                     </select>
