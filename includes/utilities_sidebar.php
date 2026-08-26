@@ -64,9 +64,11 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
     }
     .main-content {
         margin-left: 0 !important;
+        padding-top: 80px !important;
         padding-bottom: 95px !important;
         width: 100% !important;
         max-width: 100vw !important;
+        box-sizing: border-box !important;
     }
     .main-content.collapsed {
         margin-left: 0 !important;
@@ -76,6 +78,10 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
     }
     .mobile-nav-toggle {
         display: none !important;
+    }
+    .card, .container, .dashboard-container, .main-card {
+        margin-left: auto !important;
+        margin-right: auto !important;
     }
     <?php endif; ?>
 
