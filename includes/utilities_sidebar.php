@@ -75,7 +75,7 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
         display: flex !important;
     }
     .mobile-nav-toggle {
-        display: flex !important;
+        display: none !important;
     }
     <?php endif; ?>
 
