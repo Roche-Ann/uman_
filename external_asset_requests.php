@@ -1429,26 +1429,14 @@ try {
                                                     <select name="fulfilled_asset_id" required>
                                                         <option value="">Select asset to fulfill…</option>
                                                         <?php if (!empty($avail['matching_assets'])): ?>
-                                                            <optgroup label="★ Matching Available (<?= count($avail['matching_assets']); ?>)">
-                                                                <?php foreach ($avail['matching_assets'] as $a): ?>
-                                                                    <option value="<?= (int)$a['id']; ?>">
-                                                                        <?= htmlspecialchars($a['asset_id'] . ' — ' . $a['name'] . ' (' . $a['quantity'] . ' available)'); ?>
-                                                                    </option>
-                                                                <?php endforeach; ?>
-                                                            </optgroup>
-                                                        <?php endif; ?>
-                                                        <optgroup label="All Available Assets">
-                                                            <?php foreach ($assetsForFulfill as $a): ?>
-                                                                <?php
-                                                                    $isAlreadyIn = false;
-                                                                    foreach ($avail['matching_assets'] as $ma) {
-                                                                        if ($ma['id'] == $a['id']) { $isAlreadyIn = true; break; }
-                                                                    }
-                                                                    if ($isAlreadyIn) continue;
-                                                                ?>
-                                                                <option value="<?= (int)$a['id']; ?>"><?= htmlspecialchars($a['asset_id'] . ' — ' . $a['name'] . ' (' . ($a['quantity'] ?? '1') . ' available)'); ?></option>
+                                                            <?php foreach ($avail['matching_assets'] as $a): ?>
+                                                                <option value="<?= (int)$a['id']; ?>">
+                                                                    <?= htmlspecialchars($a['asset_id'] . ' — ' . $a['name'] . ' (' . $a['quantity'] . ' available)'); ?>
+                                                                </option>
                                                             <?php endforeach; ?>
-                                                        </optgroup>
+                                                        <?php else: ?>
+                                                            <option value="" disabled>No matching assets available in stock</option>
+                                                        <?php endif; ?>
                                                     </select>
                                                     <textarea name="review_notes" rows="2" placeholder="Fulfillment notes"></textarea>
                                                     <button class="btn btn-success" type="submit"><i class="fas fa-check-double"></i> Mark Fulfilled</button>
