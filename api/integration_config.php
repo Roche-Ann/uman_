@@ -41,8 +41,10 @@ define('UPAD_WEBHOOK_SECRET',  trim((string)(getenv('UPAD_WEBHOOK_SECRET')  ?: '
 // of its own (e.g. rows seeded via "Create Test Request"). Real requests from
 // UPAD always send their own callback_url, so this is just a safety net.
 // Points at the real physical file (uman-integration/uman_inspection_result.php
-// on the UPAD side) — NOT a /api/webhooks/ route, which never existed.
-define('UPAD_DEFAULT_CALLBACK_URL', trim((string)(getenv('UPAD_DEFAULT_CALLBACK_URL') ?: 'https://upad.infragovservices.com/uman-integration/uman_inspection_result.php')));
+// on the UPAD side) — NOT a /api/webhooks/ route, which never existed. UPAD's
+// docroot is their repo root, so the path needs the /lgu-urban-planning
+// segment too — omitting it 404s (confirmed live 2026-08-27).
+define('UPAD_DEFAULT_CALLBACK_URL', trim((string)(getenv('UPAD_DEFAULT_CALLBACK_URL') ?: 'https://upad.infragovservices.com/lgu-urban-planning/uman-integration/uman_inspection_result.php')));
 
 // ── Auth helpers ──────────────────────────────────────────────────────────────
 
