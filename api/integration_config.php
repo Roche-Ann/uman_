@@ -43,14 +43,14 @@ define('UPAD_API_KEY',         trim((string)(getenv('UPAD_API_KEY')         ?: '
 // Must match UMAN_WEBHOOK_SECRET in the UPAD system's utilities_integration.php.
 define('UPAD_WEBHOOK_SECRET',  trim((string)(getenv('UPAD_WEBHOOK_SECRET')  ?: 'UPAD_UMAN_WEBHOOK_SECRET_2026')));
 
-// Fallback callback URL — points to UPAD deployed path or local XAMPP workspace
-$scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
-$host   = $_SERVER['HTTP_HOST'] ?? 'localhost';
-$prodCallback = 'https://upad.infragovservices.com/uman-integration/uman_inspection_result.php';
-$localCallback = "$scheme://$host/uman_/integration/lgu-urban-planning-capstone-main%202/lgu-urban-planning/uman-integration/uman_inspection_result.php";
-$defaultCallback = (str_contains($host, 'localhost') || str_contains($host, '127.0.0.1')) ? $localCallback : $prodCallback;
-
-define('UPAD_DEFAULT_CALLBACK_URL', trim((string)(getenv('UPAD_DEFAULT_CALLBACK_URL') ?: $defaultCallback)));
+// Fallback callback URL — only used if a stored request has no callback_url
+// of its own (e.g. rows seeded via "Create Test Request"). Real requests from
+// UPAD always send their own callback_url, so this is just a safety net.
+// Points at the real physical file (uman-integration/uman_inspection_result.php
+// on the UPAD side) — NOT a /api/webhooks/ route, which never existed. UPAD's
+// docroot is their repo root, so the path needs the /lgu-urban-planning
+// segment too — omitting it 404s (confirmed live 2026-08-27).
+define('UPAD_DEFAULT_CALLBACK_URL', trim((string)(getenv('UPAD_DEFAULT_CALLBACK_URL') ?: 'https://upad.infragovservices.com/lgu-urban-planning/uman-integration/uman_inspection_result.php')));
 
 // ── Auth helpers ──────────────────────────────────────────────────────────────
 
