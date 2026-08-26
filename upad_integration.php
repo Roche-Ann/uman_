@@ -802,26 +802,28 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                         </td>
                                         <td>
                                             <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                                                <!-- Details Action (Always Available) -->
-                                                <button type="button" class="btn btn-outline" style="padding: 5px 10px; font-size: 11px;" 
-                                                        onclick="openDetailsModal(
-                                                            '<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>',
-                                                            '<?php echo htmlspecialchars($r['project_name'] ?? ''); ?>',
-                                                            '<?php echo htmlspecialchars($r['barangay'] ?? ''); ?>',
-                                                            '<?php echo $aiScore !== null ? (int)round($aiScore) : 'N/A'; ?>',
-                                                            '<?php echo htmlspecialchars($aiDecision ?? 'Pending'); ?>',
-                                                            '<?php echo htmlspecialchars(addslashes($r['remarks'] ?? 'AI evaluation completed. Inspection result generated.')); ?>'
-                                                        )">
-                                                    <i class="fas fa-file-alt"></i> Details
-                                                </button>
+                                                <?php if ($aiDecision === 'Approved' || ($aiScore !== null && $aiScore >= 80.0)): ?>
+                                                    <!-- AUTOMATICALLY APPROVED (80-100): APPROVE & CALLBACK AVAILABLE -->
+                                                    <button type="button" class="btn btn-success" style="padding: 5px 10px; font-size: 11px; background: #10b981; color: white;" onclick="openCallbackModal('<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>')">
+                                                        <i class="fas fa-check-circle"></i> Approve & Callback
+                                                    </button>
 
-                                                <?php if ($aiDecision === 'Conditional' || ($aiScore !== null && $aiScore >= 50.0 && $aiScore < 80.0)): ?>
+                                                    <form method="POST" style="display:inline;">
+                                                        <input type="hidden" name="action" value="manual_reject">
+                                                        <input type="hidden" name="reference_id" value="<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>">
+                                                        <input type="hidden" name="recommendation" value="<?php echo htmlspecialchars($r['remarks'] ?? 'Inspection rejected upon administrative review.'); ?>">
+                                                        <button type="submit" class="btn btn-danger" style="padding: 5px 10px; font-size: 11px; background: #ef4444; color: white; border: none; border-radius: 8px;" title="Override and reject this inspection">
+                                                            <i class="fas fa-times-circle"></i> Reject
+                                                        </button>
+                                                    </form>
+
+                                                <?php elseif ($aiDecision === 'Conditional' || ($aiScore !== null && $aiScore >= 50.0 && $aiScore < 80.0)): ?>
                                                     <!-- AI SCORE 50-79: MANUAL CHECK WORKFLOW (Approve or Reject) -->
                                                     <form method="POST" style="display:inline;">
                                                         <input type="hidden" name="action" value="manual_approve">
                                                         <input type="hidden" name="reference_id" value="<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>">
                                                         <button type="submit" class="btn btn-success" style="padding: 5px 10px; font-size: 11px; background: #10b981; color: white;" title="Manually approve this inspection after Manual Check">
-                                                            <i class="fas fa-check"></i> Approve
+                                                            <i class="fas fa-check-circle"></i> Approve
                                                         </button>
                                                     </form>
 
@@ -830,18 +832,18 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                                         <input type="hidden" name="reference_id" value="<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>">
                                                         <input type="hidden" name="recommendation" value="<?php echo htmlspecialchars($r['remarks'] ?? 'Inspection rejected upon manual review. Corrective action required.'); ?>">
                                                         <button type="submit" class="btn btn-danger" style="padding: 5px 10px; font-size: 11px; background: #ef4444; color: white; border: none; border-radius: 8px;" title="Manually reject this inspection and request correction">
-                                                            <i class="fas fa-times"></i> Reject
+                                                            <i class="fas fa-times-circle"></i> Reject
                                                         </button>
                                                     </form>
 
-                                                <?php elseif ($aiDecision === 'Rejected' || $rawStatus === 'sent_for_correction'): ?>
+                                                <?php else: ?>
                                                     <!-- REJECTED WORKFLOW: SEND BACK / CALLBACK + RE-EVALUATE -->
                                                     <form method="POST" style="display:inline;">
                                                         <input type="hidden" name="action" value="request_correction">
                                                         <input type="hidden" name="reference_id" value="<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>">
                                                         <input type="hidden" name="recommendation" value="<?php echo htmlspecialchars($r['remarks'] ?? 'Corrective action required based on inspection findings.'); ?>">
                                                         <button type="submit" class="btn btn-warning" style="padding: 5px 10px; font-size: 11px; background: #f59e0b; color: white;" title="Send rejected inspection + AI recommendation back to team for correction">
-                                                            <i class="fas fa-reply"></i> Send Back / Callback
+                                                            <i class="fas fa-paper-plane"></i> Send Back / Callback
                                                         </button>
                                                     </form>
 
@@ -852,12 +854,6 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                                             <i class="fas fa-sync"></i> Re-evaluate
                                                         </button>
                                                     </form>
-
-                                                <?php else: ?>
-                                                    <!-- AI SCORE 80-100 (AUTOMATICALLY APPROVED): CALLBACK -->
-                                                    <button type="button" class="btn btn-success" style="padding: 5px 10px; font-size: 11px;" onclick="openCallbackModal('<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>')">
-                                                        <i class="fas fa-paper-plane"></i> Callback
-                                                    </button>
                                                 <?php endif; ?>
                                             </div>
                                         </td>
