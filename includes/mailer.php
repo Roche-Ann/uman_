@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * Shared mail helpers for OTP and transactional email.
  * Uses Symfony Mailer when vendor/ is installed; otherwise pure PHP SMTP

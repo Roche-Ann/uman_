@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // Ensure auth.php is loaded so we have database connection and session handling
 require_once 'includes/auth.php';
 require_once __DIR__ . '/includes/mailer.php';
