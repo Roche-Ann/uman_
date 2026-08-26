@@ -1415,6 +1415,38 @@ function sidebarActive(string $page, string $current): string {
                 </a>
             </li>
 
+            <li class="nav-section-header">WASTE MANAGEMENT</li>
+            <li>
+                <a href="<?php echo $sidebarBase; ?>waste_dashboard.php" class="nav-link<?php echo sidebarActive('waste_dashboard.php', $currentPage); ?>">
+                    <i class="fas fa-recycle"></i>
+                    <span class="link-label">Waste Dashboard</span>
+                </a>
+            </li>
+            <li>
+                <a href="<?php echo $sidebarBase; ?>waste_truck_map.php" class="nav-link<?php echo sidebarActive('waste_truck_map.php', $currentPage); ?>">
+                    <i class="fas fa-map-marked-alt"></i>
+                    <span class="link-label">Route Map</span>
+                </a>
+            </li>
+            <li>
+                <a href="<?php echo $sidebarBase; ?>waste_records.php" class="nav-link<?php echo sidebarActive('waste_records.php', $currentPage); ?>">
+                    <i class="fas fa-clipboard-list"></i>
+                    <span class="link-label">Collection Records</span>
+                </a>
+            </li>
+            <li>
+                <a href="<?php echo $sidebarBase; ?>waste_schedules.php" class="nav-link<?php echo sidebarActive('waste_schedules.php', $currentPage); ?>">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span class="link-label">Schedules</span>
+                </a>
+            </li>
+            <li>
+                <a href="<?php echo $sidebarBase; ?>waste_notifications.php" class="nav-link<?php echo sidebarActive('waste_notifications.php', $currentPage); ?>">
+                    <i class="fas fa-bell"></i>
+                    <span class="link-label">Waste Notifications</span>
+                </a>
+            </li>
+
             <li>
                 <a href="<?php echo $sidebarBase; ?>ai_analytics.php" class="nav-link<?php echo sidebarActive('ai_analytics.php', $currentPage); ?>">
                     <i class="fas fa-brain"></i>
