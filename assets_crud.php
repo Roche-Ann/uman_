@@ -1817,7 +1817,7 @@ if (!empty($search) || $status_filter) {
                         <input type="text" name="responsible_office" class="form-control" placeholder="Supplier">
                     </div>
                     <div class="form-group">
-                        <label>Asset Representative Image</label>
+                        <label>Asset Image</label>
                         <input type="file" name="image" class="form-control" accept="image/*">
                     </div>
                 </div>
