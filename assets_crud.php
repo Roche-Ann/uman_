@@ -365,8 +365,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             'location'           => ['Location',            $oldAsset['location'] ?? '',            $location],
                             'condition_status'   => ['Status',              $oldAsset['condition_status'] ?? '',    $condition_status],
                             'asset_type'         => ['Category',            $oldTypeName,                          $newTypeName],
-                            'date_installed'     => ['Date Installed',      $oldAsset['date_installed'] ?? '',      $date_installed],
-                            'responsible_office' => ['Responsible Office',  $oldAsset['responsible_office'] ?? '', $responsible_office],
+                            'date_installed'     => ['Acquired Date',      $oldAsset['date_installed'] ?? '',      $date_installed],
+                            'responsible_office' => ['Vendor',  $oldAsset['responsible_office'] ?? '', $responsible_office],
                             'description'        => ['Description',         $oldAsset['description'] ?? '',        $description],
                         ];
 
@@ -1802,7 +1802,7 @@ if (!empty($search) || $status_filter) {
                 </div>
 
                 <div class="form-group" style="margin-bottom:15px;">
-                    <label>Installation Date *</label>
+                    <label>Acquired Date *</label>
                     <input type="date" name="date_installed" class="form-control" required value="<?php echo date('Y-m-d'); ?>">
                 </div>
 
@@ -1813,7 +1813,7 @@ if (!empty($search) || $status_filter) {
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Responsible Office / Department</label>
+                        <label>Vendor</label>
                         <input type="text" name="responsible_office" class="form-control" placeholder="e.g. City Engineering Office">
                     </div>
                     <div class="form-group">
@@ -1913,7 +1913,7 @@ if (!empty($search) || $status_filter) {
                 </div>
 
                 <div class="form-group" style="margin-bottom:15px;">
-                    <label>Installation Date *</label>
+                    <label>Acquired Date *</label>
                     <input type="date" id="edit-date-installed" name="date_installed" class="form-control" required>
                 </div>
 
@@ -1924,7 +1924,7 @@ if (!empty($search) || $status_filter) {
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Responsible Office</label>
+                        <label>Vendor</label>
                         <input type="text" id="edit-office" name="responsible_office" class="form-control">
                     </div>
                     <div class="form-group">
@@ -1990,11 +1990,11 @@ if (!empty($search) || $status_filter) {
                         <td id="view-gps-text"></td>
                     </tr>
                     <tr>
-                        <td style="font-weight:600; color:#64748b;">Date Installed</td>
+                        <td style="font-weight:600; color:#64748b;">Acquired Date</td>
                         <td id="view-date-text"></td>
                     </tr>
                     <tr>
-                        <td style="font-weight:600; color:#64748b;">Responsible Office</td>
+                        <td style="font-weight:600; color:#64748b;">Vendor</td>
                         <td id="view-office-text"></td>
                     </tr>
                     <tr>
@@ -2240,9 +2240,9 @@ if (!empty($search) || $status_filter) {
             { id: 'edit-name', name: 'Asset Name', key: 'name' },
             { id: 'edit-quantity', name: 'Quantity', key: 'quantity' },
             { id: 'edit-status', name: 'Condition Status', key: 'condition_status' },
-            { id: 'edit-date-installed', name: 'Installation Date', key: 'date_installed' },
+            { id: 'edit-date-installed', name: 'Acquired Date', key: 'date_installed' },
             { id: 'edit-location', name: 'Location', key: 'location' },
-            { id: 'edit-office', name: 'Responsible Office', key: 'responsible_office' },
+            { id: 'edit-office', name: 'Vendor', key: 'responsible_office' },
             { id: 'edit-description', name: 'Description & Notes', key: 'description' }
         ];
 
