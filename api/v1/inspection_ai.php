@@ -178,38 +178,40 @@ function runInspectionAIValidation(string $referenceId, PDO $pdo): array {
 
     $finalScore = round($weightedScore, 2);
 
-    // Generate factor-driven professional AI recommendation text
-    $recomActions = [];
-    if ($coverageScore < 100.0) {
-        $recomActions[] = "Verify utility service boundary coverage in " . ($barangay ?: 'target site');
-    }
+    // Generate specific, non-generic AI corrective recommendations based on actual inspection findings
+    $specificRecoms = [];
+    $targetLoc = $barangay ?: 'target project site';
+
     if ($assetScore < 85.0) {
-        $recomActions[] = "Inspect local substation transformer and feeder line health";
+        $specificRecoms[] = "Repair or replace damaged substation transformers and equipment poles in {$targetLoc} (Asset Operational Health: {$assetScore}%)";
     }
-    if ($capacityScore < 100.0) {
-        $recomActions[] = "Perform peak-hour grid load balancing and capacity verification";
+    if ($capacityScore < 80.0) {
+        $specificRecoms[] = "Implement transformer kVA capacity improvement and feeder line load reduction in {$targetLoc} (Capacity Status: {$capacityStatus})";
     }
     if ($incidentScore < 100.0) {
-        $recomActions[] = "Clear {$incidentCount} active open utility maintenance/hazard report(s)";
+        $specificRecoms[] = "Dispatch maintenance team for further investigation and corrective maintenance on {$incidentCount} active open utility hazard incident(s)";
+    }
+    if ($coverageScore < 100.0) {
+        $specificRecoms[] = "Extend power distribution grid lines and improve utility coverage boundaries for {$targetLoc} (Coverage Status: {$coverageStatus})";
     }
 
     if ($finalScore >= 80.0) {
         $decision = 'Approved';
         $overallCondition = 'Good';
         $severity = 'Low';
-        $recommendation = "Grid infrastructure and capacity verified. Approved for immediate utility connection in " . ($barangay ?: 'target site') . ".";
+        $recommendation = "Grid infrastructure and capacity verified. Approved for immediate utility connection in {$targetLoc}.";
     } elseif ($finalScore >= 50.0) {
         $decision = 'Conditional';
         $overallCondition = 'Fair';
         $severity = 'Medium';
-        $actionList = !empty($recomActions) ? implode('; ', $recomActions) : "Conduct physical site inspection of local transformer load";
-        $recommendation = "Conditional Approval (Score: {$finalScore}% - Flagged for Manual Review). Recommended Action: {$actionList} prior to final energization.";
+        $actionDetails = !empty($specificRecoms) ? implode('; ', $specificRecoms) : "Conduct physical site inspection of transformer load and pole connections";
+        $recommendation = "Conditional Approval (Score: {$finalScore}% - Flagged for Manual Review). Required Action: {$actionDetails} prior to final energization.";
     } else {
         $decision = 'Rejected';
         $overallCondition = 'Poor';
         $severity = 'High';
-        $actionList = !empty($recomActions) ? implode('; ', $recomActions) : "Mandatory grid expansion and transformer upgrade required";
-        $recommendation = "Inspection Rejected (Score: {$finalScore}%). Recommended Action: {$actionList} before resubmitting request.";
+        $actionDetails = !empty($specificRecoms) ? implode('; ', $specificRecoms) : "Mandatory grid expansion and transformer replacement required";
+        $recommendation = "Inspection Rejected (Score: {$finalScore}%). Corrective Action Required: {$actionDetails} before resubmitting request.";
     }
 
     $reason = "AI Inspection Score: {$finalScore}/100 ($decision). Coverage: {$coverageStatus} ({$coverageScore}%), Assets: {$assetScore}% Operational, Capacity: {$capacityStatus} ({$capacityScore}%), Incidents: {$incidentCount} active ({$incidentScore}%).";

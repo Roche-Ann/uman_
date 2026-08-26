@@ -61,6 +61,15 @@ try {
     if (!in_array('ai_decision', $existingCols, true)) {
         $pdo->exec("ALTER TABLE `upad_inspection_requests` ADD COLUMN `ai_decision` VARCHAR(50) NULL AFTER `ai_score`");
     }
+    if (!in_array('corrective_recommendation', $existingCols, true)) {
+        $pdo->exec("ALTER TABLE `upad_inspection_requests` ADD COLUMN `corrective_recommendation` TEXT NULL AFTER `ai_decision`");
+    }
+    if (!in_array('correction_requested_by', $existingCols, true)) {
+        $pdo->exec("ALTER TABLE `upad_inspection_requests` ADD COLUMN `correction_requested_by` VARCHAR(100) NULL AFTER `corrective_recommendation`");
+    }
+    if (!in_array('correction_requested_at', $existingCols, true)) {
+        $pdo->exec("ALTER TABLE `upad_inspection_requests` ADD COLUMN `correction_requested_at` DATETIME NULL AFTER `correction_requested_by`");
+    }
 } catch (Throwable $e) {
     // Fail-safe
 }
@@ -189,6 +198,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             }
         } else {
             $errors[] = "AI Engine Error: " . $aiResult['error'];
+        }
+    }
+}
+
+// ── Handle Request Corrective Action ──────────────────────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'request_correction') {
+    $refId = trim((string)($_POST['reference_id'] ?? ''));
+    $recomText = trim((string)($_POST['recommendation'] ?? 'Corrective action required based on inspection findings.'));
+    
+    if (!empty($refId)) {
+        $pdo->prepare("
+            UPDATE upad_inspection_requests 
+            SET status = 'sent_for_correction', 
+                corrective_recommendation = ?, 
+                correction_requested_by = 'System Administrator', 
+                correction_requested_at = NOW()
+            WHERE reference_id = ?
+        ")->execute([$recomText, $refId]);
+        
+        $successes[] = "Inspection request $refId sent back for corrective action with AI-generated recommendations.";
+    }
+}
+
+// ── Handle Reinspect Trigger ──────────────────────────────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'reinspect') {
+    $refId = trim((string)($_POST['reference_id'] ?? ''));
+    if (!empty($refId)) {
+        $pdo->prepare("
+            UPDATE upad_inspection_requests 
+            SET status = 'under_reinspection' 
+            WHERE reference_id = ?
+        ")->execute([$refId]);
+
+        require_once __DIR__ . '/api/v1/inspection_ai.php';
+        $aiResult = runInspectionAIValidation($refId, $pdo);
+        if ($aiResult['success']) {
+            $successes[] = "Inspection request $refId returned to inspection process and re-evaluated by AI Engine. Score: {$aiResult['score']}% ({$aiResult['decision']}).";
+        } else {
+            $errors[] = "Reinspection triggered for $refId: " . ($aiResult['error'] ?? 'Re-evaluation pending.');
         }
     }
 }
@@ -702,9 +750,16 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                             <?php endif; ?>
                                         </td>
                                         <td>
-                                            <span class="badge badge-<?php echo strtolower($r['status'] ?? 'pending'); ?>">
-                                                <?php echo htmlspecialchars($r['status'] ?? 'pending'); ?>
-                                            </span>
+                                            <?php 
+                                                $statusDisplay = match ($rawStatus) {
+                                                    'completed', 'delivered' => '<span class="badge" style="background:rgba(16,185,129,0.15); color:#059669; border:1px solid rgba(16,185,129,0.3);"><i class="fas fa-check-circle"></i> Inspected</span>',
+                                                    'sent_for_correction'    => '<span class="badge" style="background:rgba(239,68,68,0.15); color:#dc2626; border:1px solid rgba(239,68,68,0.3);"><i class="fas fa-reply"></i> Sent for Correction</span>',
+                                                    'under_reinspection'     => '<span class="badge" style="background:rgba(147,51,234,0.15); color:#7e22ce; border:1px solid rgba(147,51,234,0.3);"><i class="fas fa-sync fa-spin"></i> Under Reinspection</span>',
+                                                    'failed'                 => '<span class="badge" style="background:rgba(239,68,68,0.15); color:#dc2626; border:1px solid rgba(239,68,68,0.3);"><i class="fas fa-exclamation-triangle"></i> Delivery Failed</span>',
+                                                    default                  => '<span class="badge" style="background:rgba(245,158,11,0.15); color:#d97706; border:1px solid rgba(245,158,11,0.3);"><i class="fas fa-hourglass-start"></i> Awaiting Inspection</span>',
+                                                };
+                                                echo $statusDisplay;
+                                            ?>
                                             <?php if (!empty($r['callback_http_code'])): ?>
                                                 <br><small style="color: #64748b; font-size: 11px;">HTTP <?php echo (int)$r['callback_http_code']; ?></small>
                                             <?php endif; ?>
@@ -723,13 +778,32 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                                     <i class="fas fa-file-alt"></i> Details
                                                 </button>
 
-                                                <form method="POST" style="display:inline;">
-                                                    <input type="hidden" name="action" value="run_ai_validation">
-                                                    <input type="hidden" name="reference_id" value="<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>">
-                                                    <button type="submit" class="btn btn-ai" style="padding: 5px 10px; font-size: 11px;" title="Evaluate grid data in background">
-                                                        <i class="fas fa-sync"></i> Re-Evaluate
-                                                    </button>
-                                                </form>
+                                                <?php if ($aiDecision === 'Rejected' || $rawStatus === 'sent_for_correction'): ?>
+                                                    <form method="POST" style="display:inline;">
+                                                        <input type="hidden" name="action" value="request_correction">
+                                                        <input type="hidden" name="reference_id" value="<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>">
+                                                        <input type="hidden" name="recommendation" value="<?php echo htmlspecialchars($r['remarks'] ?? 'Corrective action required based on inspection findings.'); ?>">
+                                                        <button type="submit" class="btn btn-warning" style="padding: 5px 10px; font-size: 11px; background: #f59e0b; color: white;" title="Send inspection back to team with AI corrective recommendations">
+                                                            <i class="fas fa-reply"></i> Send for Correction
+                                                        </button>
+                                                    </form>
+
+                                                    <form method="POST" style="display:inline;">
+                                                        <input type="hidden" name="action" value="reinspect">
+                                                        <input type="hidden" name="reference_id" value="<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>">
+                                                        <button type="submit" class="btn btn-ai" style="padding: 5px 10px; font-size: 11px; background: #8b5cf6; color: white;" title="Re-evaluate request after corrective work completed">
+                                                            <i class="fas fa-sync"></i> Reinspect
+                                                        </button>
+                                                    </form>
+                                                <?php else: ?>
+                                                    <form method="POST" style="display:inline;">
+                                                        <input type="hidden" name="action" value="run_ai_validation">
+                                                        <input type="hidden" name="reference_id" value="<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>">
+                                                        <button type="submit" class="btn btn-ai" style="padding: 5px 10px; font-size: 11px;" title="Re-evaluate grid data">
+                                                            <i class="fas fa-sync"></i> Re-Evaluate
+                                                        </button>
+                                                    </form>
+                                                <?php endif; ?>
 
                                                 <button type="button" class="btn btn-success" style="padding: 5px 10px; font-size: 11px;" onclick="openCallbackModal('<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>')">
                                                     <i class="fas fa-paper-plane"></i> Callback
