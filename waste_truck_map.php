@@ -453,25 +453,56 @@ function stopPopupHTML(stop, route) {
     </div>`;
 }
 
-// ─── RENDER ROUTES ───────────────────────────────────────────
+// ─── RENDER ROUTES (SNAPPED TO REAL ROADS) ───────────────────
+const roadGeometryCache = {};
+
+async function fetchRoadGeometry(stops) {
+    const cacheKey = stops.map(s => `${s.latitude},${s.longitude}`).join(';');
+    if (roadGeometryCache[cacheKey]) {
+        return roadGeometryCache[cacheKey];
+    }
+    
+    try {
+        const coordString = stops.map(s => `${parseFloat(s.longitude)},${parseFloat(s.latitude)}`).join(';');
+        const url = `https://router.project-osrm.org/route/v1/driving/${coordString}?overview=full&geometries=geojson`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('OSRM network error');
+        const data = await res.json();
+        
+        if (data.code === 'Ok' && data.routes && data.routes[0]) {
+            const coords = data.routes[0].geometry.coordinates; // [lng, lat]
+            const roadLatLngs = coords.map(c => [c[1], c[0]]); // convert to [lat, lng]
+            roadGeometryCache[cacheKey] = roadLatLngs;
+            return roadLatLngs;
+        }
+    } catch (e) {
+        console.warn('Road snapping fallback to straight line:', e);
+    }
+    return stops.map(s => [parseFloat(s.latitude), parseFloat(s.longitude)]);
+}
+
 function renderRoutes() {
-    ROUTES.forEach(route => {
+    ROUTES.forEach(async (route) => {
         const stops = STOPS[route.id];
         if (!stops || stops.length === 0) return;
 
         const etaStops = calcETAs(route.id);
-        const latLngs  = etaStops.map(s => [parseFloat(s.latitude), parseFloat(s.longitude)]);
+        const fallbackLatLngs = etaStops.map(s => [parseFloat(s.latitude), parseFloat(s.longitude)]);
 
-        // Polyline
-        const poly = L.polyline(latLngs, {
+        // Polyline with smooth road styling
+        const poly = L.polyline(fallbackLatLngs, {
             color: route.color_hex,
             weight: 5,
             opacity: 0.85,
-            smoothFactor: 1.5
+            lineJoin: 'round',
+            lineCap: 'round',
+            smoothFactor: 1
         }).addTo(map);
 
-        // Direction arrows
-        const decoratedPoly = poly;
+        // Fetch actual road network coordinates and update polyline
+        fetchRoadGeometry(etaStops).then(roadLatLngs => {
+            poly.setLatLngs(roadLatLngs);
+        });
 
         // Stop markers
         const stopMarkers = [];
@@ -534,6 +565,7 @@ function renderRoutes() {
         routeLayers[route.id] = { poly, stopMarkers };
     });
 }
+
 
 // ─── TOGGLE ROUTE ────────────────────────────────────────────
 function toggleRoute(routeId, el) {
