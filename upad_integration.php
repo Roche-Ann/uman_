@@ -3,7 +3,7 @@
  * UMAN Staff: Urban Planning (UPAD) Integration Hub
  *
  * View inbound electrical/grid inspection requests from UPAD,
- * test integration, and send inspection callbacks back to UPAD.
+ * test integration, run real AI scoring, and send inspection callbacks back to UPAD.
  */
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
@@ -18,12 +18,11 @@ if (!isLoggedIn() || !isEmployee()) {
 $errors = [];
 $successes = [];
 
-// Ensure UPAD table exists
+// Ensure tables exist
 try {
-    $sql = file_get_contents(__DIR__ . '/sql/upad_integration.sql');
-    $pdo->exec($sql);
+    $pdo->exec(file_get_contents(__DIR__ . '/sql/inspection_ai.sql'));
 } catch (Throwable $e) {
-    // optional fail-safe
+    // fail-safe
 }
 
 // ── Handle Manual Callback Submission from UI ────────────────────────────────
@@ -43,7 +42,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     if (empty($refId)) {
         $errors[] = "Reference ID is required.";
     } else {
-        // Fetch request
         $stmt = $pdo->prepare("SELECT * FROM upad_inspection_requests WHERE reference_id = ?");
         $stmt->execute([$refId]);
         $req = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -70,11 +68,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             ];
 
             $callbackJson = json_encode($callbackPayload, JSON_UNESCAPED_UNICODE);
-            $callbackUrl  = !empty($req['callback_url'])
-                ? $req['callback_url']
-                : UPAD_DEFAULT_CALLBACK_URL;
-
-            $signature = hash_hmac('sha256', $callbackJson, UPAD_WEBHOOK_SECRET);
+            $callbackUrl  = !empty($req['callback_url']) ? $req['callback_url'] : UPAD_DEFAULT_CALLBACK_URL;
+            $signature    = hash_hmac('sha256', $callbackJson, UPAD_WEBHOOK_SECRET);
 
             $sendCurl = function($targetUrl) use ($callbackJson, $signature) {
                 $ch = curl_init($targetUrl);
@@ -89,11 +84,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     CURLOPT_TIMEOUT        => 10,
                     CURLOPT_SSL_VERIFYPEER => false,
                 ]);
-
                 $responseBody = curl_exec($ch);
                 $httpCode     = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
                 $curlErr      = curl_error($ch);
-                curl_close($ch);
 
                 return [$httpCode, $curlErr, $responseBody];
             };
@@ -140,16 +133,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $aiResult = runInspectionAIValidation($refId, $pdo);
         if ($aiResult['success']) {
             if ($aiResult['approved']) {
-                $successes[] = "AI Validation Success: Request $refId was automatically approved based on real asset inventory and closed incidents! Callback was successfully sent to UPAD.";
+                $successes[] = "AI Validation Success ($refId): Score {$aiResult['score']}/100 ({$aiResult['decision']}). Callback dispatched to UPAD.";
             } else {
-                $errors[] = "AI Validation Deferred for $refId: " . $aiResult['message'];
+                $errors[] = "AI Validation ($refId): Score {$aiResult['score']}/100 ({$aiResult['decision']}). " . $aiResult['message'];
             }
         } else {
-            $errors[] = "AI System Error: " . $aiResult['error'];
+            $errors[] = "AI Engine Error: " . $aiResult['error'];
         }
     }
 }
-
 
 // ── Handle Seed Real Urban Planning Requests ─────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'seed_test_request') {
@@ -229,10 +221,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 }
 
 // ── Query statistics ─────────────────────────────────────────────────────────
-$totalCount = (int) $pdo->query("SELECT COUNT(*) FROM upad_inspection_requests")->fetchColumn();
-$pendingCount = (int) $pdo->query("SELECT COUNT(*) FROM upad_inspection_requests WHERE status = 'pending'")->fetchColumn();
+$totalCount     = (int) $pdo->query("SELECT COUNT(*) FROM upad_inspection_requests")->fetchColumn();
+$pendingCount   = (int) $pdo->query("SELECT COUNT(*) FROM upad_inspection_requests WHERE status = 'pending'")->fetchColumn();
 $completedCount = (int) $pdo->query("SELECT COUNT(*) FROM upad_inspection_requests WHERE status = 'completed'")->fetchColumn();
-$failedCount = (int) $pdo->query("SELECT COUNT(*) FROM upad_inspection_requests WHERE status = 'failed'")->fetchColumn();
+$failedCount    = (int) $pdo->query("SELECT COUNT(*) FROM upad_inspection_requests WHERE status = 'failed'")->fetchColumn();
 
 // Fetch inspection requests
 $stmt = $pdo->query("SELECT * FROM upad_inspection_requests ORDER BY created_at DESC LIMIT 100");
@@ -241,14 +233,20 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark-theme');
+            }
+        })();
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Urban Planning Integration Hub — UMAN Utilities Management</title>
+    <title>Urban Planning (UPAD) Integration Hub</title>
     <link rel="icon" type="image/png" href="assets/images/logocityhall.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
-        
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: 'Poppins', sans-serif;
@@ -298,7 +296,6 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
             margin-top: 4px;
         }
 
-        /* Outer page wrapper card (wraps everything like assets_crud) */
         .page-wrapper {
             width: 100%;
             max-width: 1700px;
@@ -328,7 +325,6 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
             align-items: center;
             gap: 15px;
             border-left: 5px solid #3b82f6;
-            transition: background 0.3s ease, box-shadow 0.3s ease;
         }
         .stat-card.pending { border-left-color: #f59e0b; }
         .stat-card.completed { border-left-color: #10b981; }
@@ -351,7 +347,6 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
         .stat-info h3 { font-size: 24px; font-weight: 700; color: #0f172a; }
         .stat-info p { font-size: 12px; color: #64748b; font-weight: 500; }
 
-        /* Card Section (inside the page-wrapper) */
         .card {
             background: #ffffff;
             border-radius: 14px;
@@ -359,7 +354,6 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
             box-shadow: 0 2px 10px rgba(0,0,0,0.07);
             margin-bottom: 24px;
             border: 1px solid rgba(0,0,0,0.06);
-            transition: background 0.3s ease, box-shadow 0.3s ease;
         }
         .card-header {
             display: flex;
@@ -380,20 +374,22 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         /* Buttons */
         .btn {
-            padding: 10px 18px;
+            padding: 8px 14px;
             border-radius: 8px;
             font-weight: 600;
-            font-size: 13px;
+            font-size: 12px;
             border: none;
             cursor: pointer;
             display: inline-flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
             transition: all 0.2s ease;
             text-decoration: none;
         }
         .btn-primary { background: #3b82f6; color: #fff; }
         .btn-primary:hover { background: #2563eb; }
+        .btn-ai { background: #6366f1; color: #fff; }
+        .btn-ai:hover { background: #4f46e5; }
         .btn-success { background: #10b981; color: #fff; }
         .btn-success:hover { background: #059669; }
         .btn-outline { background: #f8fafc; color: #475569; border: 1px solid #cbd5e1; }
@@ -427,13 +423,11 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
             text-align: left;
             padding: 12px 16px;
             border-bottom: 2px solid #e2e8f0;
-            transition: background 0.3s ease, color 0.3s ease;
         }
         td {
             padding: 14px 16px;
             border-bottom: 1px solid #f1f5f9;
             color: #334155;
-            transition: background 0.3s ease, color 0.3s ease;
         }
         tr:hover td { background: #f8fafc; }
 
@@ -452,12 +446,13 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
         .badge-urgent { background: #fee2e2; color: #b91c1c; }
         .badge-medium { background: #e0f2fe; color: #0369a1; }
         .badge-low { background: #f1f5f9; color: #475569; }
+        .badge-score { background: #e0e7ff; color: #3730a3; font-weight: 700; }
 
         /* Modal */
         .modal {
             display: none;
             position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
+            inset: 0;
             background: rgba(15, 23, 42, 0.6);
             backdrop-filter: blur(6px);
             z-index: 9999;
@@ -468,11 +463,10 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
         .modal-content {
             background: #ffffff;
             border-radius: 16px;
-            width: 600px;
+            width: 620px;
             max-width: 95%;
             padding: 25px;
             box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
-            transition: background 0.3s ease;
         }
         .modal-header {
             display: flex; justify-content: space-between; align-items: center;
@@ -483,320 +477,195 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
         .form-control {
             width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #cbd5e1;
             font-size: 13px; font-family: inherit;
-            transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease;
         }
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
 
-        /* ===== DARK THEME OVERRIDES ===== */
-        /* Keep the background image but darken + de-blur the overlay */
-        .dark-theme body::before {
-            background: rgba(5, 10, 22, 0.80) !important;
-            backdrop-filter: blur(10px) !important;
-            -webkit-backdrop-filter: blur(10px) !important;
-        }
-        .dark-theme body {
-            color: #f1f5f9 !important;
-        }
-        .dark-theme .page-header h1 {
-            color: #f8fafc !important;
-        }
-        .dark-theme .page-header p {
-            color: #94a3b8 !important;
-        }
-
-        /* Outer wrapper */
-        .dark-theme .page-wrapper {
-            background: rgba(10, 18, 35, 0.92) !important;
-            border-color: rgba(255,255,255,0.08) !important;
-            box-shadow: 0 6px 28px rgba(0,0,0,0.6) !important;
-            color: #f1f5f9 !important;
-        }
-
-        /* Stat cards */
-        .dark-theme .stat-card {
-            background: rgba(30, 41, 59, 0.95) !important;
-            border-color: #334155 !important;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.4) !important;
-        }
-        .dark-theme .stat-card                { border-left-color: #3b82f6 !important; }
-        .dark-theme .stat-card.pending        { border-left-color: #f59e0b !important; }
-        .dark-theme .stat-card.completed      { border-left-color: #10b981 !important; }
-        .dark-theme .stat-card.failed         { border-left-color: #ef4444 !important; }
-        .dark-theme .stat-icon                { background: rgba(255,255,255,0.06) !important; }
-        .dark-theme .stat-card.pending .stat-icon   { background: rgba(245,158,11,0.15) !important; }
-        .dark-theme .stat-card.completed .stat-icon { background: rgba(16,185,129,0.15) !important; }
-        .dark-theme .stat-card.failed .stat-icon    { background: rgba(239,68,68,0.15) !important; }
-        .dark-theme .stat-info h3             { color: #f8fafc !important; }
-        .dark-theme .stat-info p              { color: #94a3b8 !important; }
-
-        /* Cards (inside the dark page-wrapper) */
-        .dark-theme .card {
-            background: rgba(15, 23, 42, 0.85) !important;
-            border-color: #334155 !important;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.4) !important;
-        }
-        .dark-theme .card-header {
-            border-bottom-color: #334155 !important;
-        }
-        .dark-theme .card-header h2 {
-            color: #f8fafc !important;
-        }
-
-        /* Table */
-        .dark-theme th {
-            background: #151f32 !important;
-            color: #94a3b8 !important;
-            border-bottom-color: #334155 !important;
-        }
-        .dark-theme td {
-            color: #cbd5e1 !important;
-            border-bottom-color: #334155 !important;
-        }
-        .dark-theme tr:hover td {
-            background: rgba(255,255,255,0.04) !important;
-        }
-        .dark-theme td strong { color: #f8fafc !important; }
-        .dark-theme td small  { color: #64748b !important; }
-
-        /* Badges */
-        .dark-theme .badge-pending   { background: #3d2500 !important; color: #fcd34d !important; }
-        .dark-theme .badge-completed { background: #052e16 !important; color: #4ade80 !important; }
-        .dark-theme .badge-failed    { background: #450a0a !important; color: #fca5a5 !important; }
-        .dark-theme .badge-urgent    { background: #450a0a !important; color: #fca5a5 !important; }
-        .dark-theme .badge-medium    { background: #0c2a4a !important; color: #7dd3fc !important; }
-        .dark-theme .badge-low       { background: #1e293b !important; color: #94a3b8 !important; border: 1px solid #334155; }
-
-        /* Modal */
-        .dark-theme .modal-content {
-            background: #1e293b !important;
-            color: #f8fafc !important;
-            border: 1px solid rgba(255,255,255,0.1) !important;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.6) !important;
-        }
-        .dark-theme .modal-header {
-            border-bottom-color: #334155 !important;
-        }
-        .dark-theme .modal-header h3 {
-            color: #f8fafc !important;
-        }
-        .dark-theme .modal-header > button {
-            color: #94a3b8 !important;
-            background: none !important;
-        }
-        .dark-theme .modal-header > button:hover {
-            color: #f8fafc !important;
-        }
-        .dark-theme .form-group label {
-            color: #94a3b8 !important;
-        }
-        .dark-theme .form-control {
-            background: #0f172a !important;
-            border-color: #475569 !important;
-            color: #f8fafc !important;
-        }
-        .dark-theme .form-control::placeholder {
-            color: #64748b !important;
-        }
-        .dark-theme .form-control:focus {
-            border-color: #3762c8 !important;
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(55,98,200,0.25) !important;
-        }
-
-        /* Alerts */
-        .dark-theme .alert-success {
-            background: #064e3b !important;
-            color: #6ee7b7 !important;
-            border-color: #065f46 !important;
-        }
-        .dark-theme .alert-error {
-            background: #450a0a !important;
-            color: #fca5a5 !important;
-            border-color: #7f1d1d !important;
-        }
-
-        /* Buttons */
-        .dark-theme .btn-outline {
-            background: transparent !important;
-            border-color: #475569 !important;
-            color: #94a3b8 !important;
-        }
-        .dark-theme .btn-outline:hover {
-            background: #334155 !important;
-            color: #f8fafc !important;
-        }
-
-        /* Empty-state text */
-        .dark-theme td[colspan] {
-            color: #64748b !important;
-        }
+        /* Dark Theme Overrides */
+        .dark-theme body::before { background: rgba(5, 10, 22, 0.80) !important; }
+        .dark-theme body { color: #f1f5f9 !important; }
+        .dark-theme .page-header h1 { color: #f8fafc !important; }
+        .dark-theme .page-wrapper { background: rgba(10, 18, 35, 0.92) !important; border-color: rgba(255,255,255,0.08) !important; }
+        .dark-theme .stat-card { background: rgba(30, 41, 59, 0.95) !important; }
+        .dark-theme .stat-info h3 { color: #f8fafc !important; }
+        .dark-theme .card { background: rgba(15, 23, 42, 0.85) !important; border-color: #334155 !important; }
+        .dark-theme th { background: #151f32 !important; color: #94a3b8 !important; border-bottom-color: #334155 !important; }
+        .dark-theme td { color: #cbd5e1 !important; border-bottom-color: #334155 !important; }
+        .dark-theme tr:hover td { background: rgba(255,255,255,0.04) !important; }
+        .dark-theme .modal-content { background: #1e293b !important; color: #f8fafc !important; border-color: #475569 !important; }
+        .dark-theme .form-control { background: #0f172a !important; border-color: #475569 !important; color: #f8fafc !important; }
     </style>
 </head>
 <body>
-
     <?php include 'includes/utilities_sidebar.php'; ?>
 
     <main class="main-content">
         <div class="page-wrapper">
-        
-        <div class="page-header">
-            <div>
-                <h1><i class="fas fa-city" style="color: #3b82f6;"></i> Urban Planning (UPAD) Integration Hub</h1>
-                <p>Monitor, test, and manage electrical/grid load inspection requests from Urban Planning.</p>
-            </div>
-            <div>
-                <form method="POST" style="display:inline;">
-                    <input type="hidden" name="action" value="seed_test_request">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-plus-circle"></i> Create Test Request
-                    </button>
-                </form>
-            </div>
-        </div>
-
-        <?php foreach ($successes as $s): ?>
-            <div class="alert alert-success"><i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($s); ?></div>
-        <?php endforeach; ?>
-
-        <?php foreach ($errors as $e): ?>
-            <div class="alert alert-error"><i class="fas fa-exclamation-triangle"></i> <?php echo htmlspecialchars($e); ?></div>
-        <?php endforeach; ?>
-
-        <!-- Stats Overview -->
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-icon"><i class="fas fa-clipboard-list"></i></div>
-                <div class="stat-info">
-                    <h3><?php echo $totalCount; ?></h3>
-                    <p>Total Requests</p>
-                </div>
-            </div>
-            <div class="stat-card pending">
-                <div class="stat-icon"><i class="fas fa-hourglass-half"></i></div>
-                <div class="stat-info">
-                    <h3><?php echo $pendingCount; ?></h3>
-                    <p>Awaiting Inspection</p>
-                </div>
-            </div>
-            <div class="stat-card completed">
-                <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
-                <div class="stat-info">
-                    <h3><?php echo $completedCount; ?></h3>
-                    <p>Callback Delivered</p>
-                </div>
-            </div>
-            <div class="stat-card failed">
-                <div class="stat-icon"><i class="fas fa-times-circle"></i></div>
-                <div class="stat-info">
-                    <h3><?php echo $failedCount; ?></h3>
-                    <p>Delivery Failed</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Inbound API Endpoint Connection Information Card -->
-        <div class="card" style="background: linear-gradient(135deg, #1e293b, #0f172a); color: #fff;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="page-header">
                 <div>
-                    <h3 style="font-size: 16px; color: #38bdf8; margin-bottom: 6px;"><i class="fas fa-network-wired"></i> Live System Integration Endpoint</h3>
-                    <p style="font-size: 13px; color: #94a3b8;">Urban Planning system POSTs inspection requests directly to this server URL:</p>
-                    <code style="display: block; background: rgba(255,255,255,0.1); padding: 8px 12px; border-radius: 6px; margin-top: 8px; font-family: monospace; color: #4ade80;">
-                        https://uman.infragovservices.com/api/v1/inspection-requests.php
-                    </code>
+                    <h1><i class="fas fa-city" style="color: #3b82f6;"></i> Urban Planning (UPAD) Integration Hub</h1>
+                    <p>Evaluate real infrastructure conditions, calculate AI inspection scores, and dispatch approvals to UPAD.</p>
                 </div>
-                <div>
-                    <span style="font-size: 12px; background: rgba(56, 189, 248, 0.2); color: #38bdf8; padding: 6px 12px; border-radius: 20px; font-weight: 600;">
-                        Bearer Key: UPAD_UMAN_INTEGRATION_KEY_2026
-                    </span>
+                <div style="display: flex; gap: 10px;">
+                    <a href="ai_weights_dashboard.php" class="btn btn-outline"><i class="fas fa-sliders-h"></i> AI Weights</a>
+                    <a href="ai_feedback_loop.php" class="btn btn-outline"><i class="fas fa-brain"></i> AI Feedback</a>
+                    <form method="POST" style="display:inline;">
+                        <input type="hidden" name="action" value="seed_test_request">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-plus-circle"></i> Create Test Request
+                        </button>
+                    </form>
                 </div>
             </div>
-        </div>
 
-        <!-- Requests List -->
-        <div class="card">
-            <div class="card-header">
-                <h2><i class="fas fa-list"></i> Inbound UPAD Inspection Requests</h2>
+            <?php foreach ($successes as $s): ?>
+                <div class="alert alert-success"><i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($s); ?></div>
+            <?php endforeach; ?>
+
+            <?php foreach ($errors as $e): ?>
+                <div class="alert alert-error"><i class="fas fa-exclamation-triangle"></i> <?php echo htmlspecialchars($e); ?></div>
+            <?php endforeach; ?>
+
+            <!-- Stats Overview -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-clipboard-list"></i></div>
+                    <div class="stat-info">
+                        <h3><?php echo $totalCount; ?></h3>
+                        <p>Total Requests</p>
+                    </div>
+                </div>
+                <div class="stat-card pending">
+                    <div class="stat-icon"><i class="fas fa-hourglass-half"></i></div>
+                    <div class="stat-info">
+                        <h3><?php echo $pendingCount; ?></h3>
+                        <p>Awaiting Inspection</p>
+                    </div>
+                </div>
+                <div class="stat-card completed">
+                    <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+                    <div class="stat-info">
+                        <h3><?php echo $completedCount; ?></h3>
+                        <p>Callback Delivered</p>
+                    </div>
+                </div>
+                <div class="stat-card failed">
+                    <div class="stat-icon"><i class="fas fa-times-circle"></i></div>
+                    <div class="stat-info">
+                        <h3><?php echo $failedCount; ?></h3>
+                        <p>Delivery Failed</p>
+                    </div>
+                </div>
             </div>
-            <div class="table-responsive">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Ref ID</th>
-                            <th>UPAD App ID</th>
-                            <th>Project / Barangay</th>
-                            <th>Category</th>
-                            <th>Load (KVA)</th>
-                            <th>Priority</th>
-                            <th>Status</th>
-                            <th>Requested At</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (empty($requests)): ?>
+
+            <!-- Inbound API Endpoint Information -->
+            <div class="card" style="background: linear-gradient(135deg, #1e293b, #0f172a); color: #fff;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                    <div>
+                        <h3 style="font-size: 16px; color: #38bdf8; margin-bottom: 6px;"><i class="fas fa-network-wired"></i> Live UPAD Inbound Endpoint</h3>
+                        <p style="font-size: 13px; color: #94a3b8;">Urban Planning system POSTs inspection requests directly to:</p>
+                        <code style="display: block; background: rgba(255,255,255,0.1); padding: 8px 12px; border-radius: 6px; margin-top: 8px; font-family: monospace; color: #4ade80;">
+                            https://uman.infragovservices.com/api/v1/inspection-requests.php
+                        </code>
+                    </div>
+                    <div>
+                        <span style="font-size: 12px; background: rgba(56, 189, 248, 0.2); color: #38bdf8; padding: 6px 12px; border-radius: 20px; font-weight: 600;">
+                            Bearer Key: UPAD_UMAN_INTEGRATION_KEY_2026
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Requests List -->
+            <div class="card">
+                <div class="card-header">
+                    <h2><i class="fas fa-list"></i> Real UPAD Inspection Requests & AI Decisions</h2>
+                </div>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
                             <tr>
-                                <td colspan="9" style="text-align: center; color: #94a3b8; padding: 30px;">
-                                    No inspection requests received yet. Click <strong>Create Test Request</strong> above to simulate one!
-                                </td>
+                                <th>Ref ID</th>
+                                <th>UPAD App ID</th>
+                                <th>Project / Barangay</th>
+                                <th>Category</th>
+                                <th>Load (kVA)</th>
+                                <th>Priority</th>
+                                <th>AI Evaluation</th>
+                                <th>Status</th>
+                                <th>Actions</th>
                             </tr>
-                        <?php else: ?>
-                            <?php foreach ($requests as $r): ?>
+                        </thead>
+                        <tbody>
+                            <?php if (empty($requests)): ?>
                                 <tr>
-                                    <td><strong><?php echo htmlspecialchars($r['reference_id']); ?></strong></td>
-                                    <td>#<?php echo (int) $r['application_id']; ?></td>
-                                    <td>
-                                        <strong><?php echo htmlspecialchars($r['project_name'] ?: 'N/A'); ?></strong><br>
-                                        <small style="color: #64748b;"><?php echo htmlspecialchars($r['barangay'] ?: 'No Barangay'); ?></small>
-                                    </td>
-                                    <td><?php echo htmlspecialchars($r['category'] ?: 'General'); ?></td>
-                                    <td><?php echo $r['estimated_load_kva'] ? number_format((float)$r['estimated_load_kva'], 1) . ' kVA' : 'N/A'; ?></td>
-                                    <td>
-                                        <span class="badge badge-<?php echo strtolower($r['priority']); ?>">
-                                            <?php echo htmlspecialchars($r['priority']); ?>
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span class="badge badge-<?php echo strtolower($r['status']); ?>">
-                                            <?php echo htmlspecialchars($r['status']); ?>
-                                        </span>
-                                    </td>
-                                    <td><small><?php echo date('M d, Y H:i', strtotime($r['created_at'])); ?></small></td>
-                                    <td>
-                                        <?php if ($r['status'] === 'pending'): ?>
-                                            <form method="POST" style="display:inline; margin-right: 5px;">
-                                                <input type="hidden" name="action" value="run_ai_validation">
-                                                <input type="hidden" name="reference_id" value="<?php echo htmlspecialchars($r['reference_id']); ?>">
-                                                <button type="submit" class="btn btn-primary" style="padding: 5px 10px; font-size: 11px; background: #6366f1; border-color: #6366f1;">
-                                                    <i class="fas fa-robot"></i> AI Validate
-                                                </button>
-                                            </form>
-                                        <?php endif; ?>
-                                        <button class="btn btn-success" style="padding: 5px 10px; font-size: 11px;" 
-                                                onclick="openCallbackModal('<?php echo htmlspecialchars($r['reference_id']); ?>')">
-                                            <i class="fas fa-paper-plane"></i> Send Result
-                                        </button>
+                                    <td colspan="9" style="text-align: center; color: #94a3b8; padding: 30px;">
+                                        No inspection requests received yet. Click <strong>Create Test Request</strong> above to simulate one!
                                     </td>
                                 </tr>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
+                            <?php else: ?>
+                                <?php foreach ($requests as $r): ?>
+                                    <tr>
+                                        <td><strong><?php echo htmlspecialchars($r['reference_id']); ?></strong></td>
+                                        <td>#<?php echo (int) $r['application_id']; ?></td>
+                                        <td>
+                                            <strong><?php echo htmlspecialchars($r['project_name'] ?: 'N/A'); ?></strong><br>
+                                            <small style="color: #64748b;"><?php echo htmlspecialchars($r['barangay'] ?: 'No Barangay'); ?></small>
+                                        </td>
+                                        <td><?php echo htmlspecialchars($r['category'] ?: 'General'); ?></td>
+                                        <td><?php echo $r['estimated_load_kva'] ? number_format((float)$r['estimated_load_kva'], 1) . ' kVA' : 'N/A'; ?></td>
+                                        <td>
+                                            <span class="badge badge-<?php echo strtolower($r['priority']); ?>">
+                                                <?php echo htmlspecialchars($r['priority']); ?>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <?php if ($r['ai_score'] !== null): ?>
+                                                <span class="badge badge-score"><?php echo $r['ai_score']; ?>%</span>
+                                                <small style="color:#64748b; display:block;"><?php echo htmlspecialchars($r['ai_decision'] ?? ''); ?></small>
+                                            <?php else: ?>
+                                                <small style="color:#94a3b8;">Pending AI</small>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-<?php echo strtolower($r['status']); ?>">
+                                                <?php echo htmlspecialchars($r['status']); ?>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div style="display:flex; gap:6px;">
+                                                <form method="POST" style="display:inline;">
+                                                    <input type="hidden" name="action" value="run_ai_validation">
+                                                    <input type="hidden" name="reference_id" value="<?php echo htmlspecialchars($r['reference_id']); ?>">
+                                                    <button type="submit" class="btn btn-ai" title="Evaluate real grid data & auto-approve">
+                                                        <i class="fas fa-robot"></i> AI Validate
+                                                    </button>
+                                                </form>
+
+                                                <button type="button" class="btn btn-success" onclick="openCallbackModal('<?php echo htmlspecialchars($r['reference_id']); ?>')">
+                                                    <i class="fas fa-paper-plane"></i> Callback
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
-
-        </div><!-- /.page-wrapper -->
     </main>
 
-    <!-- Modal for Sending Webhook Callback -->
-    <div id="callbackModal" class="modal">
+    <!-- Callback Modal -->
+    <div class="modal" id="callbackModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3><i class="fas fa-paper-plane" style="color: #10b981;"></i> Complete Inspection & Send Callback</h3>
-                <button type="button" onclick="closeCallbackModal()" style="border:none; background:none; font-size: 18px; cursor:pointer;">&times;</button>
+                <h3><i class="fas fa-paper-plane" style="color: #10b981;"></i> Send Inspection Callback to UPAD</h3>
+                <button type="button" onclick="closeCallbackModal()" style="border:none; background:none; font-size:18px; cursor:pointer;">&times;</button>
             </div>
             <form method="POST">
                 <input type="hidden" name="action" value="send_callback">
-                <input type="hidden" id="modal_ref_id" name="reference_id">
+                <input type="hidden" name="reference_id" id="modal_ref_id">
 
                 <div class="form-grid">
                     <div class="form-group">
@@ -804,8 +673,8 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <input type="date" name="inspection_date" class="form-control" value="<?php echo date('Y-m-d'); ?>" required>
                     </div>
                     <div class="form-group">
-                        <label>Assigned Engineer</label>
-                        <input type="text" name="engineer_assigned" class="form-control" value="Engr. Maria Santos" required>
+                        <label>Engineer Assigned</label>
+                        <input type="text" name="engineer_assigned" class="form-control" value="Engr. Juan Dela Cruz" required>
                     </div>
                 </div>
 
@@ -818,6 +687,25 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <option value="Fair">Fair</option>
                             <option value="Poor">Poor</option>
                             <option value="Critical">Critical</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Grid Capacity Condition</label>
+                        <select name="grid_capacity_condition" class="form-control">
+                            <option value="Good" selected>Good (Within Load Limit)</option>
+                            <option value="Fair">Fair (Near Capacity)</option>
+                            <option value="Poor">Poor (Overloaded)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Transformer Condition</label>
+                        <select name="transformer_condition" class="form-control">
+                            <option value="Good" selected>Good</option>
+                            <option value="Fair">Fair</option>
+                            <option value="Poor">Poor</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -837,7 +725,7 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
                 <div class="form-group">
                     <label>Engineer Remarks</label>
-                    <textarea name="remarks" class="form-control" rows="3" placeholder="Additional observations...">Site inspection completed. Existing transformer capacity is sufficient.</textarea>
+                    <textarea name="remarks" class="form-control" rows="3">Site inspection completed. Existing transformer capacity and grid stability are sufficient.</textarea>
                 </div>
 
                 <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
