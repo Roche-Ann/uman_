@@ -261,7 +261,18 @@ $complaintsJson = json_encode($complaints);
         <!-- Route Legend -->
         <div class="legend-box">
             <h3><i class="fas fa-layer-group"></i> Routes</h3>
-            <?php foreach ($routes as $route): ?>
+            <?php
+            $staticRoutes = [
+                ['id'=>1,'route_name'=>'Commonwealth–Batasan','color_hex'=>'#16a34a'],
+                ['id'=>2,'route_name'=>'Quezon Ave–Timog',     'color_hex'=>'#2563eb'],
+                ['id'=>3,'route_name'=>'Balintawak–Fairview',  'color_hex'=>'#ea580c'],
+                ['id'=>4,'route_name'=>'Cubao–Aurora East',    'color_hex'=>'#dc2626'],
+                ['id'=>5,'route_name'=>'Novaliches–Sauyo',     'color_hex'=>'#7c3aed'],
+                ['id'=>6,'route_name'=>'Kamuning–Project 6',   'color_hex'=>'#ca8a04'],
+            ];
+            // Merge DB routes if present, otherwise use static list
+            $legendRoutes = !empty($routes) ? $routes : $staticRoutes;
+            foreach ($legendRoutes as $route): ?>
             <div class="legend-item" onclick="toggleRoute(<?= $route['id'] ?>, this)" data-route="<?= $route['id'] ?>">
                 <div class="legend-swatch" style="background:<?= htmlspecialchars($route['color_hex']) ?>"></div>
                 <span class="legend-label" style="font-size:11px"><?= htmlspecialchars($route['route_name']) ?></span>
@@ -277,6 +288,7 @@ $complaintsJson = json_encode($complaints);
                 <div class="pin-item"><div class="pin-dot" style="background:#16a34a"></div> Resolved</div>
             </div>
         </div>
+
 
         <!-- Filters -->
         <div style="display:flex;flex-direction:column;gap:10px;flex:1">
@@ -320,9 +332,75 @@ $complaintsJson = json_encode($complaints);
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
-// ─── DATA FROM PHP ───────────────────────────────────────────
-const ROUTES     = <?= $routesJson ?>;
-const STOPS      = <?= $stopsJson ?>;
+// ─── HARDCODED FALLBACK: 6 QC Garbage Collection Routes ──────
+// Used when DB is empty; DB data overlays this when available.
+const STATIC_ROUTES = [
+    { id:1, route_name:'Commonwealth–Batasan Corridor', color_hex:'#16a34a', district:'Batasan Hills District', coverage:'Commonwealth Ave, UP Diliman, Batasan Rd, Holy Spirit', start_time:'06:00:00' },
+    { id:2, route_name:'Quezon Ave–Timog Circuit',      color_hex:'#2563eb', district:'Apolonio Samson District', coverage:'Quezon Ave, Timog Ave, Scout Area, EDSA', start_time:'06:30:00' },
+    { id:3, route_name:'Balintawak–Fairview North',     color_hex:'#ea580c', district:'Novaliches District', coverage:'Mindanao Ave, Quirino Hwy, Fairview, Regalado Ave', start_time:'06:00:00' },
+    { id:4, route_name:'Cubao–Aurora Boulevard East',   color_hex:'#dc2626', district:'Matandang Balara District', coverage:'EDSA Cubao, Aurora Blvd, Eastwood, Libis', start_time:'06:30:00' },
+    { id:5, route_name:'Novaliches–Sauyo Loop',         color_hex:'#7c3aed', district:'San Bartolome District', coverage:'Novaliches Proper, Sauyo Rd, Lagro, Nova Market', start_time:'06:00:00' },
+    { id:6, route_name:'Kamuning–Project 6 Circuit',    color_hex:'#ca8a04', district:'Commonwealth District', coverage:'EDSA Kamuning, Tomas Morato, Project 4, Project 6', start_time:'07:00:00' }
+];
+
+const STATIC_STOPS = {
+    1: [ // Commonwealth–Batasan
+        { route_id:1, stop_order:1, barangay_name:'Batasan Hills',  latitude:14.6957, longitude:121.1050, travel_min:0,  service_min:10, waste_types:'Biodegradable, Non-biodegradable' },
+        { route_id:1, stop_order:2, barangay_name:'Holy Spirit',    latitude:14.6889, longitude:121.0894, travel_min:18, service_min:12, waste_types:'Biodegradable, Non-biodegradable' },
+        { route_id:1, stop_order:3, barangay_name:'Commonwealth',   latitude:14.6803, longitude:121.0756, travel_min:15, service_min:10, waste_types:'Mixed' },
+        { route_id:1, stop_order:4, barangay_name:'UP Campus Area', latitude:14.6547, longitude:121.0644, travel_min:20, service_min:10, waste_types:'Recyclable, Mixed' },
+        { route_id:1, stop_order:5, barangay_name:'Diliman',        latitude:14.6507, longitude:121.0695, travel_min:10, service_min:8,  waste_types:'Mixed' },
+        { route_id:1, stop_order:6, barangay_name:'Loyola Heights', latitude:14.6432, longitude:121.0784, travel_min:12, service_min:8,  waste_types:'Mixed' }
+    ],
+    2: [ // Quezon Ave–Timog
+        { route_id:2, stop_order:1, barangay_name:'Quezon Avenue', latitude:14.6411, longitude:121.0153, travel_min:0,  service_min:10, waste_types:'Mixed' },
+        { route_id:2, stop_order:2, barangay_name:'Sacred Heart',  latitude:14.6387, longitude:121.0203, travel_min:10, service_min:8,  waste_types:'Biodegradable' },
+        { route_id:2, stop_order:3, barangay_name:'Timog Avenue',  latitude:14.6363, longitude:121.0308, travel_min:12, service_min:8,  waste_types:'Mixed' },
+        { route_id:2, stop_order:4, barangay_name:'South Triangle',latitude:14.6339, longitude:121.0358, travel_min:8,  service_min:8,  waste_types:'Mixed' },
+        { route_id:2, stop_order:5, barangay_name:'Scout Area',    latitude:14.6306, longitude:121.0408, travel_min:10, service_min:10, waste_types:'Recyclable' },
+        { route_id:2, stop_order:6, barangay_name:'EDSA-Quezon',   latitude:14.6284, longitude:121.0506, travel_min:15, service_min:8,  waste_types:'Mixed' }
+    ],
+    3: [ // Balintawak–Fairview
+        { route_id:3, stop_order:1, barangay_name:'Balintawak',     latitude:14.6567, longitude:120.9831, travel_min:0,  service_min:10, waste_types:'Mixed' },
+        { route_id:3, stop_order:2, barangay_name:'Tandang Sora',   latitude:14.6695, longitude:121.0305, travel_min:20, service_min:12, waste_types:'Biodegradable' },
+        { route_id:3, stop_order:3, barangay_name:'Fairview',       latitude:14.7211, longitude:121.0578, travel_min:25, service_min:15, waste_types:'Mixed' },
+        { route_id:3, stop_order:4, barangay_name:'Greater Lagro',  latitude:14.7358, longitude:121.0506, travel_min:12, service_min:10, waste_types:'Mixed' },
+        { route_id:3, stop_order:5, barangay_name:'Regalado',       latitude:14.7472, longitude:121.0428, travel_min:12, service_min:8,  waste_types:'Recyclable' },
+        { route_id:3, stop_order:6, barangay_name:'North Fairview', latitude:14.7556, longitude:121.0436, travel_min:8,  service_min:8,  waste_types:'Mixed' }
+    ],
+    4: [ // Cubao–Aurora East
+        { route_id:4, stop_order:1, barangay_name:'Cubao',      latitude:14.6195, longitude:121.0528, travel_min:0,  service_min:10, waste_types:'Mixed' },
+        { route_id:4, stop_order:2, barangay_name:'New Manila', latitude:14.6211, longitude:121.0389, travel_min:10, service_min:8,  waste_types:'Biodegradable' },
+        { route_id:4, stop_order:3, barangay_name:'Aurora Blvd',latitude:14.6183, longitude:121.0567, travel_min:8,  service_min:10, waste_types:'Mixed' },
+        { route_id:4, stop_order:4, barangay_name:'Anonas',     latitude:14.6142, longitude:121.0628, travel_min:10, service_min:8,  waste_types:'Mixed' },
+        { route_id:4, stop_order:5, barangay_name:'Libis',      latitude:14.5989, longitude:121.0700, travel_min:15, service_min:10, waste_types:'Recyclable' },
+        { route_id:4, stop_order:6, barangay_name:'Eastwood',   latitude:14.6092, longitude:121.0789, travel_min:12, service_min:8,  waste_types:'Mixed' }
+    ],
+    5: [ // Novaliches–Sauyo
+        { route_id:5, stop_order:1, barangay_name:'Novaliches Proper', latitude:14.7272, longitude:121.0167, travel_min:0,  service_min:12, waste_types:'Mixed' },
+        { route_id:5, stop_order:2, barangay_name:'Sauyo',             latitude:14.7028, longitude:121.0122, travel_min:18, service_min:10, waste_types:'Biodegradable' },
+        { route_id:5, stop_order:3, barangay_name:'Lagro',             latitude:14.7172, longitude:121.0344, travel_min:15, service_min:10, waste_types:'Mixed' },
+        { route_id:5, stop_order:4, barangay_name:'San Agustin',       latitude:14.7089, longitude:121.0278, travel_min:10, service_min:8,  waste_types:'Recyclable' },
+        { route_id:5, stop_order:5, barangay_name:'Sta. Lucia',        latitude:14.6983, longitude:121.0211, travel_min:12, service_min:8,  waste_types:'Mixed' },
+        { route_id:5, stop_order:6, barangay_name:'Novaliches Market', latitude:14.7233, longitude:121.0128, travel_min:15, service_min:10, waste_types:'Mixed' }
+    ],
+    6: [ // Kamuning–Project 6
+        { route_id:6, stop_order:1, barangay_name:'Kamuning',     latitude:14.6331, longitude:121.0286, travel_min:0,  service_min:10, waste_types:'Mixed' },
+        { route_id:6, stop_order:2, barangay_name:'Tomas Morato', latitude:14.6378, longitude:121.0347, travel_min:8,  service_min:8,  waste_types:'Biodegradable' },
+        { route_id:6, stop_order:3, barangay_name:'Paligsahan',   latitude:14.6353, longitude:121.0197, travel_min:10, service_min:8,  waste_types:'Mixed' },
+        { route_id:6, stop_order:4, barangay_name:'Project 4',    latitude:14.6283, longitude:121.0614, travel_min:20, service_min:10, waste_types:'Recyclable' },
+        { route_id:6, stop_order:5, barangay_name:'Project 6',    latitude:14.6453, longitude:121.0131, travel_min:18, service_min:10, waste_types:'Mixed' },
+        { route_id:6, stop_order:6, barangay_name:'Sto. Domingo', latitude:14.6406, longitude:121.0214, travel_min:10, service_min:8,  waste_types:'Mixed' }
+    ]
+};
+
+// ─── MERGE DB DATA OVER STATIC FALLBACK ─────────────────────
+// If DB returned routes, use those; otherwise fall back to static
+const DB_ROUTES = <?= $routesJson ?>;
+const DB_STOPS  = <?= $stopsJson ?>;
+
+const ROUTES = (DB_ROUTES && DB_ROUTES.length > 0) ? DB_ROUTES : STATIC_ROUTES;
+const STOPS  = (DB_STOPS  && Object.keys(DB_STOPS).length > 0) ? DB_STOPS : STATIC_STOPS;
 const COMPLAINTS = <?= $complaintsJson ?>;
 
 // ─── MAP INIT ────────────────────────────────────────────────
@@ -338,6 +416,7 @@ const routeLayers    = {};  // route_id → { polyline, stops[] }
 const complaintLayer = L.layerGroup().addTo(map);
 const etaLabels      = {};  // stop id → label marker
 let showETAs         = true;
+
 
 // ─── ETA CALCULATOR ──────────────────────────────────────────
 function calcETAs(routeId) {
