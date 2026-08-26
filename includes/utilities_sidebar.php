@@ -1461,6 +1461,20 @@ function sidebarActive(string $page, string $current): string {
                 </a>
             </li>
 
+            <li>
+                <a href="<?php echo $sidebarBase; ?>ai_weights_dashboard.php" class="nav-link<?php echo sidebarActive('ai_weights_dashboard.php', $currentPage); ?>">
+                    <i class="fas fa-sliders-h"></i>
+                    <span class="link-label">AI Weights Config</span>
+                </a>
+            </li>
+
+            <li>
+                <a href="<?php echo $sidebarBase; ?>ai_feedback_loop.php" class="nav-link<?php echo sidebarActive('ai_feedback_loop.php', $currentPage); ?>">
+                    <i class="fas fa-history"></i>
+                    <span class="link-label">AI Feedback & Audit</span>
+                </a>
+            </li>
+
 <!-- ===== REPORTS & EXPORTS SECTION ===== -->
 <li class="nav-section-header">REPORTS & EXPORTS</li>
 <li>
