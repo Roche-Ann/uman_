@@ -210,9 +210,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         } elseif ($action === 'reject') {
             $notes = trim((string)($_POST['review_notes'] ?? ''));
-            $pdo->prepare("UPDATE external_asset_requests SET status = 'rejected', review_notes = ?, updated_at = NOW() WHERE id = ?")
+            $pdo->prepare("UPDATE external_asset_requests SET status = 'rejected', is_archived = 1, archived_at = NOW(), review_notes = ?, updated_at = NOW() WHERE id = ?")
                 ->execute([$notes ?: null, $id]);
-            $successes[] = 'Request rejected.';
+            $successes[] = 'Request rejected and archived.';
         } elseif ($action === 'fulfill') {
             $assetId = (int)($_POST['fulfilled_asset_id'] ?? 0);
             $notes = trim((string)($_POST['review_notes'] ?? ''));
@@ -229,7 +229,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $pdo->beginTransaction();
                 try {
-                    $pdo->prepare("UPDATE external_asset_requests SET status = 'fulfilled', fulfilled_asset_id = ?, review_notes = ?, updated_at = NOW() WHERE id = ?")
+                    $pdo->prepare("UPDATE external_asset_requests SET status = 'fulfilled', is_archived = 1, archived_at = NOW(), fulfilled_asset_id = ?, review_notes = ?, updated_at = NOW() WHERE id = ?")
                         ->execute([$assetId, $notes ?: null, $id]);
 
                     $upd = $pdo->prepare("
@@ -1375,13 +1375,6 @@ foreach ($requests as $r) {
                                             <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-start;">
                                                 <?php if (empty($req['is_archived'])): ?>
                                                 <span class="no-action" style="font-size:12px;">— No actions available</span>
-                                                <form method="POST" style="margin:0;" onsubmit="return confirm('Archive this request? It will be hidden from the active list.');">
-                                                    <input type="hidden" name="action" value="archive">
-                                                    <input type="hidden" name="id" value="<?= (int)$req['id']; ?>">
-                                                    <button type="submit" class="btn-archive">
-                                                        <i class="fas fa-archive"></i> Archive
-                                                    </button>
-                                                </form>
                                                 <?php else: ?>
                                                 <span class="no-action" style="font-size:12px; color:#fb923c;"><i class="fas fa-archive"></i> Archived</span>
                                                 <?php endif; ?>
