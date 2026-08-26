@@ -2142,5 +2142,62 @@ window.addEventListener('click', function(event) {
             }, 120);
         });
     });
+    });
 })();
+</script>
+
+<!-- GLOBAL SPINNER -->
+<div id="global-spinner" class="global-spinner-overlay">
+    <div class="spinner"></div>
+</div>
+<style>
+.global-spinner-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 999999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+.dark-theme .global-spinner-overlay {
+    background: rgba(15, 23, 42, 0.8);
+}
+.global-spinner-overlay.hidden {
+    opacity: 0;
+    visibility: hidden;
+}
+.global-spinner-overlay .spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid rgba(55, 98, 200, 0.2);
+    border-top-color: #3762c8;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+.dark-theme .global-spinner-overlay .spinner {
+    border: 4px solid rgba(99, 132, 210, 0.2);
+    border-top-color: #6384d2;
+}
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+</style>
+<script>
+window.addEventListener('load', function() {
+    const spinner = document.getElementById('global-spinner');
+    if (spinner) {
+        // Small delay to ensure smooth transition
+        setTimeout(() => spinner.classList.add('hidden'), 100);
+    }
+});
+window.addEventListener('beforeunload', function() {
+    const spinner = document.getElementById('global-spinner');
+    if (spinner) spinner.classList.remove('hidden');
+});
 </script>
