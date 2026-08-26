@@ -557,24 +557,6 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 </div>
             </div>
 
-            <!-- Inbound API Endpoint Information -->
-            <div class="card" style="background: linear-gradient(135deg, #1e293b, #0f172a); color: #fff;">
-                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
-                    <div>
-                        <h3 style="font-size: 16px; color: #38bdf8; margin-bottom: 6px;"><i class="fas fa-network-wired"></i> Live UPAD Inbound Endpoint</h3>
-                        <p style="font-size: 13px; color: #94a3b8;">Urban Planning system POSTs inspection requests directly to:</p>
-                        <code style="display: block; background: rgba(255,255,255,0.1); padding: 8px 12px; border-radius: 6px; margin-top: 8px; font-family: monospace; color: #4ade80;">
-                            https://uman.infragovservices.com/api/v1/inspection-requests.php
-                        </code>
-                    </div>
-                    <div>
-                        <span style="font-size: 12px; background: rgba(56, 189, 248, 0.2); color: #38bdf8; padding: 6px 12px; border-radius: 20px; font-weight: 600;">
-                            Bearer Key: UPAD_UMAN_INTEGRATION_KEY_2026
-                        </span>
-                    </div>
-                </div>
-            </div>
-
             <!-- Requests List -->
             <div class="card">
                 <div class="card-header">
