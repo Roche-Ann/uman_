@@ -3,7 +3,6 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// login.php - REMOVED session_start() from here
 require_once 'includes/auth.php';
 require_once __DIR__ . '/includes/mailer.php';
 
@@ -108,23 +107,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $mailResult = sendOtpEmail($email, $fullName, $otp, 10);
                 if (!$mailResult['success']) {
                     error_log('OTP mail error: ' . ($mailResult['error'] ?? 'unknown'));
-                    $error = 'We could not send your verification code. Please try again in a moment.';
-                } else {
-                    // 5. Setup Pending Session
-                    $_SESSION['pending_login'] = [
-                        'id'    => $userId,
-                        'name'  => $fullName,
-                        'email' => $email,
-                        'role'  => $userType,
-                    ];
-
-                    unset($_SESSION['logged_in']);
-                    unset($_SESSION['user_id']);
-
-                    // 6. Redirect to OTP verification page
-                    header('Location: verify-otp.php');
-                    exit();
                 }
+
+                // 5. Setup Pending Session (includes dev_otp & mail_failed flag for fallback UI)
+                $_SESSION['pending_login'] = [
+                    'id'          => $userId,
+                    'name'        => $fullName,
+                    'email'       => $email,
+                    'role'        => $userType,
+                    'dev_otp'     => $otp,
+                    'mail_failed' => !$mailResult['success'],
+                    'mail_error'  => $mailResult['error'] ?? null,
+                ];
+
+                unset($_SESSION['logged_in']);
+                unset($_SESSION['user_id']);
+
+                // 6. Redirect to OTP verification page
+                header('Location: verify-otp.php');
+                exit();
             } else {
                 $error = "System Error: Could not retrieve User ID for OTP.";
             }

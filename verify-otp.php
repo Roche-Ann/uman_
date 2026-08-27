@@ -146,24 +146,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['resend'])) {
         ':exp' => $expiresAt,
     ]);
 
+    $_SESSION['pending_login']['dev_otp'] = $otp;
+
     // Send OTP via Gmail SMTP
     $mailResult = sendOtpEmail($pendingUser['email'], $pendingUser['name'], $otp, 10);
     if ($mailResult['success']) {
+        $_SESSION['pending_login']['mail_failed'] = false;
         $resendMessage = 'A new verification code has been sent to your email.';
     } else {
+        $_SESSION['pending_login']['mail_failed'] = true;
+        $_SESSION['pending_login']['mail_error'] = $mailResult['error'] ?? null;
         error_log('OTP resend mail error: ' . ($mailResult['error'] ?? 'unknown'));
-        $error = 'Failed to send email. Please try again later.';
+        $resendMessage = 'A new code was generated. (Email delivery unconfigured/failed)';
     }
+    $pendingUser = $_SESSION['pending_login'];
 }
 
 // =============================================
 // Fetch the latest valid OTP expiry for countdown
-// (Moved here so it picks up new OTP after resend)
 // =============================================
 $stmt = $pdo->prepare('SELECT expires_at FROM otps WHERE user_id = :uid AND used = 0 AND expires_at > UTC_TIMESTAMP() ORDER BY id DESC LIMIT 1');
 $stmt->execute([':uid' => $pendingUser['id']]);
 $otpData = $stmt->fetch(PDO::FETCH_ASSOC);
-$expiryTimestamp = $otpData ? strtotime($otpData['expires_at']) : 0; // 0 means no valid OTP
+$expiryTimestamp = $otpData ? strtotime($otpData['expires_at']) : 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -558,6 +563,13 @@ $expiryTimestamp = $otpData ? strtotime($otpData['expires_at']) : 0; // 0 means 
             <div class="success-message"><?php echo htmlspecialchars($resendMessage); ?></div>
         <?php else: ?>
             <div class="info-message">Check your email for the verification code.</div>
+        <?php endif; ?>
+
+        <?php if (!empty($pendingUser['mail_failed']) && !empty($pendingUser['dev_otp'])): ?>
+            <div class="attempt-warning" style="background: rgba(255, 158, 0, 0.12); border-left: 4px solid var(--insight-amber); color: #b45b0a; padding: 0.75rem 1rem; border-radius: var(--radius-soft); margin-bottom: 1.5rem; font-weight: 500;">
+                <i class="fas fa-exclamation-triangle" style="margin-right: 6px;"></i>
+                Email delivery unconfigured/unavailable. Verification code: <strong style="font-family: var(--font-mono); font-size: 1.15rem; letter-spacing: 2px; color: var(--civic-sapphire);"><?php echo htmlspecialchars($pendingUser['dev_otp']); ?></strong>
+            </div>
         <?php endif; ?>
 
         <!-- Countdown Timer Display -->
