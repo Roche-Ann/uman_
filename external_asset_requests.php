@@ -1385,7 +1385,7 @@ try {
                                     <td>
                                         <?php if ($req['status'] === 'pending'): ?>
                                             <div class="action-form">
-                                                <form method="POST">
+                                                <form method="POST" onsubmit="return confirm('Are you sure you want to approve this request?');">
                                                     <input type="hidden" name="id" value="<?= (int)$req['id']; ?>">
                                                     <input type="hidden" name="action" value="approve">
                                                     <?php if ($avail['is_sufficient']): ?>
@@ -1413,7 +1413,7 @@ try {
                                                 </form>
                                             </div>
                                             <div class="action-form">
-                                                <form method="POST">
+                                                <form method="POST" onsubmit="return confirm('Are you sure you want to reject this request?');">
                                                     <input type="hidden" name="id" value="<?= (int)$req['id']; ?>">
                                                     <input type="hidden" name="action" value="reject">
                                                     <textarea name="review_notes" rows="1" placeholder="Rejection reason (e.g. stock unavailable)"></textarea>
@@ -1424,7 +1424,7 @@ try {
                                             </div>
                                         <?php elseif (in_array($req['status'], ['pending', 'approved'], true)): ?>
                                             <div class="action-form">
-                                                <form method="POST">
+                                                <form method="POST" onsubmit="return confirm('Are you sure you want to mark this request as fulfilled?');">
                                                     <input type="hidden" name="id" value="<?= (int)$req['id']; ?>">
                                                     <input type="hidden" name="action" value="fulfill">
                                                     <select name="fulfilled_asset_id" required>
