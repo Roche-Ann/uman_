@@ -61,6 +61,7 @@ catch (Throwable $e) {
 try { $pdo->exec("ALTER TABLE `external_asset_requests` ADD COLUMN `citizen_user_id` INT NULL AFTER `cprf_facility_id`"); } catch (Throwable $e) {}
 try { $pdo->exec("ALTER TABLE `external_asset_requests` ADD COLUMN `requester_name` VARCHAR(150) NULL AFTER `citizen_user_id`"); } catch (Throwable $e) {}
 try { $pdo->exec("ALTER TABLE `external_asset_requests` ADD COLUMN `requester_contact` VARCHAR(100) NULL AFTER `requester_name`"); } catch (Throwable $e) {}
+try { $pdo->exec("ALTER TABLE `external_asset_requests` ADD COLUMN `requested_asset_code` VARCHAR(50) NULL AFTER `asset_type`"); } catch (Throwable $e) {}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers (shared between tabs)
@@ -581,7 +582,7 @@ if (in_array($filter, ['fulfilled', 'rejected'], true)) {
     $showArchived = true;
 }
 
-$sql = 'SELECT r.*, a.name AS fulfilled_asset_name, a.asset_id AS fulfilled_asset_code FROM external_asset_requests r LEFT JOIN utility_assets a ON a.id = r.fulfilled_asset_id WHERE 1=1';
+$sql = 'SELECT r.*, a.name AS fulfilled_asset_name, a.asset_id AS fulfilled_asset_code, req_a.name AS requested_asset_name FROM external_asset_requests r LEFT JOIN utility_assets a ON a.id = r.fulfilled_asset_id LEFT JOIN utility_assets req_a ON req_a.asset_id = r.requested_asset_code WHERE 1=1';
 $params = [];
 if ($filter !== '' && in_array($filter, ['pending', 'approved', 'fulfilled', 'rejected'], true)) {
     $sql .= ' AND r.status = ?';
@@ -1340,6 +1341,14 @@ try {
                                     </td>
                                     <td>
                                         <strong><?= htmlspecialchars($req['asset_type']); ?></strong>
+                                        <?php if (!empty($req['requested_asset_code'])): ?>
+                                            <div style="margin-top: 6px; font-size: 11px; color: #0f766e; background: #ccfbf1; padding: 4px 8px; border-radius: 4px; display: inline-block;">
+                                                <i class="fas fa-tag"></i> <strong><?= htmlspecialchars($req['requested_asset_code']); ?></strong>
+                                                <?php if (!empty($req['requested_asset_name'])): ?>
+                                                    &mdash; <?= htmlspecialchars($req['requested_asset_name']); ?>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endif; ?>
                                     </td>
                                     <td>
                                         <strong style="font-size:14px; color:#1e293b;"><?= (int)$req['quantity']; ?></strong> <span class="muted" style="font-size:12px;">unit<?= ((int)$req['quantity'] !== 1) ? 's' : ''; ?></span>
@@ -1506,6 +1515,14 @@ try {
                                     </td>
                                     <td>
                                         <strong><?= htmlspecialchars($req['asset_type']); ?></strong>
+                                        <?php if (!empty($req['requested_asset_code'])): ?>
+                                            <div style="margin-top: 6px; font-size: 11px; color: #0f766e; background: #ccfbf1; padding: 4px 8px; border-radius: 4px; display: inline-block;">
+                                                <i class="fas fa-tag"></i> <strong><?= htmlspecialchars($req['requested_asset_code']); ?></strong>
+                                                <?php if (!empty($req['requested_asset_name'])): ?>
+                                                    &mdash; <?= htmlspecialchars($req['requested_asset_name']); ?>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endif; ?>
                                     </td>
                                     <td>
                                         <strong style="font-size:14px;"><?= (int)$req['quantity']; ?></strong> <span style="font-size:12px;">unit<?= ((int)$req['quantity'] !== 1) ? 's' : ''; ?></span>
