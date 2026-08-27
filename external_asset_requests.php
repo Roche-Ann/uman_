@@ -94,7 +94,7 @@ function h(?string $v): string { return htmlspecialchars((string)$v, ENT_QUOTES)
 /**
  * Checks utility asset inventory for available stock matching an external request.
  */
-function get_request_asset_availability(string $reqAssetType, int $reqQty, array $allAvailableAssets): array
+function get_request_asset_availability(string $reqAssetType, int $reqQty, array $allAvailableAssets, ?string $specificAssetId = null): array
 {
     $reqTypeLower = mb_strtolower(trim($reqAssetType));
     $reqTokens = array_filter(preg_split('/[\s,\-\/&]+/', $reqTypeLower), function($t) { return mb_strlen($t) >= 3; });
@@ -103,20 +103,28 @@ function get_request_asset_availability(string $reqAssetType, int $reqQty, array
     $totalAvailableQty = 0;
 
     foreach ($allAvailableAssets as $asset) {
+        // If a specific asset was requested, ONLY match that exact asset ID!
+        if (!empty($specificAssetId)) {
+            if (($asset['asset_id'] ?? '') === $specificAssetId) {
+                $matchingAssets[] = $asset;
+                $totalAvailableQty += intval($asset['quantity'] ?? 1);
+            }
+            continue;
+        }
+
+        $typeNameLower = mb_strtolower(trim((string)($asset['asset_type'] ?? '')));
         $assetNameLower = mb_strtolower(trim((string)($asset['name'] ?? '')));
         $qty = intval($asset['quantity'] ?? 1);
 
         $matches = false;
-        if ($reqTypeLower !== '' && (
-            $assetNameLower === $reqTypeLower || 
-            stripos($assetNameLower, $reqTypeLower) !== false || 
-            stripos($reqTypeLower, $assetNameLower) !== false
-        )) {
+        if ($typeNameLower !== '' && $reqTypeLower !== '' && ($typeNameLower === $reqTypeLower || stripos($typeNameLower, $reqTypeLower) !== false || stripos($reqTypeLower, $typeNameLower) !== false)) {
+            $matches = true;
+        } elseif ($reqTypeLower !== '' && (stripos($assetNameLower, $reqTypeLower) !== false || $assetNameLower === $reqTypeLower)) {
             $matches = true;
         } else {
             foreach ($reqTokens as $token) {
                 $pattern = '/\b' . preg_quote($token, '/') . '/i';
-                if (preg_match($pattern, $assetNameLower)) {
+                if (($typeNameLower !== '' && preg_match($pattern, $typeNameLower)) || preg_match($pattern, $assetNameLower)) {
                     $matches = true;
                     break;
                 }
@@ -183,7 +191,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $notes = trim((string)($_POST['review_notes'] ?? ''));
 
             // Check real-time inventory availability before approving
-            $reqStmt = $pdo->prepare("SELECT id, request_ref, asset_type, quantity, citizen_user_id FROM external_asset_requests WHERE id = ? LIMIT 1");
+            $reqStmt = $pdo->prepare("SELECT id, request_ref, asset_type, quantity, citizen_user_id, requested_asset_code FROM external_asset_requests WHERE id = ? LIMIT 1");
             $reqStmt->execute([$id]);
             $targetReq = $reqStmt->fetch(PDO::FETCH_ASSOC);
 
@@ -204,8 +212,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } catch (Throwable $e) {
                     $currentStock = [];
                 }
-
-                $availCheck = get_request_asset_availability($targetReq['asset_type'], (int)$targetReq['quantity'], $currentStock);
+                $availCheck = get_request_asset_availability($targetReq['asset_type'], (int)$targetReq['quantity'], $currentStock, $targetReq['requested_asset_code'] ?? null);
 
                 if (!$availCheck['is_sufficient']) {
                     $errors[] = "Cannot approve request {$targetReq['request_ref']}: Insufficient stock. Only {$availCheck['available_qty']} of {$targetReq['quantity']} units of '{$targetReq['asset_type']}' are available in inventory.";
@@ -1406,7 +1413,7 @@ try {
                         </thead>
                         <tbody>
                             <?php foreach ($requests as $req): ?>
-                                <?php $avail = get_request_asset_availability($req['asset_type'], (int)$req['quantity'], $allAvailableAssets); ?>
+                                <?php $avail = get_request_asset_availability($req['asset_type'], (int)$req['quantity'], $allAvailableAssets, $req['requested_asset_code'] ?? null); ?>
                                 <tr>
                                     <td>
                                         <strong><?= htmlspecialchars($req['request_ref']); ?></strong><br>
