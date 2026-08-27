@@ -101,39 +101,50 @@ function get_request_asset_availability(string $reqAssetType, int $reqQty, array
 
     $matchingAssets = [];
     $totalAvailableQty = 0;
+    $targetTypeId = null;
+
+    // First pass: If a specific asset ID was requested, find its type_id so we can show ALL stock for that category!
+    if (!empty($specificAssetId)) {
+        // Find the actual asset ID by checking for known formats
+        foreach ($allAvailableAssets as $a) {
+            $aIdStr = trim((string)($a['asset_id'] ?? ''));
+            if ($aIdStr !== '' && (
+                $specificAssetId === $aIdStr ||
+                str_starts_with($specificAssetId, $aIdStr . ' -') ||
+                str_starts_with($specificAssetId, $aIdStr . '-') ||
+                str_starts_with($specificAssetId, $aIdStr . ' ')
+            )) {
+                $targetTypeId = $a['type_id'] ?? null;
+                break;
+            }
+        }
+    }
 
     foreach ($allAvailableAssets as $asset) {
-        // If a specific asset was requested, ONLY match that exact asset ID!
-        if (!empty($specificAssetId)) {
-            // It could be "SS-0004" or "SS-0004 - Konzert PORTARRAY15"
-            $assetIdStr = trim((string)($asset['asset_id'] ?? ''));
-            if ($assetIdStr !== '' && (
-                $specificAssetId === $assetIdStr ||
-                str_starts_with($specificAssetId, $assetIdStr . ' -') ||
-                str_starts_with($specificAssetId, $assetIdStr . '-') ||
-                str_starts_with($specificAssetId, $assetIdStr . ' ')
-            )) {
-                $matchingAssets[] = $asset;
-                $totalAvailableQty += intval($asset['quantity'] ?? 1);
-            }
-            continue;
-        }
-
-        $typeNameLower = mb_strtolower(trim((string)($asset['asset_type'] ?? '')));
-        $assetNameLower = mb_strtolower(trim((string)($asset['name'] ?? '')));
-        $qty = intval($asset['quantity'] ?? 1);
-
         $matches = false;
-        if ($typeNameLower !== '' && $reqTypeLower !== '' && ($typeNameLower === $reqTypeLower || stripos($typeNameLower, $reqTypeLower) !== false || stripos($reqTypeLower, $typeNameLower) !== false)) {
-            $matches = true;
-        } elseif ($reqTypeLower !== '' && (stripos($assetNameLower, $reqTypeLower) !== false || $assetNameLower === $reqTypeLower)) {
-            $matches = true;
+        
+        // If we found the target type ID based on the specific asset requested, just match by type ID!
+        if ($targetTypeId !== null) {
+            if (($asset['type_id'] ?? null) == $targetTypeId) {
+                $matches = true;
+            }
         } else {
-            foreach ($reqTokens as $token) {
-                $pattern = '/\b' . preg_quote($token, '/') . '/i';
-                if (($typeNameLower !== '' && preg_match($pattern, $typeNameLower)) || preg_match($pattern, $assetNameLower)) {
-                    $matches = true;
-                    break;
+            // Fallback to fuzzy text matching if no specific asset was found or provided
+            $typeNameLower = mb_strtolower(trim((string)($asset['asset_type'] ?? '')));
+            $assetNameLower = mb_strtolower(trim((string)($asset['name'] ?? '')));
+            $qty = intval($asset['quantity'] ?? 1);
+
+            if ($typeNameLower !== '' && $reqTypeLower !== '' && ($typeNameLower === $reqTypeLower || stripos($typeNameLower, $reqTypeLower) !== false || stripos($reqTypeLower, $typeNameLower) !== false)) {
+                $matches = true;
+            } elseif ($reqTypeLower !== '' && (stripos($assetNameLower, $reqTypeLower) !== false || $assetNameLower === $reqTypeLower)) {
+                $matches = true;
+            } else {
+                foreach ($reqTokens as $token) {
+                    $pattern = '/\b' . preg_quote($token, '/') . '/i';
+                    if (($typeNameLower !== '' && preg_match($pattern, $typeNameLower)) || preg_match($pattern, $assetNameLower)) {
+                        $matches = true;
+                        break;
+                    }
                 }
             }
         }
