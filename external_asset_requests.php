@@ -1739,7 +1739,7 @@ try {
                 </aside>
 
                 <section class="right-panel">
-                    <?php if ($selectedFacilityId <= 0): ?>
+                    <?php if ($selectedFacilityId === 0): ?>
                         <div class="muted" style="padding:24px 12px; text-align:center;">
                             Select a facility from the left list to start managing equipment.
                         </div>
