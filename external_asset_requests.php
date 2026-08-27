@@ -1821,37 +1821,101 @@ try {
                             </div>
                             <?php if ($atFacility === []): ?>
                                 <div class="muted" style="padding:24px 12px; text-align:center; background:#fff; border:1px dashed #cbd5e1; border-radius:10px;">
-                                                : ['class' => 'available', 'text' => 'On-loan'];
-                                        ?>
-                                            <tr class="asset-row">
-                                                <td class="code"><?= h($a['asset_code'] ?? ''); ?></td>
-                                                <td><?= h($a['name'] ?? ''); ?></td>
-                                                <td><?= h($a['asset_type'] ?? ''); ?></td>
-                                                <td><?= h($a['condition_status'] ?? ''); ?></td>
-                                                <td><span class="badge <?= $custodyBadge['class']; ?>"><?= h($custodyBadge['text']); ?></span></td>
-                                                <td>
-                                                    <div class="row-actions">
-                                                        <form method="POST" class="inline-form" onsubmit="return confirm('Unassign this asset from the facility? CPRF will be notified to remove it from the facility locker.');">
-                                                            <input type="hidden" name="action" value="unassign">
-                                                            <input type="hidden" name="facility_id" value="<?= (int)$selectedFacilityId; ?>">
-                                                            <input type="hidden" name="facility_name" value="<?= h($selectedFacilityName); ?>">
-                                                            <input type="hidden" name="asset_id" value="<?= $id; ?>">
-                                                            <input type="hidden" name="reason" value="UMAN recall / reassigned on <?= date('Y-m-d'); ?>">
-                                                            <button type="submit" class="btn btn-sm btn-danger" title="Recall asset to UMAN warehouse"><i class="fas fa-rotate-left"></i> Unassign</button>
-                                                        </form>
-                                                        <button type="button" class="btn btn-sm btn-warning accept-return-btn"
-                                                                data-asset-id="<?= $id; ?>"
-                                                                data-asset-code="<?= h($a['asset_code'] ?? ''); ?>"
-                                                                data-asset-name="<?= h($a['name'] ?? ''); ?>"
-                                                                data-asset-type="<?= h($a['asset_type'] ?? ''); ?>">
-                                                            <i class="fas fa-hand-holding"></i> Accept return
-                                                        </button>
-                                                    </div>
-                                                </td>
+                                    <?php if (!empty($selectedFacilityIsCitizen)): ?>
+                                        This citizen currently has no unreturned equipment on loan.
+                                    <?php else: ?>
+                                        No equipment currently assigned to this facility.
+                                        Use the <strong>Assignable Assets</strong> tab (or fulfill a CPRF request) to assign.
+                                    <?php endif; ?>
+                                </div>
+                            <?php else: ?>
+                                <?php if (!empty($selectedFacilityIsCitizen)): ?>
+                                    <table class="table" id="atFacilityTable">
+                                        <thead>
+                                            <tr>
+                                                <th>Code</th>
+                                                <th>Name</th>
+                                                <th>Type</th>
+                                                <th>Loaned Qty</th>
+                                                <th>Return Date</th>
+                                                <th>Actions</th>
                                             </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ($atFacility as $a): ?>
+                                                <tr class="asset-row">
+                                                    <td class="code"><?= h($a['asset_code'] ?? ''); ?></td>
+                                                    <td><?= h($a['name'] ?? ''); ?></td>
+                                                    <td><?= h($a['asset_type'] ?? ''); ?></td>
+                                                    <td><strong><?= (int)$a['loaned_qty']; ?></strong> units</td>
+                                                    <td>
+                                                        <?php if (!empty($a['return_date'])): ?>
+                                                            <span style="color:#b45309;"><i class="fas fa-calendar-check"></i> <?= h($a['return_date']); ?></span>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                    <td>
+                                                        <form method="POST" onsubmit="event.preventDefault(); openConfirmModal(this, 'Return Asset', 'Are you sure you want to mark this citizen request as returned? This will restock the inventory.', 'btn-success');">
+                                                            <input type="hidden" name="id" value="<?= (int)$a['req_id']; ?>">
+                                                            <input type="hidden" name="fulfilled_asset_id" value="<?= (int)$a['id']; ?>">
+                                                            <input type="hidden" name="quantity" value="<?= (int)$a['loaned_qty']; ?>">
+                                                            <input type="hidden" name="action" value="accept_citizen_return">
+                                                            <button class="btn btn-sm btn-success" type="submit"><i class="fas fa-undo"></i> Return</button>
+                                                        </form>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                <?php else: ?>
+                                    <table class="table" id="atFacilityTable">
+                                        <thead>
+                                            <tr>
+                                                <th>Code</th>
+                                                <th>Name</th>
+                                                <th>Type</th>
+                                                <th>Condition</th>
+                                                <th>Custody</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ($atFacility as $a):
+                                                $id = (int)$a['id'];
+                                                $custody = (string)($a['cprf_custody_status'] ?? 'ON_LOAN_AT_FACILITY');
+                                                $custodyBadge = $custody === 'LOAN_RETURN_PENDING'
+                                                    ? ['class' => 'ret-pending', 'text' => 'Return Pending (CPRF)']
+                                                    : ['class' => 'available', 'text' => 'On-loan'];
+                                            ?>
+                                                <tr class="asset-row">
+                                                    <td class="code"><?= h($a['asset_code'] ?? ''); ?></td>
+                                                    <td><?= h($a['name'] ?? ''); ?></td>
+                                                    <td><?= h($a['asset_type'] ?? ''); ?></td>
+                                                    <td><?= h($a['condition_status'] ?? ''); ?></td>
+                                                    <td><span class="badge <?= $custodyBadge['class']; ?>"><?= h($custodyBadge['text']); ?></span></td>
+                                                    <td>
+                                                        <div class="row-actions">
+                                                            <form method="POST" class="inline-form" onsubmit="return confirm('Unassign this asset from the facility? CPRF will be notified to remove it from the facility locker.');">
+                                                                <input type="hidden" name="action" value="unassign">
+                                                                <input type="hidden" name="facility_id" value="<?= (int)$selectedFacilityId; ?>">
+                                                                <input type="hidden" name="facility_name" value="<?= h($selectedFacilityName); ?>">
+                                                                <input type="hidden" name="asset_id" value="<?= $id; ?>">
+                                                                <input type="hidden" name="reason" value="UMAN recall / reassigned on <?= date('Y-m-d'); ?>">
+                                                                <button type="submit" class="btn btn-sm btn-danger" title="Recall asset to UMAN warehouse"><i class="fas fa-rotate-left"></i> Unassign</button>
+                                                            </form>
+                                                            <button type="button" class="btn btn-sm btn-warning accept-return-btn"
+                                                                    data-asset-id="<?= $id; ?>"
+                                                                    data-asset-code="<?= h($a['asset_code'] ?? ''); ?>"
+                                                                    data-asset-name="<?= h($a['name'] ?? ''); ?>"
+                                                                    data-asset-type="<?= h($a['asset_type'] ?? ''); ?>">
+                                                                <i class="fas fa-hand-holding"></i> Accept return
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                <?php endif; ?>
                             <?php endif; ?>
                         </div>
 
