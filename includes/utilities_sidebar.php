@@ -1697,12 +1697,12 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
         max-height: 0;
         overflow: hidden;
         opacity: 0;
-        transition: max-height 0.35s cubic-bezier(0, 1, 0, 1), opacity 0.35s ease;
+        transition: max-height 0.35s ease-in-out, opacity 0.3s ease-in-out;
     }
     .sidebar-dropdown-menu.open {
         max-height: 500px;
         opacity: 1;
-        transition: max-height 0.35s cubic-bezier(1, 0, 1, 0), opacity 0.35s ease;
+        transition: max-height 0.35s ease-in-out, opacity 0.4s ease-in-out;
         padding-bottom: 6px;
     }
     .sidebar-dropdown-menu li {
