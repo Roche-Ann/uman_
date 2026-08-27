@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // energy_dashboard.php — Redesigned Energy Management Dashboard
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
@@ -957,11 +957,37 @@ $locationsAvail = $pdo->query("
                     <div class="box-subtitle">Derived from pending advisories and consumption anomalies</div>
                 </div>
             </div>
+            <style>
+                .donut-chart {
+                    --donut-unfilled: #f1f5f9;
+                }
+                .donut-inner {
+                    background: white;
+                }
+                .donut-score {
+                    color: #1e293b;
+                }
+                .donut-label {
+                    color: #94a3b8;
+                }
+                .dark-theme .donut-chart {
+                    --donut-unfilled: #334155;
+                }
+                .dark-theme .donut-inner {
+                    background: #1e293b;
+                }
+                .dark-theme .donut-score {
+                    color: #f8fafc;
+                }
+                .dark-theme .donut-label {
+                    color: #cbd5e1;
+                }
+            </style>
             <div style="display:flex; align-items:center; justify-content:center; flex-direction:column; padding:20px;">
-                <div style="width:140px; height:140px; border-radius:50%; background:conic-gradient(<?php echo $energyScore >= 80 ? '#27ae60' : ($energyScore >= 50 ? '#f1c40f' : '#e74c3c'); ?> <?php echo $energyScore * 3.6; ?>deg, #f1f5f9 <?php echo $energyScore * 3.6; ?>deg); display:flex; align-items:center; justify-content:center; position:relative;">
-                    <div style="width:110px; height:110px; border-radius:50%; background:white; display:flex; flex-direction:column; align-items:center; justify-content:center;">
-                        <span style="font-size:32px; font-weight:700; color:#1e293b; line-height:1;"><?php echo $energyScore; ?></span>
-                        <span style="font-size:10px; text-transform:uppercase; font-weight:700; color:#94a3b8; margin-top:2px;">Score</span>
+                <div class="donut-chart" style="width:140px; height:140px; border-radius:50%; background:conic-gradient(<?php echo $energyScore >= 80 ? '#27ae60' : ($energyScore >= 50 ? '#f1c40f' : '#e74c3c'); ?> <?php echo $energyScore * 3.6; ?>deg, var(--donut-unfilled) <?php echo $energyScore * 3.6; ?>deg); display:flex; align-items:center; justify-content:center; position:relative;">
+                    <div class="donut-inner" style="width:110px; height:110px; border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+                        <span class="donut-score" style="font-size:32px; font-weight:700; line-height:1;"><?php echo $energyScore; ?></span>
+                        <span class="donut-label" style="font-size:10px; text-transform:uppercase; font-weight:700; margin-top:2px;">Score</span>
                     </div>
                 </div>
                 <div style="margin-top:20px; text-align:center;">
