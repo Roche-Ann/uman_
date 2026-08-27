@@ -112,7 +112,8 @@ function get_request_asset_availability(string $reqAssetType, int $reqQty, array
             $matches = true;
         } else {
             foreach ($reqTokens as $token) {
-                if (($typeNameLower !== '' && stripos($typeNameLower, $token) !== false) || stripos($assetNameLower, $token) !== false) {
+                $pattern = '/\b' . preg_quote($token, '/') . '/i';
+                if (($typeNameLower !== '' && preg_match($pattern, $typeNameLower)) || preg_match($pattern, $assetNameLower)) {
                     $matches = true;
                     break;
                 }
