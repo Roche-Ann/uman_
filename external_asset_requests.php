@@ -731,8 +731,39 @@ foreach ($cprfFacilities as &$f) {
     $f['local_on_loan'] = $c['on_loan'];
     $f['local_return_pending'] = $c['ret_pending'];
     $f['display_equipment_count'] = max($c['on_loan'], $f['assigned_equipment_count']);
+    $f['is_citizen'] = false;
 }
 unset($f);
+
+try {
+    $citizensWithLoans = $pdo->query("
+        SELECT citizen_user_id, requester_name, facility_name, COUNT(id) as active_loans, SUM(quantity) as total_items
+        FROM external_asset_requests
+        WHERE status = 'fulfilled' AND (source_system = 'Citizen Portal' OR citizen_user_id IS NOT NULL)
+        GROUP BY citizen_user_id, requester_name, facility_name
+    ")->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($citizensWithLoans as $cit) {
+        $citId = (int)$cit['citizen_user_id'];
+        $cprfFacilities[] = [
+            'id' => -abs($citId > 0 ? $citId : crc32((string)$cit['requester_name'])),
+            'name' => 'Citizen: ' . ($cit['requester_name'] ?: 'Unknown'),
+            'status' => 'active',
+            'status_label' => 'Active Loans',
+            'is_assignable' => false,
+            'location' => (string)$cit['facility_name'],
+            'capacity' => '',
+            'amenities' => [],
+            'description' => 'Citizen borrower',
+            'updated_at' => '',
+            'assigned_equipment_count' => (int)$cit['total_items'],
+            'local_on_loan' => (int)$cit['active_loans'],
+            'local_return_pending' => 0,
+            'display_equipment_count' => (int)$cit['active_loans'],
+            'is_citizen' => true,
+            'citizen_user_id' => $citId
+        ];
+    }
+} catch (Throwable $e) {}
 
 $assignableAssets = [];
 $atFacility = [];
@@ -746,7 +777,42 @@ foreach ($cprfFacilities as $f) {
     }
 }
 
-if ($selectedFacilityId > 0) {
+$selectedFacilityIsCitizen = false;
+$selectedCitizenUserId = 0;
+foreach ($cprfFacilities as $f) {
+    if ($f['id'] === $selectedFacilityId) {
+        if (!empty($f['is_citizen'])) {
+            $selectedFacilityIsCitizen = true;
+            $selectedCitizenUserId = $f['citizen_user_id'];
+        }
+        break;
+    }
+}
+
+if ($selectedFacilityIsCitizen) {
+    try {
+        $atStmt = $pdo->prepare("
+            SELECT r.id as req_id, r.quantity as loaned_qty, r.return_date,
+                   a.id, a.asset_id AS asset_code, a.name, a.condition_status, t.name AS asset_type
+            FROM external_asset_requests r
+            JOIN utility_assets a ON a.id = r.fulfilled_asset_id
+            LEFT JOIN asset_types t ON t.id = a.asset_type_id
+            WHERE r.citizen_user_id = ? AND r.status = 'fulfilled'
+        ");
+        $atStmt->execute([$selectedCitizenUserId]);
+        $atFacility = $atStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        
+        $evtStmt = $pdo->prepare("
+            SELECT id, request_ref, status, asset_type, quantity, notes,
+                   review_notes, fulfilled_asset_id, created_at, updated_at
+            FROM external_asset_requests
+            WHERE citizen_user_id = ?
+            ORDER BY updated_at DESC LIMIT 15
+        ");
+        $evtStmt->execute([$selectedCitizenUserId]);
+        $events = $evtStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) {}
+} elseif ($selectedFacilityId > 0) {
     try {
         $atStmt = $pdo->prepare("
             SELECT a.id, a.asset_id AS asset_code, a.name, a.condition_status,
@@ -1239,15 +1305,13 @@ try {
 
         <!-- ── TOP-LEVEL HUB TABS ────────────────────────────────────── -->
         <div class="hub-tabs" role="tablist">
-            <a href="?source=cprf#hub-requests" class="hub-tab <?= ($sourceFilter === 'cprf' || $sourceFilter === '') ? 'active' : ''; ?>" style="text-decoration:none; color:inherit;">
-                <i class="fas fa-building icon"></i> CPRF Requests
-            </a>
-            <a href="?source=citizen#hub-requests" class="hub-tab <?= ($sourceFilter === 'citizen') ? 'active' : ''; ?>" style="text-decoration:none; color:inherit;">
-                <i class="fas fa-users icon"></i> Citizen Requests
-            </a>
+            <div class="hub-tab active" data-hub-tab="hub-requests" role="tab">
+                <i class="fas fa-inbox icon"></i> Asset Requests
+                <span class="count-chip"><?= $countPending + $countApproved; ?> open</span>
+            </div>
             <div class="hub-tab" data-hub-tab="hub-assignments" role="tab">
-                <i class="fas fa-warehouse icon"></i> Facility Assignments
-                <span class="count-chip"><?= count($cprfFacilities); ?> facilities</span>
+                <i class="fas fa-users-cog icon"></i> Citizen & Facility Assignments
+                <span class="count-chip"><?= count($cprfFacilities); ?> entities</span>
             </div>
             <a href="?archived=1<?= $filter !== '' ? '&status='.urlencode($filter) : ''; ?>"
                class="hub-tab-archive<?= $showArchived ? ' arch-active' : ''; ?>"
@@ -1572,15 +1636,6 @@ try {
                                             <?php if (!empty($req['fulfilled_asset_name'])): ?>
                                                 <div class="fulfilled-link" style="font-size:11px; margin-top:3px;"><i class="fas fa-link"></i> <?= htmlspecialchars($req['fulfilled_asset_name']); ?></div>
                                             <?php endif; ?>
-                                            <?php if ($req['source_system'] === 'Citizen Portal' || !empty($req['citizen_user_id'])): ?>
-                                                <form method="POST" onsubmit="event.preventDefault(); openConfirmModal(this, 'Return Asset', 'Are you sure you want to mark this citizen request as returned? This will restock the inventory.', 'btn-success');" style="margin-top: 8px;">
-                                                    <input type="hidden" name="id" value="<?= (int)$req['id']; ?>">
-                                                    <input type="hidden" name="fulfilled_asset_id" value="<?= (int)$req['fulfilled_asset_id']; ?>">
-                                                    <input type="hidden" name="quantity" value="<?= (int)$req['quantity']; ?>">
-                                                    <input type="hidden" name="action" value="accept_citizen_return">
-                                                    <button class="btn btn-sm btn-success" type="submit"><i class="fas fa-undo"></i> Return</button>
-                                                </form>
-                                            <?php endif; ?>
                                         <?php elseif ($req['status'] === 'returned'): ?>
                                             <span class="badge fulfilled" style="background:#064e3b; color:#ecfdf5;"><i class="fas fa-undo"></i> Returned</span>
                                         <?php elseif ($req['status'] === 'rejected'): ?>
@@ -1677,19 +1732,27 @@ try {
                         </div>
 
                         <div class="tabs" role="tablist">
-                            <div class="tab active" data-tab="tab-assign" role="tab">
-                                📦 Assignable Assets <span class="count-chip"><?= count($assignableAssets); ?></span>
-                            </div>
-                            <div class="tab" data-tab="tab-at-facility" role="tab">
-                                ✅ At This Facility <span class="count-chip"><?= count($atFacility); ?></span>
-                            </div>
+                            <?php if (empty($selectedFacilityIsCitizen)): ?>
+                                <div class="tab active" data-tab="tab-assignable" role="tab">
+                                    📦 Assignable Assets <span class="count-chip"><?= count($assignableAssets); ?></span>
+                                </div>
+                                <div class="tab" data-tab="tab-at-facility" role="tab">
+                                    ✅ At This Facility <span class="count-chip"><?= count($atFacility); ?></span>
+                                </div>
+                            <?php else: ?>
+                                <div class="tab active" data-tab="tab-at-facility" role="tab">
+                                    ✅ Active Loans <span class="count-chip"><?= count($atFacility); ?></span>
+                                </div>
+                            <?php endif; ?>
                             <div class="tab" data-tab="tab-events" role="tab">
                                 📋 Activity <span class="count-chip"><?= count($events); ?></span>
                             </div>
                         </div>
 
+                        <div class="assignment-content">
                         <!-- SUB-TAB 1: Assignable Assets -->
-                        <div id="tab-assign" class="tab-panel active">
+                        <?php if (empty($selectedFacilityIsCitizen)): ?>
+                        <div id="tab-assignable" class="tab-panel active">
                             <form method="POST" id="form-assign">
                                 <input type="hidden" name="action" value="assign_selected">
                                 <input type="hidden" name="facility_id" value="<?= (int)$selectedFacilityId; ?>">
@@ -1746,9 +1809,10 @@ try {
                                 <?php endif; ?>
                             </form>
                         </div>
+                        <?php endif; ?>
 
-                        <!-- SUB-TAB 2: At This Facility -->
-                        <div id="tab-at-facility" class="tab-panel">
+                        <!-- SUB-TAB 2: At This Facility / Active Loans -->
+                        <div id="tab-at-facility" class="tab-panel <?= !empty($selectedFacilityIsCitizen) ? 'active' : '' ?>">
                             <div class="panel-toolbar">
                                 <input type="search" id="searchAtFacility" placeholder="Search items at facility…" aria-label="Search items at facility">
                                 <span class="muted" style="font-size:12px;">
@@ -1757,27 +1821,6 @@ try {
                             </div>
                             <?php if ($atFacility === []): ?>
                                 <div class="muted" style="padding:24px 12px; text-align:center; background:#fff; border:1px dashed #cbd5e1; border-radius:10px;">
-                                    No equipment currently assigned to this facility.
-                                    Use the <strong>Assignable Assets</strong> tab (or fulfill a CPRF request) to assign.
-                                </div>
-                            <?php else: ?>
-                                <table class="table" id="atFacilityTable">
-                                    <thead>
-                                        <tr>
-                                            <th>Code</th>
-                                            <th>Name</th>
-                                            <th>Type</th>
-                                            <th>Condition</th>
-                                            <th>Custody</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php foreach ($atFacility as $a):
-                                            $id = (int)$a['id'];
-                                            $custody = (string)($a['cprf_custody_status'] ?? 'ON_LOAN_AT_FACILITY');
-                                            $custodyBadge = $custody === 'LOAN_RETURN_PENDING'
-                                                ? ['class' => 'ret-pending', 'text' => 'Return Pending (CPRF)']
                                                 : ['class' => 'available', 'text' => 'On-loan'];
                                         ?>
                                             <tr class="asset-row">
