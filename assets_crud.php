@@ -1759,7 +1759,7 @@ if (!empty($search) || $status_filter) {
             <h3>Register New Utility Asset</h3>
             <button class="modal-close" onclick="closeModal('addModal')">&times;</button>
         </div>
-        <form method="POST" enctype="multipart/form-data">
+        <form method="POST" enctype="multipart/form-data" onsubmit="return confirm('Are you sure you want to register this asset? This action cannot be undone.');">
             <input type="hidden" name="action" value="create">
             <div class="modal-body">
                 <div class="form-row">
@@ -1854,7 +1854,7 @@ if (!empty($search) || $status_filter) {
                 <div class="form-row">
                     <div class="form-group" style="flex: 2;">
                         <label>Asset Name *</label>
-                        <input type="text" id="edit-name" name="name" class="form-control" required>
+                        <input type="text" id="edit-name" name="name" class="form-control" required readonly title="Asset name cannot be edited">
                     </div>
                     <div class="form-group" style="flex: 1;">
                         <label>Quantity *</label>
@@ -1865,7 +1865,7 @@ if (!empty($search) || $status_filter) {
                 <div class="form-row">
                     <div class="form-group">
                         <label>Asset Type / Category *</label>
-                        <select id="edit-type-id" name="asset_type_id" class="form-control" required onchange="toggleNewCategory(this, 'edit-new-category-wrapper')">
+                        <select id="edit-type-id" name="asset_type_id" class="form-control" required style="pointer-events: none; background-color: #e9ecef;" tabindex="-1" title="Asset type cannot be edited">
                             <?php foreach ($assetTypes as $type): ?>
                                 <option value="<?php echo $type['id']; ?>"><?php echo htmlspecialchars($type['name']); ?></option>
                             <?php endforeach; ?>
@@ -1914,7 +1914,7 @@ if (!empty($search) || $status_filter) {
 
                 <div class="form-group" style="margin-bottom:15px;">
                     <label>Acquired Date *</label>
-                    <input type="date" id="edit-date-installed" name="date_installed" class="form-control" required>
+                    <input type="date" id="edit-date-installed" name="date_installed" class="form-control" required readonly title="Acquired date cannot be edited">
                 </div>
 
                 <div class="form-group" style="margin-bottom:15px;">
@@ -1925,7 +1925,7 @@ if (!empty($search) || $status_filter) {
                 <div class="form-row">
                     <div class="form-group">
                         <label>Vendor</label>
-                        <input type="text" id="edit-office" name="responsible_office" class="form-control">
+                        <input type="text" id="edit-office" name="responsible_office" class="form-control" readonly title="Vendor cannot be edited">
                     </div>
                     <div class="form-group">
                         <label>Upload New Image (Replaces current)</label>
