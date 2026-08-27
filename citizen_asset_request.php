@@ -106,6 +106,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($eventPurpose === '') {
             $errors[] = 'Please provide the purpose or event description.';
         }
+        if (!$dateNeeded) {
+            $errors[] = 'Date needed is required.';
+        }
+        if (!$returnDate) {
+            $errors[] = 'Return date is required.';
+        }
+        if ($dateNeeded && $returnDate && strtotime($returnDate) < strtotime($dateNeeded)) {
+            $errors[] = 'Return date cannot be earlier than the date needed.';
+        }
 
         if (empty($errors)) {
             try {
@@ -124,8 +133,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $pdo->prepare("
                     INSERT INTO external_asset_requests
                         (request_ref, source_system, cprf_facility_id, citizen_user_id, requester_name, requester_contact,
-                         facility_name, asset_type, requested_asset_code, quantity, urgency, date_needed, event_purpose, notes, status)
-                    VALUES (?, 'Citizen Portal', 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+                         facility_name, asset_type, requested_asset_code, quantity, urgency, date_needed, return_date, event_purpose, notes, status)
+                    VALUES (?, 'Citizen Portal', 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
                 ");
                 $stmt->execute([
                     $requestRef,
@@ -138,6 +147,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $quantity,
                     $urgency,
                     $dateNeeded,
+                    $returnDate,
                     $eventPurpose,
                     $notes
                 ]);
@@ -488,8 +498,13 @@ try {
                     </div>
 
                     <div class="form-group">
-                        <label for="date_needed">Date Needed</label>
-                        <input type="date" name="date_needed" id="date_needed" class="form-control" min="<?php echo date('Y-m-d'); ?>">
+                        <label for="date_needed">Date Needed <span class="req">*</span></label>
+                        <input type="date" name="date_needed" id="date_needed" class="form-control" required min="<?php echo date('Y-m-d'); ?>">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="return_date">Return Date <span class="req">*</span></label>
+                        <input type="date" name="return_date" id="return_date" class="form-control" required min="<?php echo date('Y-m-d'); ?>">
                     </div>
 
                     <div class="form-group">

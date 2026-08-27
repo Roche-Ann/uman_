@@ -62,6 +62,7 @@ try { $pdo->exec("ALTER TABLE `external_asset_requests` ADD COLUMN `citizen_user
 try { $pdo->exec("ALTER TABLE `external_asset_requests` ADD COLUMN `requester_name` VARCHAR(150) NULL AFTER `citizen_user_id`"); } catch (Throwable $e) {}
 try { $pdo->exec("ALTER TABLE `external_asset_requests` ADD COLUMN `requester_contact` VARCHAR(100) NULL AFTER `requester_name`"); } catch (Throwable $e) {}
 try { $pdo->exec("ALTER TABLE `external_asset_requests` ADD COLUMN `requested_asset_code` VARCHAR(50) NULL AFTER `asset_type`"); } catch (Throwable $e) {}
+try { $pdo->exec("ALTER TABLE `external_asset_requests` ADD COLUMN `return_date` DATE NULL AFTER `requested_asset_code`"); } catch (Throwable $e) {}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers (shared between tabs)
@@ -270,19 +271,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         } catch (Throwable $e) {}
                     }
 
-                    $upd = $pdo->prepare("
-                        UPDATE utility_assets
-                           SET cprf_facility_id = ?,
-                               cprf_custody_status = 'ON_LOAN_AT_FACILITY',
-                               location = COALESCE(NULLIF(location,''), CONCAT('CPRF: ', ?)),
-                               updated_at = NOW()
-                         WHERE id = ?
-                           AND condition_status IN ('Operational','Needs Inspection')
-                           AND cprf_custody_status IN ('WAREHOUSED','LOAN_RETURNED')
-                    ");
-                    $upd->execute([$facilityId, $facilityName, $assetId]);
-                    if ($upd->rowCount() <= 0) {
-                        $webhookNotice = ' WARNING: the selected asset is not WAREHOUSED (it may already be on-loan elsewhere). Request still marked as fulfilled.';
+                    $webhookNotice = '';
+                    if (!empty($reqRow['citizen_user_id'])) {
+                        $upd = $pdo->prepare("
+                            UPDATE utility_assets
+                               SET quantity = GREATEST(0, quantity - ?),
+                                   updated_at = NOW()
+                             WHERE id = ?
+                               AND condition_status IN ('Operational','Needs Inspection')
+                        ");
+                        $upd->execute([$reqRow['quantity'], $assetId]);
+                    } else {
+                        $upd = $pdo->prepare("
+                            UPDATE utility_assets
+                               SET cprf_facility_id = ?,
+                                   cprf_custody_status = 'ON_LOAN_AT_FACILITY',
+                                   location = COALESCE(NULLIF(location,''), CONCAT('CPRF: ', ?)),
+                                   updated_at = NOW()
+                             WHERE id = ?
+                               AND condition_status IN ('Operational','Needs Inspection')
+                               AND cprf_custody_status IN ('WAREHOUSED','LOAN_RETURNED')
+                        ");
+                        $upd->execute([$facilityId, $facilityName, $assetId]);
+                        if ($upd->rowCount() <= 0) {
+                            $webhookNotice = ' WARNING: the selected asset is not WAREHOUSED (it may already be on-loan elsewhere). Request still marked as fulfilled.';
+                        }
                     }
 
                     $pdo->commit();
@@ -564,6 +577,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } catch (Throwable $e) {
                     $pdo->rollBack();
                     $errors[] = 'Accept return failed: ' . htmlspecialchars($e->getMessage());
+                }
+            }
+        } elseif ($action === 'accept_citizen_return') {
+            $reqId = (int)($_POST['id'] ?? 0);
+            $assetId = (int)($_POST['fulfilled_asset_id'] ?? 0);
+            $qty = (int)($_POST['quantity'] ?? 0);
+            if ($reqId <= 0 || $assetId <= 0) {
+                $errors[] = 'Invalid return request.';
+            } else {
+                $pdo->beginTransaction();
+                try {
+                    $pdo->prepare("UPDATE external_asset_requests SET status = 'returned', updated_at = NOW() WHERE id = ?")->execute([$reqId]);
+                    $pdo->prepare("UPDATE utility_assets SET quantity = quantity + ?, updated_at = NOW() WHERE id = ?")->execute([$qty, $assetId]);
+                    $pdo->commit();
+                    $successes[] = 'Citizen asset returned to inventory successfully.';
+                } catch (Throwable $e) {
+                    $pdo->rollBack();
+                    $errors[] = 'Return failed: ' . htmlspecialchars($e->getMessage());
                 }
             }
         }
@@ -1208,10 +1239,12 @@ try {
 
         <!-- ── TOP-LEVEL HUB TABS ────────────────────────────────────── -->
         <div class="hub-tabs" role="tablist">
-            <div class="hub-tab active" data-hub-tab="hub-requests" role="tab">
-                <i class="fas fa-inbox icon"></i> Asset Requests
-                <span class="count-chip"><?= $countPending + $countApproved; ?> open</span>
-            </div>
+            <a href="?source=cprf#hub-requests" class="hub-tab <?= ($sourceFilter === 'cprf' || $sourceFilter === '') ? 'active' : ''; ?>" style="text-decoration:none; color:inherit;">
+                <i class="fas fa-building icon"></i> CPRF Requests
+            </a>
+            <a href="?source=citizen#hub-requests" class="hub-tab <?= ($sourceFilter === 'citizen') ? 'active' : ''; ?>" style="text-decoration:none; color:inherit;">
+                <i class="fas fa-users icon"></i> Citizen Requests
+            </a>
             <div class="hub-tab" data-hub-tab="hub-assignments" role="tab">
                 <i class="fas fa-warehouse icon"></i> Facility Assignments
                 <span class="count-chip"><?= count($cprfFacilities); ?> facilities</span>
@@ -1324,6 +1357,9 @@ try {
                                                 <small style="color:#64748b;"><i class="fas fa-address-card"></i> <?= htmlspecialchars($req['requester_contact']); ?></small><br>
                                             <?php endif; ?>
                                             <small style="color:#334155;">📍 Location: <strong><?= htmlspecialchars($req['facility_name']); ?></strong></small>
+                                            <?php if (!empty($req['return_date'])): ?>
+                                                <br><small style="color:#b45309;"><i class="fas fa-calendar-check"></i> Return By: <strong><?= htmlspecialchars($req['return_date']); ?></strong></small>
+                                            <?php endif; ?>
                                             <?php if (!empty($req['event_purpose'])): ?>
                                                 <br><small style="color:#475569;">🎯 Purpose: <em><?= htmlspecialchars($req['event_purpose']); ?></em></small>
                                             <?php endif; ?>
@@ -1503,6 +1539,9 @@ try {
                                             </span><br>
                                             <strong><i class="fas fa-user"></i> <?= htmlspecialchars($req['requester_name'] ?: 'Citizen'); ?></strong><br>
                                             <small>📍 <?= htmlspecialchars($req['facility_name']); ?></small>
+                                            <?php if (!empty($req['return_date'])): ?>
+                                                <br><small style="color:#b45309;"><i class="fas fa-calendar-check"></i> Return By: <strong><?= htmlspecialchars($req['return_date']); ?></strong></small>
+                                            <?php endif; ?>
                                             <?php if (!empty($req['notes'])): ?><br><em style="font-size:11px;">"<?= htmlspecialchars($req['notes']); ?>"</em><?php endif; ?>
                                         <?php else: ?>
                                             <span class="badge" style="background:linear-gradient(135deg,#f3e8ff,#e9d5ff); color:#6b21a8; border:1px solid #c084fc; font-weight:700; margin-bottom:2px; font-size:10px;">
@@ -1533,6 +1572,17 @@ try {
                                             <?php if (!empty($req['fulfilled_asset_name'])): ?>
                                                 <div class="fulfilled-link" style="font-size:11px; margin-top:3px;"><i class="fas fa-link"></i> <?= htmlspecialchars($req['fulfilled_asset_name']); ?></div>
                                             <?php endif; ?>
+                                            <?php if ($req['source_system'] === 'Citizen Portal' || !empty($req['citizen_user_id'])): ?>
+                                                <form method="POST" onsubmit="event.preventDefault(); openConfirmModal(this, 'Return Asset', 'Are you sure you want to mark this citizen request as returned? This will restock the inventory.', 'btn-success');" style="margin-top: 8px;">
+                                                    <input type="hidden" name="id" value="<?= (int)$req['id']; ?>">
+                                                    <input type="hidden" name="fulfilled_asset_id" value="<?= (int)$req['fulfilled_asset_id']; ?>">
+                                                    <input type="hidden" name="quantity" value="<?= (int)$req['quantity']; ?>">
+                                                    <input type="hidden" name="action" value="accept_citizen_return">
+                                                    <button class="btn btn-sm btn-success" type="submit"><i class="fas fa-undo"></i> Return</button>
+                                                </form>
+                                            <?php endif; ?>
+                                        <?php elseif ($req['status'] === 'returned'): ?>
+                                            <span class="badge fulfilled" style="background:#064e3b; color:#ecfdf5;"><i class="fas fa-undo"></i> Returned</span>
                                         <?php elseif ($req['status'] === 'rejected'): ?>
                                             <span class="badge rejected"><i class="fas fa-ban"></i> Rejected</span>
                                         <?php else: ?>
