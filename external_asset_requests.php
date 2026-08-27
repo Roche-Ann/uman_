@@ -105,7 +105,10 @@ function get_request_asset_availability(string $reqAssetType, int $reqQty, array
     foreach ($allAvailableAssets as $asset) {
         // If a specific asset was requested, ONLY match that exact asset ID!
         if (!empty($specificAssetId)) {
-            if (($asset['asset_id'] ?? '') === $specificAssetId) {
+            // Some legacy requests might have "ASSET_ID - ASSET_NAME" in the requested_asset_code column.
+            $cleanSpecificId = trim(explode(' - ', $specificAssetId)[0]);
+            
+            if (($asset['asset_id'] ?? '') === $cleanSpecificId) {
                 $matchingAssets[] = $asset;
                 $totalAvailableQty += intval($asset['quantity'] ?? 1);
             }
