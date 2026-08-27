@@ -632,14 +632,14 @@ $filter = trim($_GET['status'] ?? '');
 $sourceFilter = trim($_GET['source'] ?? '');
 $showArchived = (($_GET['archived'] ?? '') === '1');
 
-// If filtering by fulfilled/rejected, implicitly switch to archived view
-if (in_array($filter, ['fulfilled', 'rejected'], true)) {
+// If filtering by rejected/returned, implicitly switch to archived view
+if (in_array($filter, ['rejected', 'returned'], true)) {
     $showArchived = true;
 }
 
 $sql = 'SELECT r.*, a.name AS fulfilled_asset_name, a.asset_id AS fulfilled_asset_code, req_a.name AS requested_asset_name FROM external_asset_requests r LEFT JOIN utility_assets a ON a.id = r.fulfilled_asset_id LEFT JOIN utility_assets req_a ON req_a.asset_id = r.requested_asset_code WHERE 1=1';
 $params = [];
-if ($filter !== '' && in_array($filter, ['pending', 'approved', 'fulfilled', 'rejected'], true)) {
+if ($filter !== '' && in_array($filter, ['pending', 'approved', 'fulfilled', 'rejected', 'returned'], true)) {
     $sql .= ' AND r.status = ?';
     $params[] = $filter;
 }
@@ -648,10 +648,13 @@ if ($sourceFilter === 'citizen') {
 } elseif ($sourceFilter === 'cprf') {
     $sql .= " AND (r.source_system = 'CPRF' OR (r.source_system IS NULL AND r.citizen_user_id IS NULL))";
 }
+
+$isCitizenSql = "(r.source_system = 'Citizen Portal' OR r.citizen_user_id IS NOT NULL)";
+
 if ($showArchived) {
-    $sql .= " AND (r.is_archived = 1 OR r.status IN ('fulfilled', 'rejected'))";
+    $sql .= " AND (r.is_archived = 1 OR r.status IN ('rejected', 'returned') OR (r.status = 'fulfilled' AND NOT $isCitizenSql))";
 } else {
-    $sql .= " AND (r.is_archived = 0 OR r.is_archived IS NULL) AND r.status NOT IN ('fulfilled', 'rejected')";
+    $sql .= " AND (r.is_archived = 0 OR r.is_archived IS NULL) AND r.status NOT IN ('rejected', 'returned') AND NOT (r.status = 'fulfilled' AND NOT $isCitizenSql)";
 }
 $sql .= ' ORDER BY r.created_at DESC LIMIT 100';
 $stmt = $pdo->prepare($sql);
@@ -659,7 +662,9 @@ $stmt->execute($params);
 $requests = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 // Count archived for badge
 $countArchived = 0;
-try { $countArchived = (int)$pdo->query("SELECT COUNT(*) FROM external_asset_requests WHERE is_archived = 1 OR status IN ('fulfilled', 'rejected')")->fetchColumn(); }
+try { 
+    $countArchived = (int)$pdo->query("SELECT COUNT(*) FROM external_asset_requests WHERE is_archived = 1 OR status IN ('rejected', 'returned') OR (status = 'fulfilled' AND (source_system IS NULL OR source_system != 'Citizen Portal') AND citizen_user_id IS NULL)")->fetchColumn(); 
+}
 catch (Throwable $e) { $countArchived = 0; }
 
 $allAvailableAssets = [];
@@ -1394,7 +1399,7 @@ try {
                     <select name="status" onchange="this.form.submit()" class="form-control" style="flex:1; min-width:170px;">
                         <option value="">All Statuses</option>
                         <?php 
-                        $statusOptions = $showArchived ? ['fulfilled', 'rejected'] : ['pending', 'approved'];
+                        $statusOptions = $showArchived ? ['fulfilled', 'rejected', 'returned'] : ['pending', 'approved', 'fulfilled'];
                         foreach ($statusOptions as $s): 
                         ?>
                             <option value="<?= $s; ?>" <?= $filter === $s ? 'selected' : ''; ?>><?= ucfirst($s); ?></option>
