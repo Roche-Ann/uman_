@@ -368,7 +368,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($action === 'refresh_facilities') {
             $successes[] = 'Facility list refreshed from CPRF.';
-        } elseif ($facilityId <= 0) {
+        } elseif ($facilityId === 0 && $action !== 'accept_citizen_return') {
             $errors[] = 'Select a CPRF facility first (from the Assignments tab left list).';
         } elseif ($action === 'assign_selected') {
             $assetIds = is_array($_POST['asset_ids'] ?? null) ? $_POST['asset_ids'] : [];
