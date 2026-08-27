@@ -1759,7 +1759,7 @@ if (!empty($search) || $status_filter) {
             <h3>Register New Utility Asset</h3>
             <button class="modal-close" onclick="closeModal('addModal')">&times;</button>
         </div>
-        <form method="POST" enctype="multipart/form-data" onsubmit="return confirm('Are you sure you want to register this asset? This action cannot be undone.');">
+        <form id="add-form" method="POST" enctype="multipart/form-data">
             <input type="hidden" name="action" value="create">
             <div class="modal-body">
                 <div class="form-row">
@@ -1832,6 +1832,23 @@ if (!empty($search) || $status_filter) {
                 <button type="submit" class="btn btn-primary">Save Asset</button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- CONFIRM REGISTER MODAL -->
+<div id="confirmRegisterModal" class="modal">
+    <div class="modal-content" style="max-width: 450px;">
+        <div class="modal-header" style="background:#e2ebf6;">
+            <h3 style="color:#2c3e50;"><i class="fas fa-question-circle"></i> Confirm Registration</h3>
+            <button type="button" class="modal-close" onclick="closeModal('confirmRegisterModal')">&times;</button>
+        </div>
+        <div class="modal-body" style="padding: 20px 24px;">
+            <p style="color:#475569; font-size: 14px;">Are you sure you want to register this asset? This action cannot be undone.</p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-outline" onclick="closeModal('confirmRegisterModal')">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="submitAddForm()">Confirm & Save</button>
+        </div>
     </div>
 </div>
 
@@ -2091,6 +2108,13 @@ if (!empty($search) || $status_filter) {
                 showReviewChanges();
             });
         }
+        const addForm = document.getElementById('add-form');
+        if (addForm) {
+            addForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                document.getElementById('confirmRegisterModal').classList.add('open');
+            });
+        }
         const searchInput = document.getElementById('category-search-input');
         const optionsList = document.getElementById('category-options-list');
         const hiddenInput = document.getElementById('category-type-id');
@@ -2321,6 +2345,10 @@ if (!empty($search) || $status_filter) {
 
     function submitEditForm() {
         document.getElementById('edit-form').submit();
+    }
+
+    function submitAddForm() {
+        document.getElementById('add-form').submit();
     }
 
     function viewAsset(asset) {
