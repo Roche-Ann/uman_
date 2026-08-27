@@ -95,6 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $locationName = trim((string)($_POST['facility_name'] ?? ''));
         $contactNumber = trim((string)($_POST['contact_number'] ?? ''));
         $notes = trim((string)($_POST['notes'] ?? ''));
+        $requestedAssetCode = trim((string)($_POST['requested_asset_code'] ?? '')) ?: null;
 
         if ($assetType === '') {
             $errors[] = 'Please select or specify the equipment / asset type requested.';
@@ -123,8 +124,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $pdo->prepare("
                     INSERT INTO external_asset_requests
                         (request_ref, source_system, cprf_facility_id, citizen_user_id, requester_name, requester_contact,
-                         facility_name, asset_type, quantity, urgency, date_needed, event_purpose, notes, status)
-                    VALUES (?, 'Citizen Portal', 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+                         facility_name, asset_type, requested_asset_code, quantity, urgency, date_needed, event_purpose, notes, status)
+                    VALUES (?, 'Citizen Portal', 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
                 ");
                 $stmt->execute([
                     $requestRef,
@@ -133,6 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $contactStr,
                     $locationName,
                     $assetType,
+                    $requestedAssetCode,
                     $quantity,
                     $urgency,
                     $dateNeeded,
@@ -159,8 +161,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Fetch available asset categories for dropdown
 $assetTypes = [];
+$availableAssetsList = [];
 try {
     $assetTypes = $pdo->query("SELECT id, name, description FROM asset_types ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    $availableAssetsList = $pdo->query("SELECT a.asset_id, a.name, t.name AS type_name FROM utility_assets a JOIN asset_types t ON a.asset_type_id = t.id WHERE a.condition_status IN ('Operational', 'Needs Inspection') ORDER BY a.name ASC")->fetchAll(PDO::FETCH_ASSOC) ?: [];
 } catch (Throwable $e) {}
 
 // Fetch citizen's existing requests
@@ -461,9 +465,12 @@ try {
                         </select>
                     </div>
 
-                    <div class="form-group" id="custom_asset_group" style="display:none;">
-                        <label for="asset_type_custom">Specify Custom Asset Name <span class="req">*</span></label>
-                        <input type="text" name="asset_type_custom" id="asset_type_custom" class="form-control" placeholder="e.g. Submersible Water Drainage Pump">
+                    <div class="form-group" id="specific_asset_group" style="display:none;">
+                        <label for="requested_asset_code" id="specific_asset_label">Specific Asset (Optional)</label>
+                        <select name="requested_asset_code" id="requested_asset_code" class="form-control" style="display:none;">
+                            <option value="">Any available</option>
+                        </select>
+                        <input type="text" name="asset_type_custom" id="asset_type_custom" class="form-control" placeholder="Specify custom asset name..." style="display:none;">
                     </div>
 
                     <div class="form-group">
@@ -597,15 +604,47 @@ try {
 </main>
 
 <script>
+const availableAssetsJs = <?php echo json_encode($availableAssetsList, JSON_UNESCAPED_UNICODE); ?>;
+
 function toggleCustomAssetType(val) {
-    const customGroup = document.getElementById('custom_asset_group');
+    const specificGroup = document.getElementById('specific_asset_group');
     const customInput = document.getElementById('asset_type_custom');
+    const specificSelect = document.getElementById('requested_asset_code');
+    const specificLabel = document.getElementById('specific_asset_label');
+
     if (val === 'Other') {
-        customGroup.style.display = 'flex';
+        specificGroup.style.display = 'flex';
+        specificSelect.style.display = 'none';
+        specificSelect.innerHTML = '<option value="">Any available</option>';
+        customInput.style.display = 'block';
         customInput.setAttribute('required', 'required');
+        specificLabel.innerHTML = 'Specify Custom Asset Name <span class="req">*</span>';
+    } else if (val) {
+        const assets = availableAssetsJs.filter(a => a.type_name === val);
+        if (assets.length > 0) {
+            specificGroup.style.display = 'flex';
+            customInput.style.display = 'none';
+            customInput.removeAttribute('required');
+            customInput.value = '';
+            
+            specificSelect.style.display = 'block';
+            specificLabel.innerHTML = 'Specific Asset Preference (Optional)';
+            
+            let html = '<option value="">Any available ' + val + '</option>';
+            assets.forEach(a => {
+                html += '<option value="' + a.asset_id + '">' + a.name + ' (' + a.asset_id + ')</option>';
+            });
+            specificSelect.innerHTML = html;
+        } else {
+            specificGroup.style.display = 'none';
+            customInput.removeAttribute('required');
+            customInput.value = '';
+            specificSelect.innerHTML = '<option value="">Any available</option>';
+        }
     } else {
-        customGroup.style.display = 'none';
+        specificGroup.style.display = 'none';
         customInput.removeAttribute('required');
+        customInput.value = '';
     }
 }
 </script>
