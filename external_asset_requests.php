@@ -122,6 +122,7 @@ function get_request_asset_availability(string $reqAssetType, int $reqQty, array
 
     foreach ($allAvailableAssets as $asset) {
         $matches = false;
+        $qty = intval($asset['quantity'] ?? 1);
         
         // If we found the target type ID based on the specific asset requested, just match by type ID!
         if ($targetTypeId !== null) {
@@ -132,7 +133,6 @@ function get_request_asset_availability(string $reqAssetType, int $reqQty, array
             // Fallback to fuzzy text matching if no specific asset was found or provided
             $typeNameLower = mb_strtolower(trim((string)($asset['asset_type'] ?? '')));
             $assetNameLower = mb_strtolower(trim((string)($asset['name'] ?? '')));
-            $qty = intval($asset['quantity'] ?? 1);
 
             if ($typeNameLower !== '' && $reqTypeLower !== '' && ($typeNameLower === $reqTypeLower || stripos($typeNameLower, $reqTypeLower) !== false || stripos($reqTypeLower, $typeNameLower) !== false)) {
                 $matches = true;
@@ -224,8 +224,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         FROM utility_assets a
                         JOIN asset_types t ON t.id = a.asset_type_id
                         WHERE a.condition_status IN ('Operational', 'Needs Inspection')
-                          AND (a.cprf_custody_status IS NULL OR a.cprf_custody_status = '' OR a.cprf_custody_status IN ('WAREHOUSED', 'LOAN_RETURNED'))
-                          AND (a.cprf_facility_id IS NULL OR a.cprf_facility_id = 0)
                     ")->fetchAll(PDO::FETCH_ASSOC) ?: [];
                 } catch (Throwable $e) {
                     $currentStock = [];
@@ -672,8 +670,6 @@ try {
         FROM utility_assets a
         JOIN asset_types t ON t.id = a.asset_type_id
         WHERE a.condition_status IN ('Operational', 'Needs Inspection')
-          AND (a.cprf_custody_status IS NULL OR a.cprf_custody_status = '' OR a.cprf_custody_status IN ('WAREHOUSED', 'LOAN_RETURNED'))
-          AND (a.cprf_facility_id IS NULL OR a.cprf_facility_id = 0)
         ORDER BY t.name ASC, a.name ASC
     ")->fetchAll(PDO::FETCH_ASSOC) ?: [];
 } catch (Throwable $e) {
