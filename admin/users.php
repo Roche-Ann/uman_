@@ -403,12 +403,12 @@ $users = $stmt->fetchAll();
         <div class="modal-actions">
             <!-- Verification Actions -->
             <div class="action-group" id="m_action_verif" style="display:none;">
-                <form method="POST" style="display:inline;">
+                <form method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to verify this user\'s identity?');">
                     <input type="hidden" name="user_id" id="f_verif_uid1">
                     <input type="hidden" name="action" value="verify_identity">
                     <button type="submit" class="btn btn-success" title="Approve Identity"><i class="fas fa-check-circle"></i> Verify</button>
                 </form>
-                <form method="POST" style="display:inline;">
+                <form method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to reject this user\'s identity?');">
                     <input type="hidden" name="user_id" id="f_verif_uid2">
                     <input type="hidden" name="action" value="reject_identity">
                     <button type="submit" class="btn btn-danger" title="Reject Identity"><i class="fas fa-times-circle"></i> Reject</button>
