@@ -227,6 +227,17 @@ $users = $stmt->fetchAll();
         .dark-theme .img-container { background:#0f172a; border-color:#334155; }
         .dark-theme .img-container p { color:#cbd5e1; }
         .dark-theme .modal-actions { background:#0f172a; border-top-color:#334155; }
+
+        /* Custom Confirm Modal Styles */
+        .confirm-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 2000; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
+        .confirm-modal.open { display: flex; }
+        .confirm-modal-content { background: white; width: 90%; max-width: 450px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15); overflow: hidden; animation: modalFadeIn 0.3s ease; }
+        @keyframes modalFadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        .confirm-modal-header { padding: 20px 24px; background: #f8f9fa; border-bottom: 1px solid #edf2f7; display: flex; justify-content: space-between; align-items: center; }
+        .confirm-modal-header h3 { font-size: 18px; color: #2c3e50; margin: 0; }
+        .confirm-modal-close { background: transparent; border: none; font-size: 18px; cursor: pointer; color: #64748b; }
+        .confirm-modal-body { padding: 24px; font-size: 15px; color: #334155; }
+        .confirm-modal-footer { padding: 16px 24px; background: #f8f9fa; border-top: 1px solid #edf2f7; display: flex; justify-content: flex-end; gap: 12px; }
     </style>
 </head>
 <body>
@@ -403,12 +414,12 @@ $users = $stmt->fetchAll();
         <div class="modal-actions">
             <!-- Verification Actions -->
             <div class="action-group" id="m_action_verif" style="display:none;">
-                <form method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to verify this user\'s identity?');">
+                <form method="POST" style="display:inline;" onsubmit="event.preventDefault(); openConfirmModal(this, 'Verify Identity', 'Are you sure you want to verify this user\'s identity?', 'btn-success');">
                     <input type="hidden" name="user_id" id="f_verif_uid1">
                     <input type="hidden" name="action" value="verify_identity">
                     <button type="submit" class="btn btn-success" title="Approve Identity"><i class="fas fa-check-circle"></i> Verify</button>
                 </form>
-                <form method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to reject this user\'s identity?');">
+                <form method="POST" style="display:inline;" onsubmit="event.preventDefault(); openConfirmModal(this, 'Reject Identity', 'Are you sure you want to reject this user\'s identity?', 'btn-danger');">
                     <input type="hidden" name="user_id" id="f_verif_uid2">
                     <input type="hidden" name="action" value="reject_identity">
                     <button type="submit" class="btn btn-danger" title="Reject Identity"><i class="fas fa-times-circle"></i> Reject</button>
@@ -434,7 +445,48 @@ $users = $stmt->fetchAll();
     </div>
 </div>
 
+<!-- Custom Confirm Modal -->
+<div id="confirmActionModal" class="confirm-modal">
+    <div class="confirm-modal-content">
+        <div class="confirm-modal-header">
+            <h3 id="confirmActionTitle">Confirm Action</h3>
+            <button class="confirm-modal-close" type="button" onclick="closeConfirmModal()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="confirm-modal-body">
+            <p id="confirmActionMessage">Are you sure?</p>
+        </div>
+        <div class="confirm-modal-footer">
+            <button type="button" class="btn btn-outline" onclick="closeConfirmModal()">Cancel</button>
+            <button type="button" class="btn btn-primary" id="confirmActionBtn" onclick="submitConfirmForm()">Confirm</button>
+        </div>
+    </div>
+</div>
+
 <script>
+    let currentActionForm = null;
+
+    function openConfirmModal(form, title, message, btnClass) {
+        currentActionForm = form;
+        document.getElementById('confirmActionTitle').innerText = title;
+        document.getElementById('confirmActionMessage').innerHTML = message;
+        
+        const btn = document.getElementById('confirmActionBtn');
+        btn.className = 'btn ' + btnClass;
+        
+        document.getElementById('confirmActionModal').classList.add('open');
+    }
+
+    function closeConfirmModal() {
+        document.getElementById('confirmActionModal').classList.remove('open');
+        currentActionForm = null;
+    }
+
+    function submitConfirmForm() {
+        if (currentActionForm) {
+            currentActionForm.submit();
+        }
+    }
+
     function openUserModal(user) {
         document.getElementById('userModalOverlay').classList.add('active');
         

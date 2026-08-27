@@ -1148,6 +1148,17 @@ try {
             .stats-grid { grid-template-columns: 1fr; }
             .dashboard-header { flex-direction: column; align-items: flex-start; }
         }
+
+        /* Custom Modal Styles */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 2000; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
+        .modal.open { display: flex; }
+        .modal-content { background: white; width: 90%; max-width: 450px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15); overflow: hidden; animation: modalFadeIn 0.3s ease; }
+        @keyframes modalFadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        .modal-header { padding: 20px 24px; background: #f8f9fa; border-bottom: 1px solid #edf2f7; display: flex; justify-content: space-between; align-items: center; }
+        .modal-header h3 { font-size: 18px; color: #2c3e50; margin: 0; }
+        .modal-close { background: transparent; border: none; font-size: 18px; cursor: pointer; color: #64748b; }
+        .modal-body { padding: 24px; font-size: 15px; color: #334155; }
+        .modal-footer { padding: 16px 24px; background: #f8f9fa; border-top: 1px solid #edf2f7; display: flex; justify-content: flex-end; gap: 12px; }
     </style>
 </head>
 <body>
@@ -1385,7 +1396,7 @@ try {
                                     <td>
                                         <?php if ($req['status'] === 'pending'): ?>
                                             <div class="action-form">
-                                                <form method="POST" onsubmit="return confirm('Are you sure you want to approve this request?');">
+                                                <form method="POST" onsubmit="event.preventDefault(); openConfirmModal(this, 'Approve Request', 'Are you sure you want to approve this request?', 'btn-primary');">
                                                     <input type="hidden" name="id" value="<?= (int)$req['id']; ?>">
                                                     <input type="hidden" name="action" value="approve">
                                                     <?php if ($avail['is_sufficient']): ?>
@@ -1413,7 +1424,7 @@ try {
                                                 </form>
                                             </div>
                                             <div class="action-form">
-                                                <form method="POST" onsubmit="return confirm('Are you sure you want to reject this request?');">
+                                                <form method="POST" onsubmit="event.preventDefault(); openConfirmModal(this, 'Reject Request', 'Are you sure you want to reject this request?', 'btn-danger');">
                                                     <input type="hidden" name="id" value="<?= (int)$req['id']; ?>">
                                                     <input type="hidden" name="action" value="reject">
                                                     <textarea name="review_notes" rows="1" placeholder="Rejection reason (e.g. stock unavailable)"></textarea>
@@ -1424,7 +1435,7 @@ try {
                                             </div>
                                         <?php elseif (in_array($req['status'], ['pending', 'approved'], true)): ?>
                                             <div class="action-form">
-                                                <form method="POST" onsubmit="return confirm('Are you sure you want to mark this request as fulfilled?');">
+                                                <form method="POST" onsubmit="event.preventDefault(); openConfirmModal(this, 'Fulfill Request', 'Are you sure you want to mark this request as fulfilled?', 'btn-success');">
                                                     <input type="hidden" name="id" value="<?= (int)$req['id']; ?>">
                                                     <input type="hidden" name="action" value="fulfill">
                                                     <select name="fulfilled_asset_id" required>
@@ -1795,9 +1806,51 @@ try {
     </div>
 </main>
 
+<!-- Custom Confirm Modal -->
+<div id="confirmActionModal" class="modal">
+    <div class="modal-content" style="max-width: 450px;">
+        <div class="modal-header">
+            <h3 id="confirmActionTitle">Confirm Action</h3>
+            <button class="modal-close" type="button" onclick="closeConfirmModal()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <p id="confirmActionMessage" style="font-size: 15px; color: #334155;">Are you sure?</p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-outline" onclick="closeConfirmModal()">Cancel</button>
+            <button type="button" class="btn btn-primary" id="confirmActionBtn" onclick="submitConfirmForm()">Confirm</button>
+        </div>
+    </div>
+</div>
+
 <script>
 (function () {
     "use strict";
+
+    // Custom Modal Logic
+    window.currentActionForm = null;
+
+    window.openConfirmModal = function(form, title, message, btnClass) {
+        window.currentActionForm = form;
+        document.getElementById('confirmActionTitle').innerText = title;
+        document.getElementById('confirmActionMessage').innerHTML = message;
+        
+        const btn = document.getElementById('confirmActionBtn');
+        btn.className = 'btn ' + btnClass;
+        
+        document.getElementById('confirmActionModal').classList.add('open');
+    };
+
+    window.closeConfirmModal = function() {
+        document.getElementById('confirmActionModal').classList.remove('open');
+        window.currentActionForm = null;
+    };
+
+    window.submitConfirmForm = function() {
+        if (window.currentActionForm) {
+            window.currentActionForm.submit();
+        }
+    };
 
     // ── Hub-level tabs ─────────────────────────────────────────────────
     const hubTabs = document.querySelectorAll('.hub-tab');
