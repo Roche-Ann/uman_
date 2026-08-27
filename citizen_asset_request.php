@@ -91,6 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $quantity = max(1, (int)($_POST['quantity'] ?? 1));
         $urgency = in_array($_POST['urgency'] ?? '', ['Routine', 'Priority', 'Emergency'], true) ? $_POST['urgency'] : 'Routine';
         $dateNeeded = trim((string)($_POST['date_needed'] ?? '')) ?: null;
+        $returnDate = trim((string)($_POST['return_date'] ?? '')) ?: null;
         $eventPurpose = trim((string)($_POST['event_purpose'] ?? ''));
         $locationName = trim((string)($_POST['facility_name'] ?? ''));
         $contactNumber = trim((string)($_POST['contact_number'] ?? ''));
