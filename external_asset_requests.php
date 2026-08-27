@@ -24,6 +24,8 @@ $webhookNotice = '';
 
 try {
     uman_ensure_cprf_custody_schema($pdo);
+    // Auto-migrate schema to support 'returned' status for citizen requests
+    $pdo->exec("ALTER TABLE external_asset_requests MODIFY COLUMN status ENUM('pending','approved','fulfilled','rejected','returned') NOT NULL DEFAULT 'pending'");
 } catch (Throwable $e) {
     $errors[] = 'Schema warning: custody columns not ready — ' . htmlspecialchars($e->getMessage());
 }

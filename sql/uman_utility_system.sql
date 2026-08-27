@@ -421,7 +421,7 @@ CREATE TABLE `external_asset_requests` (
   `asset_type` varchar(100) NOT NULL,
   `quantity` int(11) NOT NULL DEFAULT 1,
   `notes` text DEFAULT NULL,
-  `status` enum('pending','approved','fulfilled','rejected') NOT NULL DEFAULT 'pending',
+  `status` enum('pending','approved','fulfilled','rejected','returned') NOT NULL DEFAULT 'pending',
   `fulfilled_asset_id` int(11) DEFAULT NULL,
   `review_notes` text DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp(),
