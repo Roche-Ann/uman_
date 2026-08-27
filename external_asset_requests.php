@@ -105,10 +105,14 @@ function get_request_asset_availability(string $reqAssetType, int $reqQty, array
     foreach ($allAvailableAssets as $asset) {
         // If a specific asset was requested, ONLY match that exact asset ID!
         if (!empty($specificAssetId)) {
-            // Some legacy requests might have "ASSET_ID - ASSET_NAME" in the requested_asset_code column.
-            $cleanSpecificId = trim(explode(' - ', $specificAssetId)[0]);
-            
-            if (($asset['asset_id'] ?? '') === $cleanSpecificId) {
+            // It could be "SS-0004" or "SS-0004 - Konzert PORTARRAY15"
+            $assetIdStr = trim((string)($asset['asset_id'] ?? ''));
+            if ($assetIdStr !== '' && (
+                $specificAssetId === $assetIdStr ||
+                str_starts_with($specificAssetId, $assetIdStr . ' -') ||
+                str_starts_with($specificAssetId, $assetIdStr . '-') ||
+                str_starts_with($specificAssetId, $assetIdStr . ' ')
+            )) {
                 $matchingAssets[] = $asset;
                 $totalAvailableQty += intval($asset['quantity'] ?? 1);
             }
@@ -209,7 +213,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         FROM utility_assets a
                         JOIN asset_types t ON t.id = a.asset_type_id
                         WHERE a.condition_status IN ('Operational', 'Needs Inspection')
-                          AND (a.cprf_custody_status IS NULL OR a.cprf_custody_status IN ('WAREHOUSED', 'LOAN_RETURNED'))
+                          AND (a.cprf_custody_status IS NULL OR a.cprf_custody_status = '' OR a.cprf_custody_status IN ('WAREHOUSED', 'LOAN_RETURNED'))
                           AND (a.cprf_facility_id IS NULL OR a.cprf_facility_id = 0)
                     ")->fetchAll(PDO::FETCH_ASSOC) ?: [];
                 } catch (Throwable $e) {
@@ -657,7 +661,7 @@ try {
         FROM utility_assets a
         JOIN asset_types t ON t.id = a.asset_type_id
         WHERE a.condition_status IN ('Operational', 'Needs Inspection')
-          AND (a.cprf_custody_status IS NULL OR a.cprf_custody_status IN ('WAREHOUSED', 'LOAN_RETURNED'))
+          AND (a.cprf_custody_status IS NULL OR a.cprf_custody_status = '' OR a.cprf_custody_status IN ('WAREHOUSED', 'LOAN_RETURNED'))
           AND (a.cprf_facility_id IS NULL OR a.cprf_facility_id = 0)
         ORDER BY t.name ASC, a.name ASC
     ")->fetchAll(PDO::FETCH_ASSOC) ?: [];
