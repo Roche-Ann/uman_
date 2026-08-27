@@ -103,19 +103,20 @@ function get_request_asset_availability(string $reqAssetType, int $reqQty, array
     $totalAvailableQty = 0;
 
     foreach ($allAvailableAssets as $asset) {
-        $typeNameLower = mb_strtolower(trim((string)($asset['asset_type'] ?? '')));
         $assetNameLower = mb_strtolower(trim((string)($asset['name'] ?? '')));
         $qty = intval($asset['quantity'] ?? 1);
 
         $matches = false;
-        if ($typeNameLower !== '' && $reqTypeLower !== '' && ($typeNameLower === $reqTypeLower || stripos($typeNameLower, $reqTypeLower) !== false || stripos($reqTypeLower, $typeNameLower) !== false)) {
-            $matches = true;
-        } elseif ($reqTypeLower !== '' && stripos($assetNameLower, $reqTypeLower) !== false) {
+        if ($reqTypeLower !== '' && (
+            $assetNameLower === $reqTypeLower || 
+            stripos($assetNameLower, $reqTypeLower) !== false || 
+            stripos($reqTypeLower, $assetNameLower) !== false
+        )) {
             $matches = true;
         } else {
             foreach ($reqTokens as $token) {
                 $pattern = '/\b' . preg_quote($token, '/') . '/i';
-                if (($typeNameLower !== '' && preg_match($pattern, $typeNameLower)) || preg_match($pattern, $assetNameLower)) {
+                if (preg_match($pattern, $assetNameLower)) {
                     $matches = true;
                     break;
                 }
