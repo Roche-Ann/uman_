@@ -428,6 +428,7 @@ try {
         .empty-state i { font-size: 44px; color: #cbd5e1; margin-bottom: 12px; }
 
         @media (max-width: 900px) {
+            /* Wrap table in a scrollable div is NOT needed — we convert to cards */
             .req-table, 
             .req-table thead, 
             .req-table tbody, 
@@ -436,56 +437,60 @@ try {
             .req-table tr {
                 display: block;
                 width: 100%;
+                box-sizing: border-box;
             }
             .req-table thead {
                 display: none;
             }
+            /* Each row becomes a card */
             .req-table tr {
                 background: #f8fafc;
                 border: 1px solid #e2e8f0;
-                border-radius: 12px;
-                margin-bottom: 16px;
-                padding: 16px;
+                border-radius: 14px;
+                margin-bottom: 14px;
+                padding: 14px 16px;
                 box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-                box-sizing: border-box;
+                width: 100%;
+                overflow: hidden;
             }
             .dark-theme .req-table tr {
                 background: #0f172a;
-                border-color: #334155;
+                border-color: #1e293b;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
             }
+            /* Each cell: label stacked above value */
             .req-table td {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                padding: 10px 0;
+                display: block;
+                padding: 8px 0;
                 border-bottom: 1px solid #e2e8f0;
-                text-align: right;
-                box-sizing: border-box;
+                text-align: left;
+                width: 100%;
             }
             .dark-theme .req-table td {
-                border-bottom-color: #334155;
+                border-bottom-color: #1e293b;
             }
             .req-table td:last-child {
                 border-bottom: none;
+                padding-bottom: 0;
             }
+            .req-table td:first-child {
+                padding-top: 0;
+            }
+            /* Label shown as tiny uppercase header above the value */
             .req-table td::before {
                 content: attr(data-label);
-                font-weight: 600;
-                color: #64748b;
+                display: block;
+                font-weight: 700;
+                color: #94a3b8;
                 text-transform: uppercase;
                 font-size: 10px;
-                letter-spacing: 0.5px;
-                text-align: left;
-                width: 40%;
-                flex-shrink: 0;
-            }
-            .dark-theme .req-table td::before {
-                color: #94a3b8;
+                letter-spacing: 0.6px;
+                margin-bottom: 4px;
             }
             .req-table td .td-val {
-                text-align: right;
-                width: 60%;
-                flex-grow: 1;
+                display: block;
+                text-align: left;
+                width: 100%;
             }
         }
     </style>
