@@ -348,26 +348,33 @@ function dispatchUPADCallback(string $referenceId, PDO $pdo, string $decision, f
         $req = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
     }
 
-    $appId = (int)($req['application_id'] ?? 0);
-    $lat   = !empty($req['latitude']) ? (float)$req['latitude'] : null;
-    $lng   = !empty($req['longitude']) ? (float)$req['longitude'] : null;
+    $appId          = (int)($req['application_id'] ?? 0);
+    $inspectionDate = !empty($req['inspection_date']) ? $req['inspection_date'] : date('Y-m-d');
+    $engineer       = !empty($req['engineer_assigned']) ? $req['engineer_assigned'] : 'Engr. Juan Dela Cruz';
+    $overallCond    = !empty($req['overall_condition']) ? $req['overall_condition'] : $overallCondition;
+    $sevLevel       = !empty($req['severity']) ? $req['severity'] : ($score >= 80 ? 'Low' : ($score >= 50 ? 'Medium' : 'High'));
+    $recomText      = !empty($req['recommendation']) ? $req['recommendation'] : $recommendation;
+    $remarksText    = !empty($req['remarks']) ? $req['remarks'] : $recomText;
+    $lat            = isset($req['gps_latitude']) ? (float)$req['gps_latitude'] : (!empty($req['latitude']) ? (float)$req['latitude'] : null);
+    $lng            = isset($req['gps_longitude']) ? (float)$req['gps_longitude'] : (!empty($req['longitude']) ? (float)$req['longitude'] : null);
+    $photos         = isset($req['photo_urls']) && is_array($req['photo_urls']) ? $req['photo_urls'] : [];
 
     $callbackPayload = [
         'application_id'           => $appId,
         'grid_id'                  => $referenceId,
-        'inspection_date'          => date('Y-m-d'),
-        'engineer_assigned'        => 'Engr. Juan Dela Cruz',
-        'grid_capacity_condition'  => $overallCondition,
+        'inspection_date'          => $inspectionDate,
+        'engineer_assigned'        => $engineer,
+        'grid_capacity_condition'  => $overallCond,
         'transformer_condition'    => ($decision === 'Approved' ? 'Good' : 'Poor'),
         'line_condition'           => 'Good',
         'load_forecast_condition'  => 'Good',
-        'overall_condition'        => $overallCondition,
-        'severity'                 => ($score >= 80 ? 'Low' : ($score >= 50 ? 'Medium' : 'High')),
-        'recommendation'           => $recommendation,
+        'overall_condition'        => $overallCond,
+        'severity'                 => $sevLevel,
+        'recommendation'           => $recomText,
         'gps_latitude'             => $lat,
         'gps_longitude'            => $lng,
-        'remarks'                  => !empty($req['remarks']) ? $req['remarks'] : $recommendation,
-        'photo_urls'               => [],
+        'remarks'                  => $remarksText,
+        'photo_urls'               => $photos,
     ];
 
     $callbackJson = json_encode($callbackPayload, JSON_UNESCAPED_UNICODE);

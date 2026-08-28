@@ -246,49 +246,85 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
 // ── Handle Manual Approve ───────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'manual_approve') {
-    $refId = trim((string)($_POST['reference_id'] ?? ''));
-    $userRemarks = trim((string)($_POST['remarks'] ?? 'Grid infrastructure and capacity verified. Approved for immediate utility connection.'));
-    
+    $refId          = trim((string)($_POST['reference_id'] ?? ''));
+    $appId          = (int)($_POST['application_id'] ?? 0);
+    $overallCond    = trim((string)($_POST['overall_condition'] ?? 'Good'));
+    $severity       = trim((string)($_POST['severity'] ?? 'Low'));
+    $recommendation = trim((string)($_POST['recommendation'] ?? 'Grid infrastructure and capacity verified. Approved for immediate utility connection.'));
+    $userRemarks    = trim((string)($_POST['remarks'] ?? 'Grid infrastructure and capacity verified. Approved for immediate utility connection.'));
+    $inspectionDate = trim((string)($_POST['inspection_date'] ?? date('Y-m-d')));
+    $engineer       = trim((string)($_POST['engineer_assigned'] ?? 'Engr. Juan Dela Cruz'));
+    $lat            = !empty($_POST['gps_latitude']) ? (float)$_POST['gps_latitude'] : null;
+    $lng            = !empty($_POST['gps_longitude']) ? (float)$_POST['gps_longitude'] : null;
+
     if (!empty($refId)) {
         $pdo->prepare("
             UPDATE upad_inspection_requests 
-            SET ai_decision = 'Approved', status = 'completed', remarks = ? 
+            SET ai_decision = 'Approved', status = 'completed', remarks = ?, corrective_recommendation = ? 
             WHERE reference_id = ?
-        ")->execute([$userRemarks, $refId]);
+        ")->execute([$userRemarks, $recommendation, $refId]);
 
-        // Dispatch exact integration payload to UPAD
         require_once __DIR__ . '/api/v1/inspection_ai.php';
         $stmt = $pdo->prepare("SELECT * FROM upad_inspection_requests WHERE reference_id = ?");
         $stmt->execute([$refId]);
         $reqData = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
-        $reqData['remarks'] = $userRemarks;
 
-        dispatchUPADCallback($refId, $pdo, 'Approved', (float)($reqData['ai_score'] ?? 90.0), 'Good', $userRemarks, $reqData);
-        $successes[] = "Inspection request $refId APPROVED. Exact inspection result data successfully sent to Urban Planning (UPAD).";
+        $payloadOverrides = array_merge($reqData, [
+            'application_id'    => $appId ?: ($reqData['application_id'] ?? 0),
+            'inspection_date'   => $inspectionDate,
+            'engineer_assigned' => $engineer,
+            'overall_condition' => $overallCond,
+            'severity'          => $severity,
+            'recommendation'    => $recommendation,
+            'remarks'           => $userRemarks,
+            'gps_latitude'      => $lat,
+            'gps_longitude'     => $lng,
+        ]);
+
+        dispatchUPADCallback($refId, $pdo, 'Approved', (float)($reqData['ai_score'] ?? 90.0), $overallCond, $recommendation, $payloadOverrides);
+        $successes[] = "Inspection request $refId APPROVED. User-edited inspection payload successfully transmitted to UPAD.";
     }
 }
 
 // ── Handle Manual Reject ────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'manual_reject') {
-    $refId = trim((string)($_POST['reference_id'] ?? ''));
-    $recom = trim((string)($_POST['recommendation'] ?? 'Inspection rejected. Corrective action required based on actual findings.'));
-    
+    $refId          = trim((string)($_POST['reference_id'] ?? ''));
+    $appId          = (int)($_POST['application_id'] ?? 0);
+    $overallCond    = trim((string)($_POST['overall_condition'] ?? 'Poor'));
+    $severity       = trim((string)($_POST['severity'] ?? 'High'));
+    $recommendation = trim((string)($_POST['recommendation'] ?? 'Inspection rejected. Corrective action required based on actual findings.'));
+    $userRemarks    = trim((string)($_POST['remarks'] ?? $recommendation));
+    $inspectionDate = trim((string)($_POST['inspection_date'] ?? date('Y-m-d')));
+    $engineer       = trim((string)($_POST['engineer_assigned'] ?? 'Engr. Juan Dela Cruz'));
+    $lat            = !empty($_POST['gps_latitude']) ? (float)$_POST['gps_latitude'] : null;
+    $lng            = !empty($_POST['gps_longitude']) ? (float)$_POST['gps_longitude'] : null;
+
     if (!empty($refId)) {
         $pdo->prepare("
             UPDATE upad_inspection_requests 
             SET ai_decision = 'Rejected', status = 'sent_for_correction', corrective_recommendation = ?, remarks = ?, correction_requested_by = 'System Administrator', correction_requested_at = NOW() 
             WHERE reference_id = ?
-        ")->execute([$recom, $recom, $refId]);
+        ")->execute([$recommendation, $userRemarks, $refId]);
 
-        // Dispatch exact integration payload to UPAD with final corrective recommendation
         require_once __DIR__ . '/api/v1/inspection_ai.php';
         $stmt = $pdo->prepare("SELECT * FROM upad_inspection_requests WHERE reference_id = ?");
         $stmt->execute([$refId]);
         $reqData = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
-        $reqData['remarks'] = $recom;
 
-        dispatchUPADCallback($refId, $pdo, 'Rejected', (float)($reqData['ai_score'] ?? 45.0), 'Poor', $recom, $reqData);
-        $successes[] = "Inspection request $refId REJECTED. Corrective recommendation saved and exact inspection data sent to Urban Planning (UPAD).";
+        $payloadOverrides = array_merge($reqData, [
+            'application_id'    => $appId ?: ($reqData['application_id'] ?? 0),
+            'inspection_date'   => $inspectionDate,
+            'engineer_assigned' => $engineer,
+            'overall_condition' => $overallCond,
+            'severity'          => $severity,
+            'recommendation'    => $recommendation,
+            'remarks'           => $userRemarks,
+            'gps_latitude'      => $lat,
+            'gps_longitude'     => $lng,
+        ]);
+
+        dispatchUPADCallback($refId, $pdo, 'Rejected', (float)($reqData['ai_score'] ?? 45.0), $overallCond, $recommendation, $payloadOverrides);
+        $successes[] = "Inspection request $refId REJECTED. Corrective action recommendation & user-edited payload transmitted to UPAD.";
     }
 }
 
@@ -826,8 +862,12 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                                         onclick="openApproveModal(
                                                             '<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>',
                                                             '<?php echo $aiScore !== null ? (int)round($aiScore) : 'N/A'; ?>',
-                                                            '<?php echo (int)($r['application_id'] ?? 0); ?>'
-                                                        )" title="Approve inspection">
+                                                            '<?php echo (int)($r['application_id'] ?? 0); ?>',
+                                                            '<?php echo htmlspecialchars(addslashes($r['corrective_recommendation'] ?? 'Grid infrastructure and capacity verified. Approved for immediate utility connection.')); ?>',
+                                                            '<?php echo htmlspecialchars(addslashes($r['remarks'] ?? 'Site inspection completed. Existing transformer capacity and grid stability are sufficient.')); ?>',
+                                                            '<?php echo htmlspecialchars($r['latitude'] ?? ''); ?>',
+                                                            '<?php echo htmlspecialchars($r['longitude'] ?? ''); ?>'
+                                                        )" title="Approve inspection and edit outgoing payload">
                                                     <i class="fas fa-check-circle"></i> Approve
                                                 </button>
 
@@ -836,8 +876,11 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                                             '<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>',
                                                             '<?php echo $aiScore !== null ? (int)round($aiScore) : 'N/A'; ?>',
                                                             '<?php echo htmlspecialchars(addslashes($dynamicRecom)); ?>',
-                                                            '<?php echo (int)($r['application_id'] ?? 0); ?>'
-                                                        )" title="Reject inspection and edit recommendation">
+                                                            '<?php echo (int)($r['application_id'] ?? 0); ?>',
+                                                            '<?php echo htmlspecialchars(addslashes($r['remarks'] ?? $dynamicRecom)); ?>',
+                                                            '<?php echo htmlspecialchars($r['latitude'] ?? ''); ?>',
+                                                            '<?php echo htmlspecialchars($r['longitude'] ?? ''); ?>'
+                                                        )" title="Reject inspection and edit outgoing payload">
                                                     <i class="fas fa-times-circle"></i> Reject
                                                 </button>
                                             </div>
@@ -852,11 +895,11 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
     </main>
 
-    <!-- Approval & Confirmation Modal -->
+    <!-- Approval & Editable Payload Modal -->
     <div class="modal" id="approveModal">
-        <div class="modal-content" style="max-width: 650px;">
+        <div class="modal-content" style="max-width: 680px;">
             <div class="modal-header">
-                <h3><i class="fas fa-check-circle" style="color: #10b981;"></i> Confirm Inspection Approval</h3>
+                <h3><i class="fas fa-check-circle" style="color: #10b981;"></i> Confirm & Edit Outgoing Approval Data</h3>
                 <button type="button" onclick="closeApproveModal()" style="border:none; background:none; font-size:18px; cursor:pointer;">&times;</button>
             </div>
             <form method="POST">
@@ -875,33 +918,68 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         </div>
                     </div>
 
-                    <!-- Outgoing UPAD Integration Data Preview -->
-                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 16px; margin-bottom: 15px;">
-                        <div style="font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 5px;">
-                            <i class="fas fa-paper-plane" style="color: #10b981;"></i> Outgoing UPAD Integration Data Fields:
+                    <div style="font-size: 12px; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 10px; display: flex; align-items: center; gap: 5px;">
+                        <i class="fas fa-edit" style="color: #10b981;"></i> Editable Outgoing UPAD Integration Data:
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>UPAD Application ID</label>
+                            <input type="number" name="application_id" id="app_in_app_id" class="form-control" required>
                         </div>
-                        <div style="font-family: monospace; font-size: 11px; color: #334155; line-height: 1.6; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 15px;">
-                            <div><strong>application_id:</strong> #<span id="app_pay_app_id">-</span></div>
-                            <div><strong>grid_id:</strong> <span id="app_pay_grid_id">-</span></div>
-                            <div><strong>overall_condition:</strong> Good</div>
-                            <div><strong>severity:</strong> Low</div>
-                            <div><strong>engineer_assigned:</strong> Engr. Juan Dela Cruz</div>
-                            <div><strong>inspection_date:</strong> <?php echo date('Y-m-d'); ?></div>
+                        <div class="form-group">
+                            <label>Assigned Engineer</label>
+                            <input type="text" name="engineer_assigned" id="app_in_engineer" class="form-control" value="Engr. Juan Dela Cruz" required>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Overall Condition</label>
+                            <select name="overall_condition" id="app_in_condition" class="form-control">
+                                <option value="Good" selected>Good (Approved)</option>
+                                <option value="Fair">Fair</option>
+                                <option value="Poor">Poor</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Severity Level</label>
+                            <select name="severity" id="app_in_severity" class="form-control">
+                                <option value="Low" selected>Low</option>
+                                <option value="Medium">Medium</option>
+                                <option value="High">High</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Inspection Date</label>
+                            <input type="date" name="inspection_date" id="app_in_date" class="form-control" value="<?php echo date('Y-m-d'); ?>" required>
+                        </div>
+                        <div class="form-group">
+                            <label>GPS Coordinates (Lat, Lng)</label>
+                            <div style="display: flex; gap: 6px;">
+                                <input type="number" step="any" name="gps_latitude" id="app_in_lat" class="form-control" placeholder="Latitude">
+                                <input type="number" step="any" name="gps_longitude" id="app_in_lng" class="form-control" placeholder="Longitude">
+                            </div>
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label style="font-size: 12px; font-weight: 700; color: #334155; display: block; margin-bottom: 8px;">
-                            <i class="fas fa-edit" style="color: #10b981; margin-right: 4px;"></i>
-                            Approval Remarks & Notes (Review & Edit before confirming):
-                        </label>
-                        <textarea name="remarks" id="app_remarks_textarea" class="form-control" rows="4" style="width: 100%; border-radius: 10px; border: 1px solid #cbd5e1; padding: 12px; font-size: 13px; line-height: 1.5; font-family: inherit;" required>Grid infrastructure and capacity verified. Approved for immediate utility connection.</textarea>
+                        <label>Final Approved Recommendation Text</label>
+                        <textarea name="recommendation" id="app_recom_textarea" class="form-control" rows="2" required>Grid infrastructure and capacity verified. Approved for immediate utility connection.</textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Inspection Remarks & Notes</label>
+                        <textarea name="remarks" id="app_remarks_textarea" class="form-control" rows="2" required>Site inspection completed. Existing transformer capacity and grid stability are sufficient.</textarea>
                     </div>
 
                     <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px;">
                         <button type="button" class="btn btn-outline" onclick="closeApproveModal()">Cancel</button>
                         <button type="submit" class="btn btn-success" style="background: #10b981; color: white; border: none; border-radius: 8px; font-weight: 600; padding: 10px 18px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-                            <i class="fas fa-check-circle"></i> Confirm & Approve Inspection
+                            <i class="fas fa-paper-plane"></i> Finalize & Send Approval to UPAD
                         </button>
                     </div>
                 </div>
@@ -909,11 +987,11 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
     </div>
 
-    <!-- Rejection & Editable Corrective Action Modal -->
+    <!-- Rejection & Editable Payload Modal -->
     <div class="modal" id="rejectModal">
-        <div class="modal-content" style="max-width: 650px;">
+        <div class="modal-content" style="max-width: 680px;">
             <div class="modal-header">
-                <h3><i class="fas fa-times-circle" style="color: #ef4444;"></i> Reject Inspection & Edit Corrective Action</h3>
+                <h3><i class="fas fa-times-circle" style="color: #ef4444;"></i> Reject Inspection & Edit Corrective Data</h3>
                 <button type="button" onclick="closeRejectModal()" style="border:none; background:none; font-size:18px; cursor:pointer;">&times;</button>
             </div>
             <form method="POST">
@@ -932,36 +1010,68 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         </div>
                     </div>
 
-                    <!-- Outgoing UPAD Integration Data Preview -->
-                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 16px; margin-bottom: 15px;">
-                        <div style="font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 5px;">
-                            <i class="fas fa-paper-plane" style="color: #ef4444;"></i> Outgoing UPAD Integration Data Fields:
+                    <div style="font-size: 12px; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 10px; display: flex; align-items: center; gap: 5px;">
+                        <i class="fas fa-edit" style="color: #ef4444;"></i> Editable Outgoing UPAD Rejection Payload Data:
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>UPAD Application ID</label>
+                            <input type="number" name="application_id" id="rej_in_app_id" class="form-control" required>
                         </div>
-                        <div style="font-family: monospace; font-size: 11px; color: #334155; line-height: 1.6; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 15px;">
-                            <div><strong>application_id:</strong> #<span id="rej_pay_app_id">-</span></div>
-                            <div><strong>grid_id:</strong> <span id="rej_pay_grid_id">-</span></div>
-                            <div><strong>overall_condition:</strong> Poor</div>
-                            <div><strong>severity:</strong> High</div>
-                            <div><strong>engineer_assigned:</strong> Engr. Juan Dela Cruz</div>
-                            <div><strong>inspection_date:</strong> <?php echo date('Y-m-d'); ?></div>
+                        <div class="form-group">
+                            <label>Assigned Engineer</label>
+                            <input type="text" name="engineer_assigned" id="rej_in_engineer" class="form-control" value="Engr. Juan Dela Cruz" required>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Overall Condition</label>
+                            <select name="overall_condition" id="rej_in_condition" class="form-control">
+                                <option value="Poor" selected>Poor (Rejected)</option>
+                                <option value="Fair">Fair</option>
+                                <option value="Good">Good</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Severity Level</label>
+                            <select name="severity" id="rej_in_severity" class="form-control">
+                                <option value="High" selected>High</option>
+                                <option value="Medium">Medium</option>
+                                <option value="Low">Low</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Inspection Date</label>
+                            <input type="date" name="inspection_date" id="rej_in_date" class="form-control" value="<?php echo date('Y-m-d'); ?>" required>
+                        </div>
+                        <div class="form-group">
+                            <label>GPS Coordinates (Lat, Lng)</label>
+                            <div style="display: flex; gap: 6px;">
+                                <input type="number" step="any" name="gps_latitude" id="rej_in_lat" class="form-control" placeholder="Latitude">
+                                <input type="number" step="any" name="gps_longitude" id="rej_in_lng" class="form-control" placeholder="Longitude">
+                            </div>
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label style="font-size: 12px; font-weight: 700; color: #334155; display: block; margin-bottom: 8px;">
-                            <i class="fas fa-edit" style="color: #3b82f6; margin-right: 4px;"></i>
-                            Corrective Action Recommendation (Review & Edit before saving):
-                        </label>
-                        <textarea name="recommendation" id="rej_recom_textarea" class="form-control" rows="5" style="width: 100%; border-radius: 10px; border: 1px solid #cbd5e1; padding: 12px; font-size: 13px; line-height: 1.5; font-family: inherit;" required></textarea>
-                        <small style="color: #64748b; font-size: 11px; margin-top: 6px; display: block;">
-                            You can review, modify, or refine the corrective action recommendation above prior to saving the final rejection.
-                        </small>
+                        <label>Corrective Action Recommendation (Editable)</label>
+                        <textarea name="recommendation" id="rej_recom_textarea" class="form-control" rows="3" required></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Inspection Remarks & Rejection Notes</label>
+                        <textarea name="remarks" id="rej_remarks_textarea" class="form-control" rows="2" required></textarea>
                     </div>
 
                     <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px;">
                         <button type="button" class="btn btn-outline" onclick="closeRejectModal()">Cancel</button>
                         <button type="submit" class="btn btn-danger" style="background: #ef4444; color: white; border: none; border-radius: 8px; font-weight: 600; padding: 10px 18px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-                            <i class="fas fa-paper-plane"></i> Save Rejection & Send Recommendation
+                            <i class="fas fa-paper-plane"></i> Finalize & Send Rejection to UPAD
                         </button>
                     </div>
                 </div>
@@ -987,25 +1097,30 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
     </div>
 
     <script>
-        function openApproveModal(refId, score, appId) {
+        function openApproveModal(refId, score, appId, recom, remarks, lat, lng) {
             document.getElementById('app_ref_id').value = refId;
             document.getElementById('app_ref_display').innerText = refId;
             document.getElementById('app_score_display').innerText = (score !== 'N/A') ? score + '%' : 'N/A';
-            document.getElementById('app_pay_app_id').innerText = appId || '0';
-            document.getElementById('app_pay_grid_id').innerText = refId;
+            document.getElementById('app_in_app_id').value = appId || '0';
+            if (recom) document.getElementById('app_recom_textarea').value = recom;
+            if (remarks) document.getElementById('app_remarks_textarea').value = remarks;
+            if (lat) document.getElementById('app_in_lat').value = lat;
+            if (lng) document.getElementById('app_in_lng').value = lng;
             document.getElementById('approveModal').classList.add('show');
         }
         function closeApproveModal() {
             document.getElementById('approveModal').classList.remove('show');
         }
 
-        function openRejectModal(refId, score, recommendation, appId) {
+        function openRejectModal(refId, score, recommendation, appId, remarks, lat, lng) {
             document.getElementById('rej_ref_id').value = refId;
             document.getElementById('rej_ref_display').innerText = refId;
             document.getElementById('rej_score_display').innerText = (score !== 'N/A') ? score + '%' : 'N/A';
-            document.getElementById('rej_pay_app_id').innerText = appId || '0';
-            document.getElementById('rej_pay_grid_id').innerText = refId;
+            document.getElementById('rej_in_app_id').value = appId || '0';
             document.getElementById('rej_recom_textarea').value = recommendation;
+            document.getElementById('rej_remarks_textarea').value = remarks || recommendation;
+            if (lat) document.getElementById('rej_in_lat').value = lat;
+            if (lng) document.getElementById('rej_in_lng').value = lng;
             document.getElementById('rejectModal').classList.add('show');
         }
         function closeRejectModal() {
