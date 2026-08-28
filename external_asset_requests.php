@@ -1920,7 +1920,7 @@ try {
                                     <input type="search" id="searchAssignable" placeholder="Search assets in UMAN warehouse…" aria-label="Search assignable assets">
                                     <div style="display:flex; gap:6px; align-items:center;">
                                         <span id="assignSelectedCount" class="muted" style="font-size:12px;">0 selected</span>
-                                        <button type="submit" class="btn btn-success btn-sm" <?= count($assignableAssets) ? '' : 'disabled'; ?> id="assignSubmitBtn">
+                                        <button type="button" onclick="openAssignModal()" class="btn btn-success btn-sm" <?= count($assignableAssets) ? '' : 'disabled'; ?> id="assignSubmitBtn">
                                             <i class="fas fa-arrow-down"></i> Assign checked
                                         </button>
                                     </div>
@@ -2205,6 +2205,24 @@ try {
     </div>
 </div>
 
+<!-- Custom Assign Modal -->
+<div id="assignModal" class="modal">
+    <div class="modal-content" style="max-width: 450px;">
+        <div class="modal-header">
+            <h3>Confirm Assignment</h3>
+            <button class="modal-close" type="button" onclick="closeAssignModal()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <p id="assignModalSubtitle" style="font-size: 15px; color: #334155; margin-bottom: 10px;"></p>
+            <p style="font-size: 14px; color: #475569;">Are you sure you want to assign these assets to <strong><?= h($selectedFacilityName ?? '') ?></strong>?</p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-outline" onclick="closeAssignModal()">Cancel</button>
+            <button type="button" class="btn btn-success" onclick="submitAssign()"><i class="fas fa-check"></i> Confirm Assignment</button>
+        </div>
+    </div>
+</div>
+
 <script>
 (function () {
     "use strict";
@@ -2274,6 +2292,7 @@ try {
             if (panel) panel.classList.add('active');
         });
     });
+
 
     // ── Facility list search ────────────────────────────────────────────
     const facilitySearch = document.getElementById('facilitySearch');
@@ -2350,6 +2369,21 @@ try {
 
     window.closeAcceptReturnModal = function() {
         document.getElementById('acceptReturnModal').classList.remove('open');
+    };
+
+    window.openAssignModal = function() {
+        const n = document.querySelectorAll('#assignableTable .asset-chk:checked').length;
+        if (n === 0) return;
+        document.getElementById('assignModalSubtitle').innerHTML = `You have selected <strong>${n}</strong> asset(s) to assign.`;
+        document.getElementById('assignModal').classList.add('open');
+    };
+
+    window.closeAssignModal = function() {
+        document.getElementById('assignModal').classList.remove('open');
+    };
+
+    window.submitAssign = function() {
+        document.getElementById('form-assign').submit();
     };
 
     window.toggleReplacementOptions = function() {
