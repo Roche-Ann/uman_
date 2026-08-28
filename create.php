@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // create.php - REMOVE session_start() from here too
 require_once 'includes/auth.php';
 
@@ -230,6 +230,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             .nav-links .mobile-nav-actions { display: flex; flex-direction: column; gap: 1rem; width: 100%; margin-top: 2rem; }
         }
         @media (max-width: 768px) {
+            body, .dark-theme body {
+                background: url("assets/images/cityhall.jpeg") center/cover no-repeat !important;
+            }
+            body::before {
+                content: "" !important;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100% !important;
+                height: 100% !important;
+                backdrop-filter: blur(6px) !important;
+                background: rgba(255, 255, 255, 0.5) !important; /* white overlay */
+                z-index: -1 !important;
+                display: block !important;
+            }
+            .input-box input[type="text"], 
+            .input-box input[type="email"], 
+            .input-box input[type="password"] {
+                background: #ffffff !important;
+                color: var(--municipal-slate) !important;
+                border-color: rgba(11, 61, 145, 0.1) !important;
+            }
             .nav-container { padding: 0 1rem; }
             .register-card { padding: 2rem 1.5rem; }
             .register-header h2 { font-size: 1.75rem; }

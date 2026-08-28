@@ -734,11 +734,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
 
         @media (max-width: 768px) {
-            body::before {
-                display: none !important;
-            }
             body, .dark-theme body {
-                background: #f8fafc !important;
+                background: url("assets/images/cityhall.jpeg") center/cover no-repeat !important;
+            }
+            body::before {
+                content: "" !important;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100% !important;
+                height: 100% !important;
+                backdrop-filter: blur(6px) !important;
+                background: rgba(255, 255, 255, 0.5) !important; /* white overlay */
+                z-index: -1 !important;
+                display: block !important;
             }
 
             .show-password-container input[type="checkbox"] {
@@ -793,7 +802,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 </div>
             </a>
 
-            <button class="menu-toggle" id="mobileMenuBtn" style="display:none !important;">
+            <button class="menu-toggle" id="mobileMenuBtn">
                 <i class="fas fa-bars"></i>
             </button>
 
