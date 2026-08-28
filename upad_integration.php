@@ -17,6 +17,7 @@ if (!isLoggedIn() || !isEmployee()) {
 
 $errors = [];
 $successes = [];
+$warnings = [];
 
 // Self-healing database schema check (ensures columns exist without throwing warnings)
 try {
@@ -288,8 +289,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             'gps_longitude'     => $lng,
         ]);
 
-        dispatchUPADCallback($refId, $pdo, 'Approved', (float)($reqData['ai_score'] ?? 90.0), $overallCond, $recommendation, $payloadOverrides);
-        $successes[] = "Inspection request $refId APPROVED. User-edited inspection payload successfully transmitted to UPAD.";
+        $dispatchRes = dispatchUPADCallback($refId, $pdo, 'Approved', (float)($reqData['ai_score'] ?? 90.0), $overallCond, $recommendation, $payloadOverrides);
+        if ($dispatchRes['success']) {
+            $successes[] = "Inspection request $refId APPROVED. Finalized inspection result data successfully transmitted to UPAD.";
+        } else {
+            $warnings[] = "Inspection request $refId APPROVED and saved in database, but UPAD webhook delivery failed: " . ($dispatchRes['error'] ?? 'Delivery error');
+        }
     }
 }
 
@@ -334,8 +339,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             'gps_longitude'     => $lng,
         ]);
 
-        dispatchUPADCallback($refId, $pdo, 'Rejected', (float)($reqData['ai_score'] ?? 45.0), $overallCond, $recommendation, $payloadOverrides);
-        $successes[] = "Inspection request $refId REJECTED. Corrective action recommendation & user-edited payload transmitted to UPAD.";
+        $dispatchRes = dispatchUPADCallback($refId, $pdo, 'Rejected', (float)($reqData['ai_score'] ?? 45.0), $overallCond, $recommendation, $payloadOverrides);
+        if ($dispatchRes['success']) {
+            $successes[] = "Inspection request $refId REJECTED. Corrective action recommendation & finalized payload transmitted to UPAD.";
+        } else {
+            $warnings[] = "Inspection request $refId REJECTED and saved in database, but UPAD webhook delivery failed: " . ($dispatchRes['error'] ?? 'Delivery error');
+        }
     }
 }
 
@@ -705,6 +714,10 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             <?php foreach ($successes as $s): ?>
                 <div class="alert alert-success"><i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($s); ?></div>
+            <?php endforeach; ?>
+
+            <?php foreach ($warnings as $w): ?>
+                <div class="alert alert-warning" style="background:#fef3c7; color:#92400e; border:1px solid #fde68a; padding:12px 16px; border-radius:10px; margin-bottom:15px; font-size:13px; font-weight:600;"><i class="fas fa-exclamation-circle"></i> <?php echo htmlspecialchars($w); ?></div>
             <?php endforeach; ?>
 
             <?php foreach ($errors as $e): ?>

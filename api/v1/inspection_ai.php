@@ -423,8 +423,9 @@ function dispatchUPADCallback(string $referenceId, PDO $pdo, string $decision, f
             SET status = ?, ai_decision = ?, result_payload = ?, callback_sent_at = NOW(), callback_http_code = ?, callback_error = ?
             WHERE reference_id = ?
         ");
+        $savedStatus = ($decision === 'Approved') ? 'completed' : 'sent_for_correction';
         $updateStmt->execute([
-            $callbackSuccess ? 'completed' : 'failed',
+            $savedStatus,
             $decision,
             json_encode(['sent' => $callbackPayload, 'http_code' => $httpCode, 'response' => mb_substr($responseBody ?: '', 0, 1000)]),
             $httpCode ?: null,
