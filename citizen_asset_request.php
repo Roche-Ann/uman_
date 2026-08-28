@@ -457,28 +457,40 @@ try {
                 box-sizing: border-box;
             }
             /* Convert table to cards — no horizontal scroll */
+            /* ── CRITICAL: Cancel responsive.css global table { min-width: 540px } ── */
+            .req-table,
+            .req-table thead,
+            .req-table tbody,
+            .req-table tfoot,
+            .req-table tr,
+            .req-table th,
+            .req-table td {
+                min-width: 0 !important;
+                max-width: 100% !important;
+            }
+            /* Each row becomes a full-width card */
             .req-table, 
             .req-table thead, 
             .req-table tbody, 
             .req-table th, 
             .req-table td, 
             .req-table tr {
-                display: block;
-                width: 100%;
-                box-sizing: border-box;
+                display: block !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
             }
             .req-table thead {
-                display: none;
+                display: none !important;
             }
-            /* Each row becomes a card */
             .req-table tr {
                 background: #f8fafc;
                 border: 1px solid #e2e8f0;
                 border-radius: 14px;
                 margin-bottom: 14px;
-                padding: 14px 16px;
+                padding: 14px 16px !important;
                 box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-                width: 100%;
+                width: 100% !important;
+                max-width: 100% !important;
                 overflow: hidden;
             }
             .dark-theme .req-table tr {
@@ -488,21 +500,22 @@ try {
             }
             /* Each cell: label stacked above value */
             .req-table td {
-                display: block;
-                padding: 8px 0;
+                display: block !important;
+                padding: 8px 0 !important;
                 border-bottom: 1px solid #e2e8f0;
-                text-align: left;
-                width: 100%;
+                text-align: left !important;
+                width: 100% !important;
+                min-width: 0 !important;
             }
             .dark-theme .req-table td {
                 border-bottom-color: #1e293b;
             }
             .req-table td:last-child {
                 border-bottom: none;
-                padding-bottom: 0;
+                padding-bottom: 0 !important;
             }
             .req-table td:first-child {
-                padding-top: 0;
+                padding-top: 0 !important;
             }
             /* Label shown as tiny uppercase header above the value */
             .req-table td::before {
@@ -519,6 +532,7 @@ try {
                 display: block;
                 text-align: left;
                 width: 100%;
+                word-break: break-word;
             }
         }
     </style>
