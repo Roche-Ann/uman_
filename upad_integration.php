@@ -244,7 +244,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
-// ── Handle Manual Approve for Score 50-79 (Manual Check) ─────────────────────
+// ── Handle Manual Approve ───────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'manual_approve') {
     $refId = trim((string)($_POST['reference_id'] ?? ''));
     if (!empty($refId)) {
@@ -254,17 +254,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             WHERE reference_id = ?
         ")->execute([$refId]);
 
-        // Dispatch callback to UPAD
+        // Dispatch exact inspection payload to UPAD
         require_once __DIR__ . '/api/v1/inspection_ai.php';
-        dispatchUPADCallback($refId, $pdo, 'Approved', 75.0, 'Good', 'Manually reviewed and approved by authorized personnel.', []);
-        $successes[] = "Inspection request $refId manually checked and APPROVED. Callback dispatched to UPAD.";
+        $stmt = $pdo->prepare("SELECT * FROM upad_inspection_requests WHERE reference_id = ?");
+        $stmt->execute([$refId]);
+        $reqData = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        dispatchUPADCallback($refId, $pdo, 'Approved', (float)($reqData['ai_score'] ?? 90.0), 'Good', 'Grid infrastructure and capacity verified. Approved for immediate utility connection.', $reqData);
+        $successes[] = "Inspection request $refId APPROVED. Final inspection data successfully returned to Urban Planning (UPAD).";
     }
 }
 
-// ── Handle Manual Reject for Score 50-79 (Manual Check) ──────────────────────
+// ── Handle Manual Reject ────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'manual_reject') {
     $refId = trim((string)($_POST['reference_id'] ?? ''));
-    $recom = trim((string)($_POST['recommendation'] ?? 'Inspection rejected upon manual review. Corrective action required.'));
+    $recom = trim((string)($_POST['recommendation'] ?? 'Inspection rejected. Corrective action required based on actual findings.'));
     
     if (!empty($refId)) {
         $pdo->prepare("
@@ -273,7 +277,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             WHERE reference_id = ?
         ")->execute([$recom, $refId]);
 
-        $successes[] = "Inspection request $refId manually REJECTED. Sent back for corrective action with AI recommendations.";
+        // Dispatch exact inspection payload to UPAD with final corrective recommendation
+        require_once __DIR__ . '/api/v1/inspection_ai.php';
+        $stmt = $pdo->prepare("SELECT * FROM upad_inspection_requests WHERE reference_id = ?");
+        $stmt->execute([$refId]);
+        $reqData = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        dispatchUPADCallback($refId, $pdo, 'Rejected', (float)($reqData['ai_score'] ?? 45.0), 'Poor', $recom, $reqData);
+        $successes[] = "Inspection request $refId REJECTED. Corrective recommendation saved and returned to Urban Planning (UPAD).";
     }
 }
 
