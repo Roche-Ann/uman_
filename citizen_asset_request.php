@@ -217,6 +217,7 @@ try {
             display: flex;
             background: url("assets/images/cityhall.jpeg") center/cover no-repeat fixed;
             position: relative;
+            overflow-x: hidden;
         }
 
         body::before {
@@ -365,6 +366,7 @@ try {
             box-shadow: 0 4px 12px rgba(0,0,0,0.05);
             border: 1px solid rgba(0,0,0,0.06);
             overflow-x: auto;
+            max-width: 100%;
         }
         .table-section h3 {
             font-size: 17px;
@@ -428,7 +430,33 @@ try {
         .empty-state i { font-size: 44px; color: #cbd5e1; margin-bottom: 12px; }
 
         @media (max-width: 900px) {
-            /* Wrap table in a scrollable div is NOT needed — we convert to cards */
+            /* Prevent any horizontal scroll on page level */
+            html, body {
+                overflow-x: hidden !important;
+                max-width: 100vw;
+            }
+            .main-content {
+                margin-left: 0 !important;
+                padding: 16px !important;
+                width: 100%;
+                max-width: 100vw;
+                box-sizing: border-box;
+            }
+            .card {
+                padding: 16px !important;
+                border-radius: 12px !important;
+                width: 100%;
+                box-sizing: border-box;
+            }
+            .table-section {
+                padding: 16px !important;
+                overflow: hidden !important;
+                overflow-x: hidden !important;
+                width: 100%;
+                max-width: 100%;
+                box-sizing: border-box;
+            }
+            /* Convert table to cards — no horizontal scroll */
             .req-table, 
             .req-table thead, 
             .req-table tbody, 
