@@ -742,11 +742,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             body::before {
                 display: none !important;
             }
-            body {
+            body, .dark-theme body {
                 background: #f8fafc !important;
-            }
-            .dark-theme body {
-                background: #0b0f19 !important;
             }
 
             .show-password-container input[type="checkbox"] {

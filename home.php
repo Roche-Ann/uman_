@@ -16,6 +16,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="assets/images/logocityhall.png">
     <link rel="shortcut icon" type="image/x-icon" href="assets/images/logocityhall.png">
 
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.0.0-beta.83/dist/themes/light.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/luminous-lightbox@2.3.5/dist/luminous-basic.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css">
@@ -1559,17 +1560,17 @@
 </section>
 
     <!-- Contact Section -->
-       <section class="analytics-showcase" id="analytics">
-        <div class="analytics-grid">
-            <div class="analytics-content">
-                <div class="section-preface" style="color: var(--insight-amber);">Contact Us</div>
-                <h2 class="section-title">Get in Touch with Us</h2>
-                <p class="section-description">
+    <section class="analytics-showcase" id="analytics">
+        <div class="analytics-grid" style="grid-template-columns: 1fr; max-width: 900px; margin: 0 auto; padding: 0 2rem; text-align: center;">
+            <div class="analytics-content" style="width: 100%;">
+                <div class="section-preface" style="color: var(--insight-amber); text-align: center;">Contact Us</div>
+                <h2 class="section-title" style="text-align: center;">Get in Touch with Us</h2>
+                <p class="section-description" style="text-align: center; max-width: 600px; margin: 0 auto 2rem;">
                     Reach out with us for inquiries, concerns, or assistance. 
-                You can contact us through phone, email, or visit our location.
+                    You can contact us through phone, email, or visit our location.
                 </p>
                 
-                <div class="ai-insights">
+                <div class="ai-insights" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; justify-content: center; width: 100%;">
                     <div class="insight-item hover-lift">
                         <div class="insight-header">
                             <div class="insight-icon">
@@ -1608,20 +1609,6 @@
                             </a>
                         </p>
                     </div>
-                </div>
-            </div>
-            
-            <div class="analytics-visual">
-                <div class="ai-visual" style="border-radius: 16px; overflow: hidden; height: 100%; min-height: 300px; padding: 0;">
-                    <iframe 
-                        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3860.764594425318!2d121.0433164754075!3d14.655570477760239!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3397b7f1f1f1f1f1%3A0xabcdef1234567890!2sQuezon%20City%20Hall!5e0!3m2!1sen!2sph!4v1700000000000" 
-                        width="100%" 
-                        height="100%" 
-                        style="border:0;" 
-                        allowfullscreen="" 
-                        loading="lazy" 
-                        referrerpolicy="no-referrer-when-downgrade">
-                    </iframe>
                 </div>
             </div>
         </div>
