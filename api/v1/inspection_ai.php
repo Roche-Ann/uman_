@@ -356,9 +356,9 @@ function dispatchUPADCallback(string $referenceId, PDO $pdo, string $decision, f
         'application_id'           => $appId,
         'grid_id'                  => $referenceId,
         'inspection_date'          => date('Y-m-d'),
-        'engineer_assigned'        => 'Engr. Juan Dela Cruz (AI Verified)',
+        'engineer_assigned'        => 'Engr. Juan Dela Cruz',
         'grid_capacity_condition'  => $overallCondition,
-        'transformer_condition'    => 'Good',
+        'transformer_condition'    => ($decision === 'Approved' ? 'Good' : 'Poor'),
         'line_condition'           => 'Good',
         'load_forecast_condition'  => 'Good',
         'overall_condition'        => $overallCondition,
@@ -366,7 +366,7 @@ function dispatchUPADCallback(string $referenceId, PDO $pdo, string $decision, f
         'recommendation'           => $recommendation,
         'gps_latitude'             => $lat,
         'gps_longitude'            => $lng,
-        'remarks'                  => "Manual check decision: {$decision} (Score: {$score}%). {$recommendation}",
+        'remarks'                  => !empty($req['remarks']) ? $req['remarks'] : $recommendation,
         'photo_urls'               => [],
     ];
 
