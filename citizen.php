@@ -30,15 +30,13 @@ try {
     // Fallback if schema differs slightly
 }
 
-// Fetch latest 3 advisories
+// Fetch latest 5 advisories
 $advisories = [];
 try {
-    $advisories = $pdo->query("SELECT * FROM utility_advisories ORDER BY published_date DESC LIMIT 3")->fetchAll();
+    $advisories = $pdo->query("SELECT * FROM utility_advisories ORDER BY published_date DESC LIMIT 5")->fetchAll();
 } catch (Exception $e) {
     // Fallback
 }
-
-
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -398,9 +396,6 @@ try {
                             <div style="font-size:11px; color:#3762c8; font-weight:600; margin-top:8px;"><i class="fas fa-map-marker-alt"></i> Affected Area: <?php echo htmlspecialchars($adv['area_affected']); ?></div>
                         </div>
                     <?php endforeach; ?>
-                    <div style="text-align:right; margin-top:10px;">
-                        <a href="citizen_advisories.php" style="font-size:12px; font-weight:600; color:#3762c8; text-decoration:none;">View All Advisories <i class="fas fa-arrow-right"></i></a>
-                    </div>
                 <?php endif; ?>
             </div>
 

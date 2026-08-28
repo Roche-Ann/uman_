@@ -2070,12 +2070,6 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
                     <span class="link-label">Asset Requests</span>
                 </a>
             </li>
-            <li>
-                <a href="<?php echo $sidebarBase; ?>citizen_advisories.php" class="nav-link<?php echo sidebarActive('citizen_advisories.php', $currentPage); ?>">
-                    <i class="fas fa-bullhorn"></i>
-                    <span class="link-label">LGU Advisories</span>
-                </a>
-            </li>
 
             <li>
                 <a href="<?php echo $sidebarBase; ?>citizen_notifications.php" class="nav-link<?php echo sidebarActive('citizen_notifications.php', $currentPage); ?>">
@@ -2176,10 +2170,6 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
         <a href="<?php echo $sidebarBase; ?>citizen_asset_request.php" class="citizen-bottom-item<?php echo $currentPage === 'citizen_asset_request.php' ? ' active' : ''; ?>">
             <i class="fas fa-boxes-stacked"></i>
             <span>Requests</span>
-        </a>
-        <a href="<?php echo $sidebarBase; ?>citizen_advisories.php" class="citizen-bottom-item<?php echo $currentPage === 'citizen_advisories.php' ? ' active' : ''; ?>">
-            <i class="fas fa-bullhorn"></i>
-            <span>Advisories</span>
         </a>
         <button type="button" class="citizen-bottom-item<?php echo ($currentPage === 'citizen_notifications.php' || $currentPage === 'citizen_profile.php') ? ' active' : ''; ?>" id="citizenMenuBtn" onclick="toggleCitizenMenuSheet()" aria-label="Open Menu" aria-expanded="false">
             <i class="fas fa-bars" id="citizenMenuIcon"></i>
