@@ -739,6 +739,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
 
         @media (max-width: 768px) {
+            body::before {
+                display: none !important;
+            }
+            body {
+                background: #f8fafc !important;
+            }
+            .dark-theme body {
+                background: #0b0f19 !important;
+            }
+
+            .show-password-container input[type="checkbox"] {
+                width: 18px !important;
+                height: 18px !important;
+                min-height: 0 !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                display: inline-block !important;
+                -webkit-appearance: checkbox !important;
+                appearance: checkbox !important;
+            }
+
             .nav-container {
                 padding: 0 1rem;
             }

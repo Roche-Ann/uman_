@@ -1115,9 +1115,9 @@
             }
 
             .dark-theme .modules-carousel-track .module-card {
-                background: #111827 !important;
-                border-color: rgba(255, 255, 255, 0.08) !important;
-                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4) !important;
+                background: #ffffff !important;
+                border-color: rgba(11, 61, 145, 0.08) !important;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08) !important;
             }
 
             /* Front/active card */
@@ -1155,35 +1155,35 @@
                 will-change: transform, opacity;
             }
 
-            /* ── Dark Theme Card Content Contrast Fix ── */
+            /* ── Dark Theme Card Content Contrast Fix (Keep them light cards with dark text) ── */
             .dark-theme .modules-carousel-track .module-card .module-title {
-                color: #ffffff !important;
+                color: var(--municipal-slate) !important;
             }
             .dark-theme .modules-carousel-track .module-card .module-description {
-                color: #94a3b8 !important;
+                color: rgba(47, 72, 88, 0.8) !important;
             }
             .dark-theme .modules-carousel-track .module-card .module-features li {
-                color: #cbd5e1 !important;
+                color: rgba(47, 72, 88, 0.8) !important;
             }
 
-            /* ── Dark Theme Contact cards styling ── */
+            /* ── Dark Theme Contact cards styling (Keep them light cards with dark text) ── */
             .dark-theme .insight-item {
-                background: #111827 !important;
-                border-left-color: var(--utility-teal) !important;
-                box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
+                background: #ffffff !important;
+                border-left-color: var(--civic-sapphire) !important;
+                box-shadow: 0 8px 30px rgba(0,0,0,0.08) !important;
             }
             .dark-theme .insight-title {
-                color: #ffffff !important;
+                color: var(--municipal-slate) !important;
             }
             .dark-theme .insight-description {
-                color: #94a3b8 !important;
+                color: rgba(47, 72, 88, 0.8) !important;
             }
             .dark-theme .insight-description a {
-                color: #38bdf8 !important;
+                color: var(--civic-sapphire) !important;
             }
             .dark-theme .insight-icon {
-                background: rgba(0, 168, 150, 0.15) !important;
-                color: var(--utility-teal) !important;
+                background: rgba(11, 61, 145, 0.1) !important;
+                color: var(--civic-sapphire) !important;
             }
 
             /* Dot indicators */
@@ -1950,8 +1950,11 @@
                     activeCard.style.opacity = 0;
 
                     // 2. Prep next cards instantly so they transition in parallel (prevents stuttering)
-                    const nextCurrent = (current + 1) % total;
-                    const nextNext = (current + 2) % total;
+                    const nextCurrent = direction === 'left' 
+                        ? (current + 1) % total 
+                        : (current - 1 + total) % total;
+                    
+                    const nextNextIndex = (nextCurrent + 1) % total;
 
                     cards.forEach((card, i) => {
                         if (i === current) return; // Keep swipe class active
@@ -1962,7 +1965,7 @@
                         
                         if (i === nextCurrent) {
                             card.className = 'module-card card-active';
-                        } else if (i === nextNext) {
+                        } else if (i === nextNextIndex) {
                             card.className = 'module-card card-next';
                         } else {
                             card.className = 'module-card';
