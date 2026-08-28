@@ -175,12 +175,7 @@ $expiryTimestamp = $otpData ? strtotime($otpData['expires_at']) : 0;
 <html lang="en">
 <head>
     <script>
-        (function() {
-            const savedTheme = localStorage.getItem('theme') || 'light';
-            if (savedTheme === 'dark') {
-                document.documentElement.classList.add('dark-theme');
-            }
-        })();
+        document.documentElement.classList.remove('dark-theme');
     </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -546,6 +541,29 @@ $expiryTimestamp = $otpData ? strtotime($otpData['expires_at']) : 0;
         .btn-dont-trust:hover {
             background: rgba(47, 72, 88, 0.05);
             border-color: rgba(47, 72, 88, 0.45);
+        }
+
+        @media (max-width: 768px) {
+            body, .dark-theme body {
+                background: url("assets/images/cityhall.jpeg") center/cover no-repeat !important;
+            }
+            body::before {
+                content: "" !important;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100% !important;
+                height: 100% !important;
+                backdrop-filter: blur(6px) !important;
+                background: rgba(255, 255, 255, 0.5) !important; /* white overlay */
+                z-index: -1 !important;
+                display: block !important;
+            }
+            .verify-card {
+                width: calc(100% - 2rem) !important;
+                margin: 2rem auto !important;
+                padding: 2rem 1.5rem !important;
+            }
         }
     </style>
 </head>
