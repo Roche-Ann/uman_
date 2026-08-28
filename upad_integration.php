@@ -727,7 +727,7 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <th>Category</th>
                                 <th>Load (kVA)</th>
                                 <th>Priority</th>
-                                <th>AI Evaluation</th>
+                                <th>Score</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
@@ -863,7 +863,7 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <h4 id="app_ref_display" style="margin: 2px 0 0 0; font-size: 18px; font-weight: 700; color: #065f46;">-</h4>
                         </div>
                         <div style="text-align: right;">
-                            <small style="color: #065f46; font-weight: 600; text-transform: uppercase; font-size: 11px;">AI Inspection Score</small>
+                            <small style="color: #065f46; font-weight: 600; text-transform: uppercase; font-size: 11px;">Inspection Score</small>
                             <div id="app_score_display" style="font-size: 20px; font-weight: 800; color: #059669; font-family: monospace;">-%</div>
                         </div>
                     </div>
@@ -887,11 +887,11 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
     </div>
 
-    <!-- Rejection & Editable AI Recommendation Modal -->
+    <!-- Rejection & Editable Corrective Action Modal -->
     <div class="modal" id="rejectModal">
         <div class="modal-content" style="max-width: 620px;">
             <div class="modal-header">
-                <h3><i class="fas fa-times-circle" style="color: #ef4444;"></i> Reject Inspection & Edit AI Recommendation</h3>
+                <h3><i class="fas fa-times-circle" style="color: #ef4444;"></i> Reject Inspection & Edit Corrective Action</h3>
                 <button type="button" onclick="closeRejectModal()" style="border:none; background:none; font-size:18px; cursor:pointer;">&times;</button>
             </div>
             <form method="POST">
@@ -905,7 +905,7 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <h4 id="rej_ref_display" style="margin: 2px 0 0 0; font-size: 18px; font-weight: 700; color: #991b1b;">-</h4>
                         </div>
                         <div style="text-align: right;">
-                            <small style="color: #991b1b; font-weight: 600; text-transform: uppercase; font-size: 11px;">AI Inspection Score</small>
+                            <small style="color: #991b1b; font-weight: 600; text-transform: uppercase; font-size: 11px;">Inspection Score</small>
                             <div id="rej_score_display" style="font-size: 20px; font-weight: 800; color: #dc2626; font-family: monospace;">-%</div>
                         </div>
                     </div>
@@ -913,11 +913,11 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <div class="form-group">
                         <label style="font-size: 12px; font-weight: 700; color: #334155; display: block; margin-bottom: 8px;">
                             <i class="fas fa-edit" style="color: #3b82f6; margin-right: 4px;"></i>
-                            AI-Generated Recommendation (Review & Edit before saving):
+                            Corrective Action Recommendation (Review & Edit before saving):
                         </label>
                         <textarea name="recommendation" id="rej_recom_textarea" class="form-control" rows="5" style="width: 100%; border-radius: 10px; border: 1px solid #cbd5e1; padding: 12px; font-size: 13px; line-height: 1.5; font-family: inherit;" required></textarea>
                         <small style="color: #64748b; font-size: 11px; margin-top: 6px; display: block;">
-                            You can review, modify, or refine the AI-generated recommendation above prior to saving the final rejection.
+                            You can review, modify, or refine the corrective action recommendation above prior to saving the final rejection.
                         </small>
                     </div>
 
