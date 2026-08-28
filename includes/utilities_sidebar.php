@@ -2584,9 +2584,9 @@ if (isset($_SESSION['just_logged_in']) && $_SESSION['just_logged_in'] === true) 
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: radial-gradient(circle at center, #0f172a 0%, #070b14 100%);
-    backdrop-filter: blur(25px);
-    -webkit-backdrop-filter: blur(25px);
+    background: radial-gradient(circle at center, rgba(15, 23, 42, 0.6) 0%, rgba(7, 11, 20, 0.8) 100%);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     z-index: 9999999;
     display: none;
     align-items: center;
@@ -2661,9 +2661,7 @@ if (isset($_SESSION['just_logged_in']) && $_SESSION['just_logged_in'] === true) 
 }
 
 .splash-brand-details {
-    opacity: 0;
-    transform: translateY(18px);
-    animation: splashTextRise 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.35s forwards;
+    display: none !important;
 }
 
 .splash-title {
@@ -2701,13 +2699,7 @@ if (isset($_SESSION['just_logged_in']) && $_SESSION['just_logged_in'] === true) 
 }
 
 .splash-progress-track {
-    width: 200px;
-    height: 4px;
-    background: rgba(255, 255, 255, 0.12);
-    border-radius: 99px;
-    margin-top: 26px;
-    overflow: hidden;
-    position: relative;
+    display: none !important;
 }
 
 .splash-progress-bar {
