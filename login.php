@@ -798,7 +798,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 </div>
             </a>
 
-            <button class="menu-toggle" id="mobileMenuBtn">
+            <button class="menu-toggle" id="mobileMenuBtn" style="display:none !important;">
                 <i class="fas fa-bars"></i>
             </button>
 

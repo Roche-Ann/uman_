@@ -1272,7 +1272,6 @@
             <a href="#" class="logo-entity">
                 <div class="logo-marker">
                     <img src="assets/images/logocityhall.png" alt="LGU Logo" class="logo-only">
-                    <i class="fas fa-bolt logo-icon"></i>
                 </div>
                 <div class="logo-text">
                     <span class="logo-primary">Utilities Management System</span>
@@ -1280,10 +1279,6 @@
                 </div>
             </a>
             
-            <button class="menu-toggle" id="mobileMenuBtn">
-                <i class="fas fa-bars"></i>
-            </button>
-
             <ul class="nav-links">
                 <li class="nav-link-item"><a href="#hero" class="nav-link">Home</a></li>
                 <li class="nav-link-item"><a href="#modules" class="nav-link">Modules</a></li>
