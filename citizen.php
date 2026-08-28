@@ -354,24 +354,43 @@ try {
             <!-- Left: Latest Utility Advisories -->
             <div class="box" style="padding: 25px;">
                 <h3 style="margin-bottom: 20px; font-size: 1.2rem; color: #1e293b;"><i class="fas fa-bullhorn" style="color: #3762c8; margin-right: 8px;"></i> Latest LGU Advisories</h3>
+                
+                <!-- Facebook SDK -->
+                <div id="fb-root"></div>
+                <script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js#xfbml=1&version=v18.0" nonce="12345678"></script>
+
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; width: 100%;">
                     
                     <!-- QCGov Embedded Feed -->
-                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); display: flex; justify-content: center; align-items: flex-start; height: 700px;">
-                        <iframe src="https://www.facebook.com/plugins/page.php?href=https%3A%2F%2Fwww.facebook.com%2FQCGov&tabs=timeline&width=500&height=700&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=false&appId" 
-                                width="500" height="700" style="border:none; overflow:hidden; width: 100%; max-width: 500px;" 
-                                scrolling="no" frameborder="0" allowfullscreen="true" 
-                                allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share">
-                        </iframe>
+                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); display: flex; justify-content: center; height: 700px; width: 100%;">
+                        <div class="fb-page" 
+                            data-href="https://www.facebook.com/QCGov" 
+                            data-tabs="timeline" 
+                            data-width="500" 
+                            data-height="700" 
+                            data-small-header="false" 
+                            data-adapt-container-width="true" 
+                            data-hide-cover="false" 
+                            data-show-facepile="false"
+                            style="width: 100%;">
+                            <blockquote cite="https://www.facebook.com/QCGov" class="fb-xfbml-parse-ignore"><a href="https://www.facebook.com/QCGov">Quezon City Government</a></blockquote>
+                        </div>
                     </div>
 
                     <!-- QCDRRMC Embedded Feed -->
-                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); display: flex; justify-content: center; align-items: flex-start; height: 700px;">
-                        <iframe src="https://www.facebook.com/plugins/page.php?href=https%3A%2F%2Fwww.facebook.com%2Fqcdrrmc&tabs=timeline&width=500&height=700&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=false&appId" 
-                                width="500" height="700" style="border:none; overflow:hidden; width: 100%; max-width: 500px;" 
-                                scrolling="no" frameborder="0" allowfullscreen="true" 
-                                allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share">
-                        </iframe>
+                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); display: flex; justify-content: center; height: 700px; width: 100%;">
+                        <div class="fb-page" 
+                            data-href="https://www.facebook.com/qcdrrmc" 
+                            data-tabs="timeline" 
+                            data-width="500" 
+                            data-height="700" 
+                            data-small-header="false" 
+                            data-adapt-container-width="true" 
+                            data-hide-cover="false" 
+                            data-show-facepile="false"
+                            style="width: 100%;">
+                            <blockquote cite="https://www.facebook.com/qcdrrmc" class="fb-xfbml-parse-ignore"><a href="https://www.facebook.com/qcdrrmc">Quezon City Disaster Risk Reduction and Management Council</a></blockquote>
+                        </div>
                     </div>
 
                 </div>
