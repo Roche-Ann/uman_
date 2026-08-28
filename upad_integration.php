@@ -67,8 +67,11 @@ try {
     if (!in_array('corrective_recommendation', $existingCols, true)) {
         $pdo->exec("ALTER TABLE `upad_inspection_requests` ADD COLUMN `corrective_recommendation` TEXT NULL AFTER `ai_decision`");
     }
+    if (!in_array('remarks', $existingCols, true)) {
+        $pdo->exec("ALTER TABLE `upad_inspection_requests` ADD COLUMN `remarks` TEXT NULL AFTER `corrective_recommendation`");
+    }
     if (!in_array('correction_requested_by', $existingCols, true)) {
-        $pdo->exec("ALTER TABLE `upad_inspection_requests` ADD COLUMN `correction_requested_by` VARCHAR(100) NULL AFTER `corrective_recommendation`");
+        $pdo->exec("ALTER TABLE `upad_inspection_requests` ADD COLUMN `correction_requested_by` VARCHAR(100) NULL AFTER `remarks`");
     }
     if (!in_array('correction_requested_at', $existingCols, true)) {
         $pdo->exec("ALTER TABLE `upad_inspection_requests` ADD COLUMN `correction_requested_at` DATETIME NULL AFTER `correction_requested_by`");
@@ -258,6 +261,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $lng            = !empty($_POST['gps_longitude']) ? (float)$_POST['gps_longitude'] : null;
 
     if (!empty($refId)) {
+        try {
+            $pdo->exec("ALTER TABLE `upad_inspection_requests` ADD COLUMN `remarks` TEXT NULL");
+        } catch (Throwable $t) {}
+
         $pdo->prepare("
             UPDATE upad_inspection_requests 
             SET ai_decision = 'Approved', status = 'completed', remarks = ?, corrective_recommendation = ? 
@@ -300,6 +307,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $lng            = !empty($_POST['gps_longitude']) ? (float)$_POST['gps_longitude'] : null;
 
     if (!empty($refId)) {
+        try {
+            $pdo->exec("ALTER TABLE `upad_inspection_requests` ADD COLUMN `remarks` TEXT NULL");
+        } catch (Throwable $t) {}
+
         $pdo->prepare("
             UPDATE upad_inspection_requests 
             SET ai_decision = 'Rejected', status = 'sent_for_correction', corrective_recommendation = ?, remarks = ?, correction_requested_by = 'System Administrator', correction_requested_at = NOW() 
