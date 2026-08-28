@@ -623,7 +623,7 @@
             background: white;
             border-radius: var(--radius-soft);
             padding: 1.5rem;
-            border-left: 4px solid var(--insight-amber);
+            border-left: 4px solid var(--civic-sapphire);
             box-shadow: var(--shadow-gentle);
             transition: var(--transition-smooth);
         }
@@ -643,11 +643,11 @@
             width: 32px;
             height: 32px;
             border-radius: 8px;
-            background: rgba(255, 158, 0, 0.1);
+            background: rgba(11, 61, 145, 0.1);
             display: flex;
             align-items: center;
             justify-content: center;
-            color: var(--insight-amber);
+            color: var(--civic-sapphire);
             flex-shrink: 0;
         }
         
@@ -1126,6 +1126,7 @@
                 pointer-events: auto;
                 z-index: 3;
                 transform: translate3d(0, 0, 0) scale(1);
+                will-change: transform, opacity;
             }
 
             /* Stacked card behind front card */
@@ -1134,6 +1135,7 @@
                 pointer-events: none;
                 z-index: 2;
                 transform: translate3d(0, 16px, 0) scale(0.94);
+                will-change: transform, opacity;
             }
 
             /* Fly-out animation classes */
@@ -1142,6 +1144,7 @@
                 pointer-events: none;
                 z-index: 4;
                 transform: translate3d(-130%, 0, 0) rotate(-12deg) !important;
+                will-change: transform, opacity;
             }
 
             .modules-carousel-track .module-card.card-swiped-right {
@@ -1149,6 +1152,38 @@
                 pointer-events: none;
                 z-index: 4;
                 transform: translate3d(130%, 0, 0) rotate(12deg) !important;
+                will-change: transform, opacity;
+            }
+
+            /* ── Dark Theme Card Content Contrast Fix ── */
+            .dark-theme .modules-carousel-track .module-card .module-title {
+                color: #ffffff !important;
+            }
+            .dark-theme .modules-carousel-track .module-card .module-description {
+                color: #94a3b8 !important;
+            }
+            .dark-theme .modules-carousel-track .module-card .module-features li {
+                color: #cbd5e1 !important;
+            }
+
+            /* ── Dark Theme Contact cards styling ── */
+            .dark-theme .insight-item {
+                background: #111827 !important;
+                border-left-color: var(--utility-teal) !important;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
+            }
+            .dark-theme .insight-title {
+                color: #ffffff !important;
+            }
+            .dark-theme .insight-description {
+                color: #94a3b8 !important;
+            }
+            .dark-theme .insight-description a {
+                color: #38bdf8 !important;
+            }
+            .dark-theme .insight-icon {
+                background: rgba(0, 168, 150, 0.15) !important;
+                color: var(--utility-teal) !important;
             }
 
             /* Dot indicators */
@@ -1178,11 +1213,11 @@
 
             /* ── Footer mobile space optimization ── */
             .civic-footer {
-                padding: 2rem 0 1rem !important;
+                padding: 1.5rem 0 1rem !important;
             }
             .footer-grid {
                 grid-template-columns: 1fr !important;
-                gap: 1.5rem !important;
+                gap: 1rem !important;
             }
             /* Place link groups side-by-side on mobile to save vertical space */
             .footer-grid > div:not(.footer-brand) {
@@ -1190,7 +1225,7 @@
                 width: 46% !important;
                 margin-right: 3% !important;
                 vertical-align: top !important;
-                margin-bottom: 1rem !important;
+                margin-bottom: 0.75rem !important;
                 box-sizing: border-box !important;
             }
             .footer-grid > div:last-child {
@@ -1198,21 +1233,27 @@
                 margin-right: 0 !important;
             }
             .footer-brand {
-                margin-bottom: 0.5rem !important;
+                margin-bottom: 0.25rem !important;
             }
             .footer-description {
-                font-size: 0.85rem !important;
-                line-height: 1.5 !important;
+                font-size: 0.8rem !important;
+                line-height: 1.4 !important;
             }
             .footer-heading {
-                font-size: 0.95rem !important;
-                margin-bottom: 0.6rem !important;
-            }
-            .footer-links li {
+                font-size: 0.85rem !important;
                 margin-bottom: 0.4rem !important;
             }
+            .footer-links li {
+                margin-bottom: 0.25rem !important;
+                line-height: 1.3 !important;
+            }
             .footer-links a {
-                font-size: 0.85rem !important;
+                font-size: 0.8rem !important;
+            }
+            .footer-bottom {
+                padding: 0 1.25rem;
+                padding-top: 1rem !important;
+                margin-top: 1rem !important;
             }
         }
     </style>
@@ -1898,19 +1939,56 @@
                     updateStackClasses();
                 }
 
-                function nextSlide() {
+                function swipeSlide(direction) {
                     const activeCard = cards[current];
                     if (!activeCard) return;
 
-                    // Tinder fly-away animation to left
-                    activeCard.classList.add('card-swiped-left');
+                    // 1. Mark swiping card immediately
+                    const swipeClass = direction === 'left' ? 'card-swiped-left' : 'card-swiped-right';
+                    activeCard.className = 'module-card ' + swipeClass;
+                    activeCard.style.zIndex = 4;
+                    activeCard.style.opacity = 0;
 
-                    // Promote next card immediately to top card
-                    current = (current + 1) % total;
-                    
+                    // 2. Prep next cards instantly so they transition in parallel (prevents stuttering)
+                    const nextCurrent = (current + 1) % total;
+                    const nextNext = (current + 2) % total;
+
+                    cards.forEach((card, i) => {
+                        if (i === current) return; // Keep swipe class active
+                        
+                        card.style.transform = '';
+                        card.style.opacity = '';
+                        card.style.zIndex = '';
+                        
+                        if (i === nextCurrent) {
+                            card.className = 'module-card card-active';
+                        } else if (i === nextNext) {
+                            card.className = 'module-card card-next';
+                        } else {
+                            card.className = 'module-card';
+                        }
+                    });
+
+                    // Update global index and dots instantly
+                    current = nextCurrent;
+                    dotsBox.querySelectorAll('.carousel-dot').forEach((d, i) => {
+                        d.classList.toggle('active', i === current);
+                    });
+
+                    // 3. Clean up classes of the swiped away card after animation completes
+                    const swipedCard = activeCard;
                     setTimeout(() => {
-                        updateStackClasses();
-                    }, 350);
+                        if (swipedCard.classList.contains('card-swiped-left') || swipedCard.classList.contains('card-swiped-right')) {
+                            swipedCard.className = 'module-card';
+                            swipedCard.style.transform = '';
+                            swipedCard.style.opacity = '';
+                            swipedCard.style.zIndex = '';
+                        }
+                    }, 450);
+                }
+
+                function nextSlide() {
+                    swipeSlide('left');
                 }
 
                 function startAuto() {
@@ -1965,20 +2043,14 @@
                     activeCard.style.transition = '';
 
                     if (Math.abs(currentX) > 80) {
-                        // Swipe animation
-                        const swipeClass = currentX > 0 ? 'card-swiped-right' : 'card-swiped-left';
-                        activeCard.classList.add(swipeClass);
-
-                        current = (current + 1) % total;
-                        setTimeout(() => {
-                            updateStackClasses();
-                        }, 300);
+                        // Perform swipe slide transition immediately
+                        const direction = currentX > 0 ? 'right' : 'left';
+                        swipeSlide(direction);
                     } else {
                         // Snap back
                         activeCard.style.transform = '';
+                        startAuto();
                     }
-
-                    startAuto();
                 }
 
                 // Bind touch events
