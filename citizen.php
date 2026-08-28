@@ -30,12 +30,63 @@ try {
     // Fallback if schema differs slightly
 }
 
-// Fetch latest 5 advisories
+// Fetch latest 5 advisories from RSS Bridge using Guzzle
+require_once __DIR__ . '/vendor/autoload.php';
+use GuzzleHttp\Client;
+use GuzzleHttp\Promise;
+use Carbon\Carbon;
+
 $advisories = [];
-try {
-    $advisories = $pdo->query("SELECT * FROM utility_advisories ORDER BY published_date DESC LIMIT 5")->fetchAll();
-} catch (Exception $e) {
-    // Fallback
+$cacheFile = __DIR__ . '/cache/advisories_cache.json';
+$cacheValid = false;
+
+if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < 1800) {
+    $cacheData = json_decode(file_get_contents($cacheFile), true);
+    if (is_array($cacheData)) {
+        $advisories = $cacheData;
+        $cacheValid = true;
+    }
+}
+
+if (!$cacheValid) {
+    try {
+        $client = new Client(['timeout' => 3.0]);
+        $promises = [
+            'qcdrrmc' => $client->getAsync('http://127.0.0.1:3000/?action=display&bridge=Facebook&context=Username&format=Json&u=qcdrrmc'),
+            'QCGov'   => $client->getAsync('http://127.0.0.1:3000/?action=display&bridge=Facebook&context=Username&format=Json&u=QCGov'),
+        ];
+        
+        $responses = Promise\Utils::settle($promises)->wait();
+        
+        $mergedItems = [];
+        foreach ($responses as $key => $response) {
+            if ($response['state'] === 'fulfilled') {
+                $body = $response['value']->getBody()->getContents();
+                $data = json_decode($body, true);
+                if (isset($data['items']) && is_array($data['items'])) {
+                    $mergedItems = array_merge($mergedItems, $data['items']);
+                }
+            }
+        }
+        
+        if (!empty($mergedItems)) {
+            usort($mergedItems, function($a, $b) {
+                return strtotime($b['date_modified'] ?? '0') < strtotime($a['date_modified'] ?? '0') ? 1 : -1;
+            });
+            $advisories = array_slice($mergedItems, 0, 5);
+            
+            if (!is_dir(__DIR__ . '/cache')) {
+                mkdir(__DIR__ . '/cache', 0777, true);
+            }
+            file_put_contents($cacheFile, json_encode($advisories));
+        } elseif (file_exists($cacheFile)) {
+            $advisories = json_decode(file_get_contents($cacheFile), true) ?: [];
+        }
+    } catch (\Throwable $e) {
+        if (file_exists($cacheFile)) {
+            $advisories = json_decode(file_get_contents($cacheFile), true) ?: [];
+        }
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -358,18 +409,32 @@ try {
             
             <!-- Left: Latest Utility Advisories -->
             <div class="box">
-                <h3><i class="fas fa-bullhorn"></i> Latest LGU Utility Advisories</h3>
+                <h3><i class="fas fa-bullhorn"></i> Latest LGU Advisories</h3>
                 <?php if (empty($advisories)): ?>
-                    <p style="color:#64748b; font-size:13px;">No utility advisories published recently.</p>
+                    <p style="color:#64748b; font-size:13px;">No LGU advisories published recently or unable to fetch.</p>
                 <?php else: ?>
-                    <?php foreach ($advisories as $adv): ?>
-                        <div class="item-card">
+                    <?php foreach ($advisories as $adv): 
+                        $timeAgo = '';
+                        try {
+                            $timeAgo = \Carbon\Carbon::parse($adv['date_modified'] ?? 'now')->diffForHumans();
+                        } catch (\Throwable $e) {
+                            $timeAgo = date('M d, Y', strtotime($adv['date_modified'] ?? 'now'));
+                        }
+                        
+                        $content = strip_tags($adv['content_html'] ?? '');
+                        $excerpt = mb_strlen($content) > 180 ? mb_substr($content, 0, 180) . '...' : $content;
+                        $url = $adv['url'] ?? '#';
+                        $author = $adv['author']['name'] ?? 'LGU';
+                    ?>
+                        <div class="item-card" style="border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; margin-bottom: 12px; transition: box-shadow 0.2s;">
                             <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                                <h4 style="color:#2c3e50; font-size:14px; font-weight:600;"><?php echo htmlspecialchars($adv['title']); ?></h4>
-                                <span style="font-size:10px; color:#94a3b8;"><?php echo date('M d, Y', strtotime($adv['published_date'])); ?></span>
+                                <h4 style="color:#2c3e50; font-size:14px; font-weight:600;"><i class="fab fa-facebook" style="color:#1877F2;"></i> <?php echo htmlspecialchars($author); ?></h4>
+                                <span style="font-size:11px; color:#64748b; font-weight: 500;"><i class="far fa-clock"></i> <?php echo htmlspecialchars($timeAgo); ?></span>
                             </div>
-                            <p style="font-size:12px; color:#64748b; margin-top:5px;"><?php echo htmlspecialchars(substr($adv['content'], 0, 150)) . (strlen($adv['content']) > 150 ? '...' : ''); ?></p>
-                            <div style="font-size:11px; color:#3762c8; font-weight:600; margin-top:8px;"><i class="fas fa-map-marker-alt"></i> Affected Area: <?php echo htmlspecialchars($adv['area_affected']); ?></div>
+                            <p style="font-size:13px; color:#475569; margin-top:8px; line-height: 1.5;"><?php echo htmlspecialchars($excerpt); ?></p>
+                            <div style="margin-top:10px;">
+                                <a href="<?php echo htmlspecialchars($url); ?>" target="_blank" style="font-size:12px; color:#3762c8; font-weight:600; text-decoration: none;"><i class="fas fa-external-link-alt"></i> View original post</a>
+                            </div>
                         </div>
                     <?php endforeach; ?>
                 <?php endif; ?>
