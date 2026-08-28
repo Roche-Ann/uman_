@@ -107,6 +107,7 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
         z-index: 10000;
         box-shadow: 0 12px 35px rgba(0, 0, 0, 0.4);
         transition: height 0.38s cubic-bezier(0.32, 0.72, 0, 1),
+                    transform 0.35s cubic-bezier(0.32, 0.72, 0, 1),
                     border-radius 0.38s cubic-bezier(0.32, 0.72, 0, 1),
                     box-shadow 0.38s ease;
         font-family: 'Poppins', sans-serif;
@@ -140,6 +141,15 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
         height: 66px;
         flex-shrink: 0;
         padding: 0 10px;
+        transition: opacity 0.3s ease, height 0.3s ease, padding 0.3s ease;
+    }
+
+    .citizen-bottom-nav.menu-expanded .citizen-bottom-nav-items {
+        height: 0;
+        opacity: 0;
+        padding: 0;
+        pointer-events: none;
+        overflow: hidden;
     }
 
     /* Expanded menu panel that sits above the nav items */
@@ -148,30 +158,36 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
         max-height: 0;
         overflow: hidden;
         opacity: 0;
-        transition: max-height 0.36s cubic-bezier(0.32, 0.72, 0, 1),
+        transition: max-height 0.38s cubic-bezier(0.32, 0.72, 0, 1),
                     opacity 0.28s ease,
-                    padding 0.3s ease;
+                    padding 0.38s cubic-bezier(0.32, 0.72, 0, 1);
         padding: 0 14px;
         box-sizing: border-box;
     }
 
     .citizen-bottom-nav.menu-expanded .citizen-bottom-menu-panel {
-        max-height: 360px;
+        max-height: 420px;
         opacity: 1;
-        padding: 18px 14px 0 14px;
+        padding: 20px 14px;
     }
 
-    /* Divider between expanded panel and nav items */
-    .citizen-bottom-nav.menu-expanded .citizen-bottom-menu-divider {
-        display: block !important;
+    .citizen-sheet-handle {
+        width: 40px;
+        height: 5px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 99px;
+        margin: -8px auto 16px auto;
+        cursor: grab;
+        user-select: none;
+        transition: background 0.2s ease;
     }
 
-    .citizen-bottom-menu-divider {
-        display: none;
-        height: 1px;
-        background: rgba(255, 255, 255, 0.1);
-        margin: 0 14px;
-        flex-shrink: 0;
+    body:not(.dark-theme) .citizen-sheet-handle {
+        background: rgba(0, 0, 0, 0.15);
+    }
+
+    .citizen-sheet-handle:active {
+        cursor: grabbing;
     }
 
     body:not(.dark-theme) .citizen-bottom-menu-divider {
@@ -1973,7 +1989,7 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
 
             <!-- Operations Dropdown -->
             <?php 
-            $isOpsActive = (strpos($currentPage, 'incidents_') === 0) || (strpos($currentPage, 'maintenance_') === 0) || $currentPage === 'upad_integration.php';
+            $isOpsActive = (strpos($currentPage, 'maintenance_') === 0) || $currentPage === 'upad_integration.php';
             ?>
             <li class="sidebar-dropdown-wrapper">
                 <button type="button" class="sidebar-dropdown-toggle<?php echo $isOpsActive ? ' active' : ''; ?>" onclick="toggleSidebarDropdown(this)">
@@ -1982,12 +1998,6 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
                     <i class="fas fa-chevron-right chevron-icon<?php echo $isOpsActive ? ' rotate' : ''; ?>"></i>
                 </button>
                 <ul class="sidebar-dropdown-menu<?php echo $isOpsActive ? ' open' : ''; ?>">
-                    <li>
-                        <a href="<?php echo $sidebarBase; ?>incidents_dashboard.php" class="dropdown-link<?php echo (strpos($currentPage, 'incidents_') === 0) ? ' active' : ''; ?>">
-                            <i class="fas fa-bullhorn"></i>
-                            <span>Incident Reports</span>
-                        </a>
-                    </li>
                     <li>
                         <a href="<?php echo $sidebarBase; ?>maintenance_dashboard.php" class="dropdown-link<?php echo (strpos($currentPage, 'maintenance_') === 0) ? ' active' : ''; ?>">
                             <i class="fas fa-tools"></i>
@@ -2059,12 +2069,6 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
                 </a>
             </li>
             <li>
-                <a href="<?php echo $sidebarBase; ?>citizen_reports.php" class="nav-link<?php echo sidebarActive('citizen_reports.php', $currentPage); ?>">
-                    <i class="fas fa-file-invoice"></i>
-                    <span class="link-label">Track Reports</span>
-                </a>
-            </li>
-            <li>
                 <a href="<?php echo $sidebarBase; ?>citizen_asset_request.php" class="nav-link<?php echo sidebarActive('citizen_asset_request.php', $currentPage); ?>">
                     <i class="fas fa-boxes-stacked"></i>
                     <span class="link-label">Asset Requests</span>
@@ -2107,6 +2111,8 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
 
     <!-- Expanded menu panel (hidden until Menu is clicked) -->
     <div class="citizen-bottom-menu-panel" id="citizenMenuPanel">
+        <!-- Drag handle for sliding down -->
+        <div class="citizen-sheet-handle"></div>
         <!-- User info header -->
         <div class="citizen-panel-user">
             <div class="citizen-panel-avatar"><i class="fas fa-user"></i></div>
@@ -2160,13 +2166,6 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
             <i class="fas fa-home"></i>
             <span>Home</span>
         </a>
-        <a href="<?php echo $sidebarBase; ?>citizen_reports.php" class="citizen-bottom-item<?php echo ($currentPage === 'citizen_reports.php' || $currentPage === 'citizen_submit_report.php') ? ' active' : ''; ?>">
-            <i class="fas fa-file-invoice"></i>
-            <span>Reports</span>
-            <?php if ($activeReportCount > 0): ?>
-                <span class="citizen-bottom-badge"><?php echo $activeReportCount; ?></span>
-            <?php endif; ?>
-        </a>
         <a href="<?php echo $sidebarBase; ?>citizen_asset_request.php" class="citizen-bottom-item<?php echo $currentPage === 'citizen_asset_request.php' ? ' active' : ''; ?>">
             <i class="fas fa-boxes-stacked"></i>
             <span>Requests</span>
@@ -2214,7 +2213,10 @@ function openCitizenMenuSheet() {
     const nav = document.getElementById('citizenBottomNav');
     const btn = document.getElementById('citizenMenuBtn');
     const icon = document.getElementById('citizenMenuIcon');
-    if (nav) nav.classList.add('menu-expanded');
+    if (nav) {
+        nav.classList.add('menu-expanded');
+        nav.style.transform = 'translate3d(-50%, 0, 0)';
+    }
     if (btn) btn.setAttribute('aria-expanded', 'true');
     if (icon) {
         icon.classList.remove('fa-bars');
@@ -2226,7 +2228,10 @@ function closeCitizenMenuSheet() {
     const nav = document.getElementById('citizenBottomNav');
     const btn = document.getElementById('citizenMenuBtn');
     const icon = document.getElementById('citizenMenuIcon');
-    if (nav) nav.classList.remove('menu-expanded');
+    if (nav) {
+        nav.classList.remove('menu-expanded');
+        nav.style.transform = 'translateX(-50%)';
+    }
     if (btn) btn.setAttribute('aria-expanded', 'false');
     if (icon) {
         icon.classList.remove('fa-xmark');
@@ -2424,12 +2429,11 @@ window.addEventListener('click', function(event) {
         });
     });
 
-    // Drag-to-dismiss for Citizen Menu Sheet
+    // Drag-to-dismiss for Expanded Citizen Bottom Nav Bar
     (function() {
-        const sheet = document.getElementById('citizenMenuSheet');
+        const nav = document.getElementById('citizenBottomNav');
         const handle = document.querySelector('.citizen-sheet-handle');
-        const backdrop = document.getElementById('citizenSheetBackdrop');
-        if (!sheet || !handle) return;
+        if (!nav || !handle) return;
 
         let startY = 0;
         let currentY = 0;
@@ -2440,10 +2444,11 @@ window.addEventListener('click', function(event) {
         handle.addEventListener('mousedown', onDragStart);
 
         function onDragStart(e) {
+            if (!nav.classList.contains('menu-expanded')) return;
+
             startY = e.touches ? e.touches[0].clientY : e.clientY;
             isDragging = true;
-            sheet.style.transition = 'none';
-            if (backdrop) backdrop.style.transition = 'none';
+            nav.style.transition = 'none';
 
             document.addEventListener('touchmove', onDragMove, { passive: false });
             document.addEventListener('mousemove', onDragMove);
@@ -2458,14 +2463,9 @@ window.addEventListener('click', function(event) {
             const deltaY = clientY - startY;
 
             if (deltaY > 0) {
-                // Prevent default scrolling only when dragging down
                 if (e.cancelable) e.preventDefault();
                 currentY = deltaY;
-                sheet.style.transform = `translate3d(-50%, ${deltaY}px, 0)`;
-                if (backdrop) {
-                    const opacity = Math.max(0, 1 - (deltaY / 250));
-                    backdrop.style.opacity = opacity;
-                }
+                nav.style.transform = `translate3d(-50%, ${deltaY}px, 0)`;
             }
         }
 
@@ -2478,14 +2478,12 @@ window.addEventListener('click', function(event) {
             document.removeEventListener('touchend', onDragEnd);
             document.removeEventListener('mouseup', onDragEnd);
 
-            sheet.style.transition = '';
-            if (backdrop) backdrop.style.transition = '';
+            nav.style.transition = '';
 
-            if (currentY > 80) {
+            if (currentY > 85) {
                 closeCitizenMenuSheet();
             } else {
-                sheet.style.transform = 'translate3d(-50%, 0, 0)';
-                if (backdrop) backdrop.style.opacity = '1';
+                nav.style.transform = 'translate3d(-50%, 0, 0)';
             }
             currentY = 0;
         }

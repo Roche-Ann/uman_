@@ -344,38 +344,14 @@ try {
         <div class="dashboard-header">
             <div>
                 <h1><i class="fas fa-home"></i> Resident Portal</h1>
-                <p style="color: #64748b; font-size: 14px; margin-top: 5px;">Welcome back, <?php echo htmlspecialchars($userName); ?>. Submit utility incident reports and track LGU service updates.</p>
+                <p style="color: #64748b; font-size: 14px; margin-top: 5px;">Welcome back, <?php echo htmlspecialchars($userName); ?>. Request LGU assets and track utility advisories.</p>
             </div>
             <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <a href="citizen_asset_request.php" class="btn btn-outline" style="border-color: #3762c8; color: #3762c8;"><i class="fas fa-boxes-stacked"></i> Request LGU Assets</a>
-                <a href="citizen_reports.php" class="btn btn-primary"><i class="fas fa-plus"></i> File Incident Report</a>
+                <a href="citizen_asset_request.php" class="btn btn-primary" style="background-color: #3762c8; border-color: #3762c8; color: #fff;"><i class="fas fa-boxes-stacked"></i> Request LGU Assets</a>
             </div>
         </div>
 
-        <!-- Stats Grid -->
-        <div class="stats-grid">
-            <div class="stat-card total">
-                <div class="stat-info">
-                    <h3><?php echo number_format($totalReports); ?></h3>
-                    <p>Total Filed Reports</p>
-                </div>
-                <div class="stat-icon"><i class="fas fa-file-alt"></i></div>
-            </div>
-            <div class="stat-card active">
-                <div class="stat-info">
-                    <h3><?php echo number_format($activeReports); ?></h3>
-                    <p>Active / In Review</p>
-                </div>
-                <div class="stat-icon"><i class="fas fa-spinner"></i></div>
-            </div>
-            <div class="stat-card resolved">
-                <div class="stat-info">
-                    <h3><?php echo number_format($resolvedReports); ?></h3>
-                    <p>Resolved Reports</p>
-                </div>
-                <div class="stat-icon"><i class="fas fa-check-double"></i></div>
-            </div>
-        </div>
+
 
         <!-- Main Layout Split -->
         <div class="dashboard-layout" style="grid-template-columns: 1fr;">
@@ -418,12 +394,6 @@ try {
         <div class="welcome-body">
             <h4><i class="fas fa-bullhorn" style="color: #3762c8; margin-right: 6px;"></i> While you were away:</h4>
             <ul class="welcome-updates-list">
-                <li>
-                    <i class="fas fa-file-invoice"></i>
-                    <div>
-                        <strong>Your Reports:</strong> You have <?php echo $activeReports; ?> active reports currently being processed by the LGU, and <?php echo $resolvedReports; ?> reports have been resolved.
-                    </div>
-                </li>
                 <li>
                     <i class="fas fa-broadcast-tower"></i>
                     <div>

@@ -46,7 +46,7 @@ $mntNotifs = [];
 $engNotifs = [];
 
 try {
-    $incNotifs = $pdo->query("SELECT message, created_at, 'Incident' as type FROM incident_notifications ORDER BY created_at DESC LIMIT 5")->fetchAll() ?: [];
+    $incNotifs = [];
 } catch (Throwable $e) {
     $incNotifs = [];
 }
@@ -70,18 +70,17 @@ usort($allNotifications, function ($a, $b) {
 $allNotifications = array_slice($allNotifications, 0, 8);
 
 // 3. AI Command Center Summarizer
-function generateAICentralSummary($assets, $incidents, $maintenance, $energy) {
+function generateAICentralSummary($assets, $maintenance, $energy) {
     $summary = "<strong>LGU Central AI Assistant Coordination Report (" . date('F Y') . ")</strong><br><br>";
     
     $summary .= "🏢 <strong>System-Wide Load Insights:</strong><br>";
     $summary .= "• Assets: " . ($assets['total_assets'] ?? 0) . " monitored, with " . ($assets['damaged_assets'] ?? 0) . " currently marked as Damaged.<br>";
-    $summary .= "• Incidents: " . ($incidents['total_incidents'] ?? 0) . " resident reports tracked. " . ($incidents['submitted_incidents'] ?? 0) . " are awaiting initial review.<br>";
     $summary .= "• Maintenance: " . ($maintenance['total_requests'] ?? 0) . " total coordination requests. " . ($maintenance['emergency_requests'] ?? 0) . " emergency dispatches have been flagged.<br>";
     $summary .= "• Energy: Total raw recorded consumption stands at " . number_format($energy['total_consumption'] ?? 0, 1) . " kWh.<br>";
     
     $summary .= "<br>⚠️ <strong>Coordination Advisories:</strong><br>";
-    if (($incidents['submitted_incidents'] ?? 0) > 0 || ($maintenance['emergency_requests'] ?? 0) > 0) {
-        $summary .= "• Attention: Pending resident reports and emergency maintenance requests are currently active. Prompt forwarding to external dispatch queues is recommended.";
+    if (($maintenance['emergency_requests'] ?? 0) > 0) {
+        $summary .= "• Attention: Emergency maintenance requests are currently active. Prompt forwarding to external dispatch queues is recommended.";
     } else {
         $summary .= "• All active utility monitoring and maintenance pipelines are currently operating within nominal queue limits.";
     }
@@ -89,14 +88,14 @@ function generateAICentralSummary($assets, $incidents, $maintenance, $energy) {
     return $summary;
 }
 
-$aiSummaryText = generateAICentralSummary($assets, $incidents, $maintenance, $energy);
+$aiSummaryText = generateAICentralSummary($assets, $maintenance, $energy);
 
 // Chart Arrays
 $assetLabels = json_encode(['Operational', 'Damaged', 'Needs Inspection']);
 $assetData = json_encode([$assets['operational_assets'] ?? 0, $assets['damaged_assets'] ?? 0, $assets['inspection_assets'] ?? 0]);
 
-$incidentLabels = json_encode(['Submitted', 'Under Review', 'Forwarded', 'Resolved']);
-$incidentData = json_encode([$incidents['submitted_incidents'] ?? 0, $incidents['review_incidents'] ?? 0, $incidents['forwarded_incidents'] ?? 0, $incidents['resolved_incidents'] ?? 0]);
+$maintenanceLabels = json_encode(['Pending', 'In Progress', 'Completed']);
+$maintenanceData = json_encode([$maintenance['pending_requests'] ?? 0, $maintenance['progress_requests'] ?? 0, $maintenance['completed_requests'] ?? 0]);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -491,13 +490,6 @@ $incidentData = json_encode([$incidents['submitted_incidents'] ?? 0, $incidents[
                     <p>Total Assets</p>
                 </div>
             </div>
-            <div class="stat-card incidents">
-                <div class="stat-card-icon"><i class="fas fa-bullhorn"></i></div>
-                <div class="stat-info">
-                    <h3><?php echo number_format($incidents['total_incidents'] ?? 0); ?></h3>
-                    <p>Total Incidents</p>
-                </div>
-            </div>
             <div class="stat-card maintenance">
                 <div class="stat-card-icon"><i class="fas fa-tools"></i></div>
                 <div class="stat-info">
@@ -546,7 +538,7 @@ $incidentData = json_encode([$incidents['submitted_incidents'] ?? 0, $incidents[
         <!-- Section Tabs -->
         <div class="tab-buttons">
             <button class="tab-btn active" onclick="switchTab(event, 'assets-pane')"><i class="fas fa-warehouse"></i> Asset Analytics</button>
-            <button class="tab-btn" onclick="switchTab(event, 'incidents-pane')"><i class="fas fa-bullhorn"></i> Incidents & Maintenance</button>
+            <button class="tab-btn" onclick="switchTab(event, 'incidents-pane')"><i class="fas fa-tools"></i> Maintenance Analytics</button>
             <button class="tab-btn" onclick="switchTab(event, 'energy-pane')"><i class="fas fa-bolt"></i> Energy Sync</button>
         </div>
 
@@ -568,18 +560,18 @@ $incidentData = json_encode([$incidents['submitted_incidents'] ?? 0, $incidents[
             </div>
         </div>
 
-        <!-- 2. Incidents & Maintenance Pane -->
+        <!-- 2. Maintenance Pane -->
         <div id="incidents-pane" class="tab-pane">
             <div class="dashboard-layout">
                 <div class="box">
-                    <h3><i class="fas fa-chart-bar"></i> Incident Status Breakdown</h3>
+                    <h3><i class="fas fa-chart-bar"></i> Maintenance Request Status</h3>
                     <div style="position:relative; height:280px; width:100%; display:flex; justify-content:center; align-items:center;">
-                        <canvas id="incidentChart"></canvas>
+                        <canvas id="maintenanceChart"></canvas>
                     </div>
                 </div>
                 <div class="box" style="display:flex; flex-direction:column; justify-content:center;">
                     <h4 style="color:#2c3e50; font-size:15px; margin-bottom:10px;">Maintenance Dispatches:</h4>
-                    <p style="font-size:13px; color:#64748b; line-height:1.6;">Outbound maintenance requests correspond to resident reports or asset monitoring records. Current queues have <strong><?php echo $maintenance['pending_requests'] ?? 0; ?></strong> pending tasks and <strong><?php echo $maintenance['emergency_requests'] ?? 0; ?></strong> emergency requests routed to external repair systems.</p>
+                    <p style="font-size:13px; color:#64748b; line-height:1.6;">Outbound maintenance requests correspond to repair and maintenance schedules of tracked LGU assets. Current queues have <strong><?php echo $maintenance['pending_requests'] ?? 0; ?></strong> pending tasks and <strong><?php echo $maintenance['emergency_requests'] ?? 0; ?></strong> emergency requests routed to external repair systems.</p>
                 </div>
             </div>
         </div>
@@ -625,16 +617,16 @@ $incidentData = json_encode([$incidents['submitted_incidents'] ?? 0, $incidents[
         options: { responsive: true, maintainAspectRatio: false }
     });
 
-    // Chart 2: Incident Status Breakdown
-    const incidentCtx = document.getElementById('incidentChart').getContext('2d');
-    new Chart(incidentCtx, {
+    // Chart 2: Maintenance Request Status
+    const maintenanceCtx = document.getElementById('maintenanceChart').getContext('2d');
+    new Chart(maintenanceCtx, {
         type: 'bar',
         data: {
-            labels: <?php echo $incidentLabels; ?>,
+            labels: <?php echo $maintenanceLabels; ?>,
             datasets: [{
-                label: 'Reports Count',
-                data: <?php echo $incidentData; ?>,
-                backgroundColor: '#f1c40f',
+                label: 'Requests Count',
+                data: <?php echo $maintenanceData; ?>,
+                backgroundColor: '#3762c8',
                 borderRadius: 5
             }]
         },
@@ -662,12 +654,6 @@ $incidentData = json_encode([$incidents['submitted_incidents'] ?? 0, $incidents[
                     <i class="fas fa-boxes"></i>
                     <div>
                         <strong>Monitored Assets:</strong> Currently tracking <?php echo $assets['total_assets'] ?? 0; ?> total assets, with <?php echo $assets['damaged_assets'] ?? 0; ?> currently flagged as Damaged.
-                    </div>
-                </li>
-                <li>
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <div>
-                        <strong>Submitted Incidents:</strong> There are <?php echo $incidents['submitted_incidents'] ?? 0; ?> new resident incident reports awaiting initial review.
                     </div>
                 </li>
                 <li>
