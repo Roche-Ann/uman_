@@ -582,23 +582,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $meta = build_asset_meta($pdo, $assetId);
                     $assetType = (string)($meta['asset_type'] ?? '');
 
-                    $condParams = [];
-                    $condSql = '';
-                    if ($conditionAfter !== '') {
-                        $condSql = ', condition_status = ?';
-                        $condParams[] = $conditionAfter;
+                    // Fetch the asset being returned
+                    $retStmt = $pdo->prepare("SELECT asset_id, quantity, condition_status FROM utility_assets WHERE id = ?");
+                    $retStmt->execute([$assetId]);
+                    $retAsset = $retStmt->fetch(PDO::FETCH_ASSOC);
+
+                    if (!$retAsset) {
+                        throw new RuntimeException('Asset not found.');
                     }
-                    $upd = $pdo->prepare("
-                        UPDATE utility_assets
-                           SET cprf_facility_id = NULL,
-                               cprf_custody_status = 'LOAN_RETURNED'
-                               {$condSql},
-                               updated_at = NOW()
-                         WHERE id = ? AND cprf_facility_id = ?
-                    ");
-                    $upd->execute(array_merge($condParams, [$assetId, $facilityId]));
-                    if ($upd->rowCount() <= 0) {
-                        throw new RuntimeException('Asset is not currently on-loan at this facility.');
+
+                    $finalCondition = $conditionAfter !== '' ? $conditionAfter : $retAsset['condition_status'];
+
+                    // Check if we can merge it into an existing WAREHOUSED asset
+                    $checkWhStmt = $pdo->prepare("SELECT id FROM utility_assets WHERE asset_id = ? AND cprf_custody_status IN ('WAREHOUSED', 'LOAN_RETURNED') AND condition_status = ? AND cprf_facility_id IS NULL AND id != ?");
+                    $checkWhStmt->execute([$retAsset['asset_id'], $finalCondition, $assetId]);
+                    $whAsset = $checkWhStmt->fetch(PDO::FETCH_ASSOC);
+
+                    if ($whAsset) {
+                        // Merge into existing warehouse asset
+                        $pdo->prepare("UPDATE utility_assets SET quantity = quantity + ?, updated_at = NOW() WHERE id = ?")->execute([$retAsset['quantity'], $whAsset['id']]);
+                        
+                        // Delete the returned row
+                        $pdo->prepare("DELETE FROM utility_assets WHERE id = ?")->execute([$assetId]);
+                    } else {
+                        // No existing warehouse asset, just update this row
+                        $condParams = [];
+                        $condSql = '';
+                        if ($conditionAfter !== '') {
+                            $condSql = ', condition_status = ?';
+                            $condParams[] = $conditionAfter;
+                        }
+                        $upd = $pdo->prepare("
+                            UPDATE utility_assets
+                               SET cprf_facility_id = NULL,
+                                   cprf_custody_status = 'WAREHOUSED'
+                                   {$condSql},
+                                   updated_at = NOW()
+                             WHERE id = ? AND cprf_facility_id = ?
+                        ");
+                        $upd->execute(array_merge($condParams, [$assetId, $facilityId]));
+                        if ($upd->rowCount() <= 0) {
+                            throw new RuntimeException('Asset is not currently on-loan at this facility.');
+                        }
                     }
 
                     $wh = uman_post_to_cprf('utilities/equipment/unassigned', [
