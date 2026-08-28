@@ -806,10 +806,10 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                                     default                  => '<span class="badge" style="background:rgba(245,158,11,0.15); color:#d97706; border:1px solid rgba(245,158,11,0.3);"><i class="fas fa-hourglass-start"></i> Awaiting Inspection</span>',
                                                 };
                                                 echo $statusDisplay;
+
+                                                // Build dynamic problem-aware AI recommendation string
+                                                $dynamicRecom = !empty($r['corrective_recommendation']) ? $r['corrective_recommendation'] : (!empty($r['remarks']) ? $r['remarks'] : "Conduct physical site audit of service drop entrance, transformer load, and metering equipment in " . ($r['barangay'] ?? 'Central') . " prior to final energization.");
                                             ?>
-                                            <?php if (!empty($r['callback_http_code'])): ?>
-                                                <br><small style="color: #64748b; font-size: 11px;">HTTP <?php echo (int)$r['callback_http_code']; ?></small>
-                                            <?php endif; ?>
                                         </td>
                                         <td>
                                             <div style="display:flex; gap:6px; flex-wrap:wrap;">
@@ -825,7 +825,7 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                                         onclick="openRejectModal(
                                                             '<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>',
                                                             '<?php echo $aiScore !== null ? (int)round($aiScore) : 'N/A'; ?>',
-                                                            '<?php echo htmlspecialchars(addslashes($r['remarks'] ?? 'Inspection rejected upon review. Corrective action required based on findings.')); ?>'
+                                                            '<?php echo htmlspecialchars(addslashes($dynamicRecom)); ?>'
                                                         )" title="Reject inspection and edit recommendation">
                                                     <i class="fas fa-times-circle"></i> Reject
                                                 </button>
