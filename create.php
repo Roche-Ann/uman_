@@ -253,8 +253,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 border-color: rgba(11, 61, 145, 0.1) !important;
             }
             .nav-container { padding: 0 1rem; }
-            .register-card { padding: 2rem 1.5rem; }
-            .register-header h2 { font-size: 1.75rem; }
+            .register-section { padding: clamp(80px, 10vh, 110px) clamp(0.75rem, 3vw, 1.5rem) 40px !important; min-height: 100vh !important; min-height: 100dvh !important; box-sizing: border-box !important; }
+            .register-card { width: 100% !important; max-width: 440px !important; margin: auto !important; padding: clamp(1.5rem, 5vw, 2.5rem) clamp(1rem, 4vw, 2rem) !important; box-sizing: border-box !important; }
+            .register-header h2 { font-size: clamp(1.4rem, 5.5vw, 2rem) !important; }
             .footer-grid { grid-template-columns: 1fr; gap: 2rem; }
             .tc-modal-actions { flex-direction: column; }
             .tc-modal-actions button { width: 100%; text-align: center; }

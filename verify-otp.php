@@ -543,17 +543,21 @@ $expiryTimestamp = $otpData ? strtotime($otpData['expires_at']) : 0;
             border-color: rgba(47, 72, 88, 0.45);
         }
 
-        @media (max-width: 768px) {
+        @media (max-width: 992px) {
             body {
                 display: flex !important;
                 flex-direction: column !important;
                 align-items: center !important;
                 justify-content: center !important;
                 min-height: 100vh !important;
+                min-height: 100dvh !important;
+                padding: clamp(1rem, 4vh, 2.5rem) 1rem !important;
                 box-sizing: border-box !important;
+                overflow-y: auto !important;
             }
             body, .dark-theme body {
-                background: url("assets/images/cityhall.jpeg") center/cover no-repeat !important;
+                background: url("assets/images/cityhall.jpeg") center/cover no-repeat fixed !important;
+                background-size: cover !important;
             }
             body::before {
                 content: "" !important;
@@ -563,14 +567,28 @@ $expiryTimestamp = $otpData ? strtotime($otpData['expires_at']) : 0;
                 width: 100% !important;
                 height: 100% !important;
                 backdrop-filter: blur(6px) !important;
-                background: rgba(255, 255, 255, 0.5) !important; /* white overlay */
+                -webkit-backdrop-filter: blur(6px) !important;
+                background: rgba(255, 255, 255, 0.5) !important;
                 z-index: -1 !important;
                 display: block !important;
             }
             .verify-card {
-                width: calc(100% - 2rem) !important;
-                margin: 0 auto !important;
-                padding: 2rem 1.5rem !important;
+                width: 100% !important;
+                max-width: 440px !important;
+                margin: auto !important;
+                padding: clamp(1.5rem, 5vw, 2.5rem) clamp(1rem, 4vw, 2rem) !important;
+                box-sizing: border-box !important;
+            }
+            .verify-header h2 {
+                font-size: clamp(1.4rem, 5.5vw, 2rem) !important;
+            }
+            .verify-header p {
+                font-size: clamp(0.85rem, 3.5vw, 0.95rem) !important;
+                word-break: break-word !important;
+            }
+            .otp-input {
+                font-size: clamp(1.25rem, 5vw, 1.5rem) !important;
+                letter-spacing: clamp(0.2rem, 2.5vw, 0.5rem) !important;
             }
         }
     </style>

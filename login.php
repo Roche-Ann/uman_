@@ -735,7 +735,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         @media (max-width: 768px) {
             body, .dark-theme body {
-                background: url("assets/images/cityhall.jpeg") center/cover no-repeat !important;
+                background: url("assets/images/cityhall.jpeg") center/cover no-repeat fixed !important;
+                background-size: cover !important;
             }
             body::before {
                 content: "" !important;
@@ -745,9 +746,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 width: 100% !important;
                 height: 100% !important;
                 backdrop-filter: blur(6px) !important;
+                -webkit-backdrop-filter: blur(6px) !important;
                 background: rgba(255, 255, 255, 0.5) !important; /* white overlay */
                 z-index: -1 !important;
                 display: block !important;
+            }
+
+            .login-section {
+                padding: clamp(80px, 10vh, 110px) clamp(0.75rem, 3vw, 1.5rem) 40px !important;
+                min-height: 100vh !important;
+                min-height: 100dvh !important;
+                box-sizing: border-box !important;
             }
 
             .show-password-container input[type="checkbox"] {
@@ -766,11 +775,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
 
             .login-card {
-                padding: 2rem 1.5rem;
+                width: 100% !important;
+                max-width: 440px !important;
+                margin: auto !important;
+                padding: clamp(1.5rem, 5vw, 2.5rem) clamp(1rem, 4vw, 2rem) !important;
+                box-sizing: border-box !important;
             }
 
             .login-header h2 {
-                font-size: 1.75rem;
+                font-size: clamp(1.4rem, 5.5vw, 2rem) !important;
             }
 
             .footer-grid {
