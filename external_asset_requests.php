@@ -509,7 +509,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         $assigned++;
                         $meta = build_asset_meta($pdo, $assignedAid);
-                        $eventRef = 'UFE-' . date('YmdHis') . '-' . $assignedAid;
+                        $eventRef = 'UFE-ASG-' . date('YmdHis') . '-' . $assignedAid;
+
+                        // Log to Activity tab
+                        $pdo->prepare("
+                            INSERT INTO external_asset_requests
+                                (request_ref, source_system, cprf_facility_id, facility_name,
+                                 asset_type, quantity, notes, status, fulfilled_asset_id, review_notes)
+                            VALUES (?, 'UMAN_DIRECT', ?, ?, ?, ?, ?, 'fulfilled', ?, ?)
+                        ")->execute([
+                            $eventRef, $facilityId, $facilityName,
+                            $meta['asset_type'] ?? 'Asset', $requestedQty, $notes,
+                            $assignedAid, 'Direct assignment by ' . $actor
+                        ]);
+
                         $wh = uman_post_to_cprf('utilities/equipment/assigned', [
                             'facility_id'       => $facilityId,
                             'facility_name'     => $facilityName,
@@ -554,6 +567,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $pdo->beginTransaction();
                 try {
+                    $unassignQtyStmt = $pdo->prepare("SELECT quantity FROM utility_assets WHERE id = ?");
+                    $unassignQtyStmt->execute([$assetId]);
+                    $unassignQty = $unassignQtyStmt->fetchColumn() ?: 1;
+
                     $upd = $pdo->prepare("
                         UPDATE utility_assets
                            SET cprf_facility_id = NULL,
@@ -569,6 +586,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         throw new RuntimeException('Asset is not currently on-loan at this facility.');
                     }
                     $meta = build_asset_meta($pdo, $assetId);
+
+                    // Log to Activity tab
+                    $pdo->prepare("
+                        INSERT INTO external_asset_requests
+                            (request_ref, source_system, cprf_facility_id, facility_name,
+                             asset_type, quantity, status, fulfilled_asset_id, review_notes)
+                        VALUES (?, 'UMAN_DIRECT', ?, ?, ?, ?, 'returned', ?, ?)
+                    ")->execute([
+                        $eventRef, $facilityId, $facilityName,
+                        $meta['asset_type'] ?? 'Asset', $unassignQty, $assetId, 'Recalled by ' . $actor
+                    ]);
+
                     $pdo->commit();
 
                     $wh = uman_post_to_cprf('utilities/equipment/unassigned', [
@@ -665,6 +694,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'event_ref'     => $eventRef,
                         'reason'        => ($reason !== '' ? $reason : 'Return accepted by UMAN')
                                          . ($replacement ? ' (replacement pending)' : ''),
+                    ]);
+
+                    // Log to Activity tab
+                    $pdo->prepare("
+                        INSERT INTO external_asset_requests
+                            (request_ref, source_system, cprf_facility_id, facility_name,
+                             asset_type, quantity, notes, status, fulfilled_asset_id, review_notes)
+                        VALUES (?, 'UMAN_DIRECT', ?, ?, ?, ?, ?, 'returned', ?, ?)
+                    ")->execute([
+                        $eventRef, $facilityId, $facilityName,
+                        $assetType, $retAsset['quantity'], $reason,
+                        $assetId, 'Return accepted by ' . $actor
                     ]);
 
                     if ($replacement) {
