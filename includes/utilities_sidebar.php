@@ -87,52 +87,38 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
 
     .citizen-bottom-nav {
         position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
+        bottom: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        right: auto;
+        width: 92%;
+        max-width: 640px;
         height: 66px;
         background: rgba(18, 24, 38, 0.95);
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
-        border-top: 1px solid rgba(255, 255, 255, 0.12);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 32px;
         display: flex;
         align-items: center;
         justify-content: space-around;
         padding: 0 10px;
         z-index: 10000;
-        box-shadow: 0 -5px 25px rgba(0, 0, 0, 0.35);
+        box-shadow: 0 12px 35px rgba(0, 0, 0, 0.4);
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         font-family: 'Poppins', sans-serif;
     }
 
     body:not(.dark-theme) .citizen-bottom-nav {
         background: rgba(255, 255, 255, 0.96);
-        border-top: 1px solid rgba(0, 0, 0, 0.08);
-        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
     }
 
     .dark-theme .citizen-bottom-nav {
         background: #111827;
-        border-top: 1px solid #1f2937;
-        box-shadow: 0 -5px 25px rgba(0, 0, 0, 0.5);
-    }
-
-    @media (min-width: 769px) {
-        .citizen-bottom-nav {
-            left: 50%;
-            transform: translateX(-50%);
-            right: auto;
-            width: 90%;
-            max-width: 640px;
-            bottom: 16px;
-            border-radius: 32px;
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.4);
-        }
-        body:not(.dark-theme) .citizen-bottom-nav {
-            border: 1px solid rgba(0, 0, 0, 0.1);
-            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
-        }
+        border: 1px solid #1f2937;
+        box-shadow: 0 12px 35px rgba(0, 0, 0, 0.5);
     }
 
     .citizen-bottom-item {
