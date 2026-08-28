@@ -1037,6 +1037,89 @@
             outline: 2px solid var(--civic-sapphire);
             outline-offset: 2px;
         }
+
+        /* ── Mobile Carousel for Featured Services ── */
+        .modules-carousel-wrapper {
+            display: none; /* hidden on desktop */
+        }
+
+        @media (max-width: 768px) {
+            /* Navbar compact fix */
+            .civic-navigation {
+                padding: 0.6rem 0;
+            }
+            .logo-only {
+                width: 38px;
+                height: 38px;
+            }
+            .logo-primary {
+                font-size: 1rem;
+                line-height: 1.15;
+            }
+            .logo-secondary {
+                font-size: 0.65rem;
+            }
+            .nav-actions .civic-button {
+                padding: 0.5rem 0.9rem;
+                font-size: 0.8rem;
+                gap: 0.25rem;
+            }
+            .nav-actions {
+                gap: 0.5rem;
+            }
+
+            /* Fix dark background on modules & other sections */
+            .modules-section {
+                background: #ffffff !important;
+            }
+
+            /* Hide desktop grid, show carousel */
+            .modules-grid {
+                display: none !important;
+            }
+            .modules-carousel-wrapper {
+                display: block;
+                padding: 0 1.25rem;
+                position: relative;
+                overflow: hidden;
+            }
+            .modules-carousel-track {
+                display: flex;
+                transition: transform 0.45s cubic-bezier(0.32, 0.72, 0, 1);
+                will-change: transform;
+            }
+            .modules-carousel-track .module-card {
+                flex: 0 0 100%;
+                width: 100%;
+                min-width: 0;
+                box-sizing: border-box;
+                margin: 0;
+                /* override hover-lift transform on touch */
+                transform: none !important;
+            }
+            /* Dot indicators */
+            .carousel-dots {
+                display: flex;
+                justify-content: center;
+                gap: 6px;
+                margin-top: 16px;
+            }
+            .carousel-dot {
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background: #cbd5e1;
+                transition: all 0.3s ease;
+                cursor: pointer;
+                border: none;
+                padding: 0;
+            }
+            .carousel-dot.active {
+                background: var(--civic-sapphire);
+                width: 22px;
+                border-radius: 99px;
+            }
+        }
     </style>
     
     <!-- Fonts -->
@@ -1128,6 +1211,7 @@
             </p>
         </div>
         
+        <!-- Desktop grid (hidden on mobile via CSS) -->
         <div class="modules-grid">
             <!-- 1. Asset Inventory -->
             <div class="module-card hover-lift">
@@ -1242,6 +1326,44 @@
                     <li>Project Integration</li>
                 </ul>
             </div>
+        </div>
+
+        <!-- Mobile carousel (shown on mobile via CSS) -->
+        <div class="modules-carousel-wrapper" id="modulesCarousel" aria-label="Featured Services Carousel">
+            <div class="modules-carousel-track" id="modulesTrack">
+                <div class="module-card">
+                    <div class="module-header"><div class="module-icon icon-service"><i class="fas fa-boxes"></i></div><h3 class="module-title">Asset Inventory</h3></div>
+                    <p class="module-description">Comprehensive database of all LGU-owned utility assets with GPS mapping, condition tracking, and full lifecycle management.</p>
+                    <ul class="module-features"><li>GIS Mapping &amp; Geotagging</li><li>Condition Monitoring</li><li>Lifecycle Tracking</li><li>Automated Health Alerts</li></ul>
+                </div>
+                <div class="module-card">
+                    <div class="module-header"><div class="module-icon icon-complaint"><i class="fas fa-exclamation-triangle"></i></div><h3 class="module-title">Incident Response</h3></div>
+                    <p class="module-description">Citizen-facing portal for reporting outages or leaks. Incidents are automatically categorized, prioritized, and routed to the right team.</p>
+                    <ul class="module-features"><li>Geo-tagged Resident Reports</li><li>Automatic Triage &amp; Priority</li><li>Real-time Status Tracking</li><li>Direct LGU Routing</li></ul>
+                </div>
+                <div class="module-card">
+                    <div class="module-header"><div class="module-icon icon-billing"><i class="fas fa-tools"></i></div><h3 class="module-title">Maintenance Dispatch</h3></div>
+                    <p class="module-description">Seamless coordination with external maintenance systems to dispatch work orders and track repair progress in real-time.</p>
+                    <ul class="module-features"><li>External Work Order Sync</li><li>Technician Dispatching</li><li>Progress Milestone Tracking</li><li>Service Level Auditing</li></ul>
+                </div>
+                <div class="module-card">
+                    <div class="module-header"><div class="module-icon icon-payment"><i class="fas fa-bolt"></i></div><h3 class="module-title">Energy Efficiency</h3></div>
+                    <p class="module-description">Monitor electricity consumption across municipal facilities, identify anomalies, and sync data with external energy advisory systems.</p>
+                    <ul class="module-features"><li>Real-time Consumption Logs</li><li>Anomaly Detection</li><li>Cost Analysis</li><li>External System Sync</li></ul>
+                </div>
+                <div class="module-card">
+                    <div class="module-header"><div class="module-icon icon-reading"><i class="fas fa-warehouse"></i></div><h3 class="module-title">Facility Management</h3></div>
+                    <p class="module-description">Track the utility readiness of public venues (gyms, parks, evacuation centers) to ensure they are operational when needed.</p>
+                    <ul class="module-features"><li>Readiness Status Dashboard</li><li>Utility Checklist (Water/Elec)</li><li>Booking &amp; Event Overlay</li><li>Incident Linking</li></ul>
+                </div>
+                <div class="module-card">
+                    <div class="module-header"><div class="module-icon icon-planning"><i class="fas fa-map-marked-alt"></i></div><h3 class="module-title">Planning &amp; Expansion</h3></div>
+                    <p class="module-description">Analyze utility coverage, manage expansion requests, and integrate with urban development projects to plan for future growth.</p>
+                    <ul class="module-features"><li>GIS Coverage Mapping</li><li>Expansion Request Tracking</li><li>Capacity Planning</li><li>Project Integration</li></ul>
+                </div>
+            </div>
+            <!-- Dot indicators -->
+            <div class="carousel-dots" id="carouselDots"></div>
         </div>
     </section>
 
@@ -1611,6 +1733,89 @@
         } else {
             window.scrollTo(0,0);
         }
+    </script>
+
+    <script>
+        /* ── Featured Services Carousel (mobile only) ── */
+        (function() {
+            function initCarousel() {
+                if (window.innerWidth > 768) return; // desktop: do nothing
+
+                const wrapper  = document.getElementById('modulesCarousel');
+                const track    = document.getElementById('modulesTrack');
+                const dotsBox  = document.getElementById('carouselDots');
+                if (!wrapper || !track || !dotsBox) return;
+
+                const cards    = Array.from(track.children);
+                const total    = cards.length;
+                let current    = 0;
+                let autoTimer  = null;
+                let startX     = 0;
+                let isDragging = false;
+
+                // Build dot buttons
+                dotsBox.innerHTML = '';
+                cards.forEach((_, i) => {
+                    const dot = document.createElement('button');
+                    dot.className = 'carousel-dot' + (i === 0 ? ' active' : '');
+                    dot.setAttribute('aria-label', 'Slide ' + (i + 1));
+                    dot.addEventListener('click', () => goTo(i));
+                    dotsBox.appendChild(dot);
+                });
+
+                function goTo(index) {
+                    current = (index + total) % total;
+                    track.style.transform = `translateX(-${current * 100}%)`;
+                    dotsBox.querySelectorAll('.carousel-dot').forEach((d, i) => {
+                        d.classList.toggle('active', i === current);
+                    });
+                }
+
+                function startAuto() {
+                    stopAuto();
+                    autoTimer = setInterval(() => goTo(current + 1), 5000);
+                }
+
+                function stopAuto() {
+                    if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+                }
+
+                // Touch / mouse swipe
+                function onDragStart(e) {
+                    startX = e.touches ? e.touches[0].clientX : e.clientX;
+                    isDragging = true;
+                    stopAuto();
+                }
+                function onDragEnd(e) {
+                    if (!isDragging) return;
+                    isDragging = false;
+                    const endX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+                    const diff = startX - endX;
+                    if (Math.abs(diff) > 40) {
+                        goTo(diff > 0 ? current + 1 : current - 1);
+                    }
+                    startAuto();
+                }
+
+                track.addEventListener('touchstart', onDragStart, { passive: true });
+                track.addEventListener('touchend',   onDragEnd,   { passive: true });
+                track.addEventListener('mousedown',  onDragStart);
+                track.addEventListener('mouseup',    onDragEnd);
+
+                // Pause on hover (desktop-like fallback)
+                wrapper.addEventListener('mouseenter', stopAuto);
+                wrapper.addEventListener('mouseleave', startAuto);
+
+                goTo(0);
+                startAuto();
+            }
+
+            document.addEventListener('DOMContentLoaded', initCarousel);
+            window.addEventListener('resize', () => {
+                // Re-init if viewport crosses the 768px boundary
+                if (window.innerWidth <= 768) initCarousel();
+            });
+        })();
     </script>
 </body>
 </html>
