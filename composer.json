@@ -1,8 +1,6 @@
 {
     "require": {
         "tecnickcom/tcpdf": "^6.10",
-        "symfony/mailer": "^7.4",
-        "guzzlehttp/guzzle": "^8.1",
-        "nesbot/carbon": "^3.13"
+        "symfony/mailer": "^7.4"
     }
 }
