@@ -26,8 +26,39 @@ try {
     uman_ensure_cprf_custody_schema($pdo);
     // Auto-migrate schema to support 'returned' status for citizen requests
     $pdo->exec("ALTER TABLE external_asset_requests MODIFY COLUMN status ENUM('pending','approved','fulfilled','rejected','returned') NOT NULL DEFAULT 'pending'");
+
+    // Self-healing: Merge any existing duplicate utility_assets that were created before the merge logic
+    $dupStmt = $pdo->query("SELECT asset_id, cprf_facility_id, condition_status, cprf_custody_status, COUNT(*) as cnt FROM utility_assets GROUP BY asset_id, cprf_facility_id, condition_status, cprf_custody_status HAVING cnt > 1");
+    $duplicates = $dupStmt->fetchAll(PDO::FETCH_ASSOC);
+    if (!empty($duplicates)) {
+        foreach ($duplicates as $dup) {
+            $q = "SELECT id, quantity FROM utility_assets WHERE asset_id = ? AND condition_status = ? AND cprf_custody_status = ?";
+            $params = [$dup['asset_id'], $dup['condition_status'], $dup['cprf_custody_status']];
+            if ($dup['cprf_facility_id'] === null) {
+                $q .= " AND cprf_facility_id IS NULL";
+            } else {
+                $q .= " AND cprf_facility_id = ?";
+                $params[] = $dup['cprf_facility_id'];
+            }
+            $rows = $pdo->prepare($q);
+            $rows->execute($params);
+            $records = $rows->fetchAll(PDO::FETCH_ASSOC);
+            if (count($records) > 1) {
+                $keepId = $records[0]['id'];
+                $totalQty = 0;
+                $deleteIds = [];
+                foreach ($records as $i => $rec) {
+                    $totalQty += (int)$rec['quantity'];
+                    if ($i > 0) $deleteIds[] = $rec['id'];
+                }
+                $pdo->prepare("UPDATE utility_assets SET quantity = ? WHERE id = ?")->execute([$totalQty, $keepId]);
+                $in = str_repeat('?,', count($deleteIds) - 1) . '?';
+                $pdo->prepare("DELETE FROM utility_assets WHERE id IN ($in)")->execute($deleteIds);
+            }
+        }
+    }
 } catch (Throwable $e) {
-    $errors[] = 'Schema warning: custody columns not ready — ' . htmlspecialchars($e->getMessage());
+    $errors[] = 'Schema/Data warning: ' . htmlspecialchars($e->getMessage());
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
