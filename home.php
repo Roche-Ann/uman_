@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <script>
@@ -837,6 +837,17 @@
         }
         
         @media (max-width: 768px) {
+            /* ── Global page resets for mobile ── */
+            html, body {
+                overflow-x: hidden !important;
+                max-width: 100vw;
+            }
+
+            body {
+                background: #ffffff !important;
+            }
+
+            /* ── Navigation ── */
             .nav-container {
                 padding: 0 1rem;
             }
@@ -844,24 +855,145 @@
             .nav-links {
                 display: none;
             }
-            
-            .hero-title {
-                font-size: 2.25rem;
+
+            /* ── Hero Section ── */
+            .hero-platform {
+                padding: 100px 0 60px;
+                background: linear-gradient(160deg, #0B3D91 0%, #1a5276 40%, #00A896 100%);
             }
-            
+
+            .hero-grid {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+                padding: 0 1.25rem;
+                text-align: center;
+            }
+
+            .hero-content {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .context-badge {
+                margin-left: auto;
+                margin-right: auto;
+                background: rgba(255,255,255,0.15);
+                color: #ffffff;
+                border-color: rgba(255,255,255,0.25);
+            }
+
+            .hero-title {
+                font-size: 2rem;
+                color: #ffffff;
+                text-align: center;
+            }
+
+            .title-gradient {
+                background: linear-gradient(135deg, #7ec8e3, #FFD700, #00e5c9);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+            }
+
+            .hero-description {
+                font-size: 1rem;
+                color: rgba(255,255,255,0.85);
+                text-align: center;
+                max-width: 100%;
+            }
+
+            .hero-platform .cta-actions {
+                flex-direction: column;
+                align-items: center;
+                width: 100%;
+                gap: 0.75rem;
+            }
+
+            .hero-platform .cta-actions .civic-button {
+                width: 100%;
+                max-width: 320px;
+                justify-content: center;
+            }
+
+            .hero-visual {
+                width: 100%;
+            }
+
+            .visual-container {
+                transform: none !important;
+                border-radius: 16px;
+            }
+
+            /* ── Sections general ── */
+            .modules-section,
+            .methodology-section,
+            .analytics-showcase,
+            .cta-section {
+                padding: 3rem 0;
+            }
+
+            .section-header {
+                padding: 0 1.25rem;
+                margin-bottom: 2rem;
+            }
+
+            .section-title {
+                font-size: 1.6rem;
+            }
+
+            .section-description {
+                font-size: 0.95rem;
+            }
+
+            /* ── Modules ── */
             .modules-grid {
                 grid-template-columns: 1fr;
-                padding: 0 1rem;
+                padding: 0 1.25rem;
             }
-            
+
+            /* ── History section ── */
+            .methodology-section {
+                background: #F8FAFF !important;
+            }
+
+            .methodology-container {
+                padding: 0 1.25rem;
+            }
+
+            .methodology-stack {
+                grid-template-columns: 1fr;
+                gap: 1.25rem;
+            }
+
+            /* ── Stat panel ── */
             .stat-panel {
                 position: relative;
                 bottom: auto;
                 left: auto;
                 right: auto;
-                margin-top: 2rem;
+                margin-top: 1.5rem;
             }
-            
+
+            /* ── Analytics / Contact section ── */
+            .analytics-showcase {
+                background: #ffffff !important;
+            }
+
+            .analytics-grid {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+                padding: 0 1.25rem;
+            }
+
+            .ai-visual {
+                background: transparent !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+                min-height: 260px;
+            }
+
+            /* ── CTA section ── */
             .cta-actions {
                 flex-direction: column;
                 align-items: center;
@@ -871,10 +1003,25 @@
                 width: 100%;
                 justify-content: center;
             }
+
+            .cta-title {
+                font-size: 1.75rem;
+            }
+
+            .cta-description {
+                font-size: 1rem;
+            }
             
+            /* ── Footer ── */
             .footer-grid {
                 grid-template-columns: 1fr;
                 gap: 2rem;
+                padding: 0 1.25rem;
+            }
+
+            .footer-bottom {
+                padding: 0 1.25rem;
+                padding-top: 2rem;
             }
         }
         
