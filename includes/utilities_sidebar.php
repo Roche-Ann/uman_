@@ -134,22 +134,26 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
 
     /* The row of nav items pinned to the bottom */
     .citizen-bottom-nav-items {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 66px;
         display: flex;
         align-items: center;
         justify-content: space-around;
-        width: 100%;
-        height: 66px;
-        flex-shrink: 0;
         padding: 0 10px;
-        transition: opacity 0.3s ease, height 0.3s ease, padding 0.3s ease;
+        box-sizing: border-box;
+        transition: opacity 0.15s ease, visibility 0.15s ease;
+        opacity: 1;
+        visibility: visible;
+        z-index: 1;
     }
 
     .citizen-bottom-nav.menu-expanded .citizen-bottom-nav-items {
-        height: 0;
         opacity: 0;
-        padding: 0;
+        visibility: hidden;
         pointer-events: none;
-        overflow: hidden;
     }
 
     /* Expanded menu panel that sits above the nav items */

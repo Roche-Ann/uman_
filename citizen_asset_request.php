@@ -426,6 +426,68 @@ try {
             color: #64748b;
         }
         .empty-state i { font-size: 44px; color: #cbd5e1; margin-bottom: 12px; }
+
+        @media (max-width: 900px) {
+            .req-table, 
+            .req-table thead, 
+            .req-table tbody, 
+            .req-table th, 
+            .req-table td, 
+            .req-table tr {
+                display: block;
+                width: 100%;
+            }
+            .req-table thead {
+                display: none;
+            }
+            .req-table tr {
+                background: #f8fafc;
+                border: 1px solid #e2e8f0;
+                border-radius: 12px;
+                margin-bottom: 16px;
+                padding: 16px;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+                box-sizing: border-box;
+            }
+            .dark-theme .req-table tr {
+                background: #0f172a;
+                border-color: #334155;
+            }
+            .req-table td {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 10px 0;
+                border-bottom: 1px solid #e2e8f0;
+                text-align: right;
+                box-sizing: border-box;
+            }
+            .dark-theme .req-table td {
+                border-bottom-color: #334155;
+            }
+            .req-table td:last-child {
+                border-bottom: none;
+            }
+            .req-table td::before {
+                content: attr(data-label);
+                font-weight: 600;
+                color: #64748b;
+                text-transform: uppercase;
+                font-size: 10px;
+                letter-spacing: 0.5px;
+                text-align: left;
+                width: 40%;
+                flex-shrink: 0;
+            }
+            .dark-theme .req-table td::before {
+                color: #94a3b8;
+            }
+            .req-table td .td-val {
+                text-align: right;
+                width: 60%;
+                flex-grow: 1;
+            }
+        }
     </style>
 </head>
 <body>
@@ -561,53 +623,67 @@ try {
                     <tbody>
                         <?php foreach ($myRequests as $req): ?>
                             <tr>
-                                <td>
-                                    <strong style="color:#1e293b;"><?php echo htmlspecialchars($req['request_ref']); ?></strong><br>
-                                    <small style="color:#94a3b8; font-size:11px;"><?php echo date('M d, Y h:i A', strtotime($req['created_at'])); ?></small>
+                                <td data-label="Reference">
+                                    <div class="td-val">
+                                        <strong style="color:#1e293b;"><?php echo htmlspecialchars($req['request_ref']); ?></strong><br>
+                                        <small style="color:#94a3b8; font-size:11px;"><?php echo date('M d, Y h:i A', strtotime($req['created_at'])); ?></small>
+                                    </div>
                                 </td>
-                                <td>
-                                    <strong style="font-size:14px; color:#2c3e50;"><?php echo htmlspecialchars($req['asset_type']); ?></strong>
+                                <td data-label="Equipment / Asset">
+                                    <div class="td-val">
+                                        <strong style="font-size:14px; color:#2c3e50;"><?php echo htmlspecialchars($req['asset_type']); ?></strong>
+                                    </div>
                                 </td>
-                                <td>
-                                    <strong style="font-size:14px;"><?php echo (int)$req['quantity']; ?></strong> <span style="font-size:12px; color:#64748b;">unit<?php echo ((int)$req['quantity'] !== 1) ? 's' : ''; ?></span><br>
-                                    <span class="badge urgency-<?php echo strtolower($req['urgency']); ?>" style="margin-top:4px;">
-                                        <?php echo htmlspecialchars($req['urgency']); ?>
-                                    </span>
+                                <td data-label="Qty & Urgency">
+                                    <div class="td-val">
+                                        <strong style="font-size:14px;"><?php echo (int)$req['quantity']; ?></strong> <span style="font-size:12px; color:#64748b;">unit<?php echo ((int)$req['quantity'] !== 1) ? 's' : ''; ?></span><br>
+                                        <span class="badge urgency-<?php echo strtolower($req['urgency']); ?>" style="margin-top:4px;">
+                                            <?php echo htmlspecialchars($req['urgency']); ?>
+                                        </span>
+                                    </div>
                                 </td>
-                                <td>
-                                    <strong><?php echo htmlspecialchars($req['facility_name']); ?></strong><br>
-                                    <small style="color:#475569; font-style:italic;">Purpose: <?php echo htmlspecialchars($req['event_purpose']); ?></small>
-                                    <?php if (!empty($req['notes'])): ?>
-                                        <br><small style="color:#64748b;">Note: <?php echo htmlspecialchars($req['notes']); ?></small>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <?php if ($req['date_needed']): ?>
-                                        <span style="font-weight:500; font-size:12px;"><i class="far fa-calendar-alt"></i> <?php echo date('M d, Y', strtotime($dateNeededStr = $req['date_needed'])); ?></span>
-                                    <?php else: ?>
-                                        <span style="color:#94a3b8; font-size:12px;">As soon as available</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <span class="badge <?php echo htmlspecialchars($req['status']); ?>">
-                                        <?php if ($req['status'] === 'pending'): ?><i class="fas fa-clock"></i> Pending Review
-                                        <?php elseif ($req['status'] === 'approved'): ?><i class="fas fa-thumbs-up"></i> Approved
-                                        <?php elseif ($req['status'] === 'fulfilled'): ?><i class="fas fa-check-circle"></i> Fulfilled
-                                        <?php elseif ($req['status'] === 'rejected'): ?><i class="fas fa-times-circle"></i> Rejected
+                                <td data-label="Venue & Purpose">
+                                    <div class="td-val">
+                                        <strong><?php echo htmlspecialchars($req['facility_name']); ?></strong><br>
+                                        <small style="color:#475569; font-style:italic;">Purpose: <?php echo htmlspecialchars($req['event_purpose']); ?></small>
+                                        <?php if (!empty($req['notes'])): ?>
+                                            <br><small style="color:#64748b;">Note: <?php echo htmlspecialchars($req['notes']); ?></small>
                                         <?php endif; ?>
-                                    </span>
-                                    <?php if (!empty($req['fulfilled_asset_name'])): ?>
-                                        <div style="font-size:11px; color:#059669; font-weight:600; margin-top:4px;">
-                                            <i class="fas fa-link"></i> Assigned: <?php echo htmlspecialchars($req['fulfilled_asset_name'] . ' (' . $req['fulfilled_asset_code'] . ')'); ?>
-                                        </div>
-                                    <?php endif; ?>
+                                    </div>
                                 </td>
-                                <td>
-                                    <?php if (!empty($req['review_notes'])): ?>
-                                        <span style="font-size:12px; color:#334155; font-style:italic;">"<?php echo htmlspecialchars($req['review_notes']); ?>"</span>
-                                    <?php else: ?>
-                                        <span style="color:#94a3b8; font-size:12px;">Awaiting staff feedback</span>
-                                    <?php endif; ?>
+                                <td data-label="Date Needed">
+                                    <div class="td-val">
+                                        <?php if ($req['date_needed']): ?>
+                                            <span style="font-weight:500; font-size:12px;"><i class="far fa-calendar-alt"></i> <?php echo date('M d, Y', strtotime($dateNeededStr = $req['date_needed'])); ?></span>
+                                        <?php else: ?>
+                                            <span style="color:#94a3b8; font-size:12px;">As soon as available</span>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
+                                <td data-label="Status">
+                                    <div class="td-val">
+                                        <span class="badge <?php echo htmlspecialchars($req['status']); ?>">
+                                            <?php if ($req['status'] === 'pending'): ?><i class="fas fa-clock"></i> Pending Review
+                                            <?php elseif ($req['status'] === 'approved'): ?><i class="fas fa-thumbs-up"></i> Approved
+                                            <?php elseif ($req['status'] === 'fulfilled'): ?><i class="fas fa-check-circle"></i> Fulfilled
+                                            <?php elseif ($req['status'] === 'rejected'): ?><i class="fas fa-times-circle"></i> Rejected
+                                            <?php endif; ?>
+                                        </span>
+                                        <?php if (!empty($req['fulfilled_asset_name'])): ?>
+                                            <div style="font-size:11px; color:#059669; font-weight:600; margin-top:4px;">
+                                                <i class="fas fa-link"></i> Assigned: <?php echo htmlspecialchars($req['fulfilled_asset_name'] . ' (' . $req['fulfilled_asset_code'] . ')'); ?>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
+                                <td data-label="LGU Review Remarks">
+                                    <div class="td-val">
+                                        <?php if (!empty($req['review_notes'])): ?>
+                                            <span style="font-size:12px; color:#334155; font-style:italic;">"<?php echo htmlspecialchars($req['review_notes']); ?>"</span>
+                                        <?php else: ?>
+                                            <span style="color:#94a3b8; font-size:12px;">Awaiting staff feedback</span>
+                                        <?php endif; ?>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
