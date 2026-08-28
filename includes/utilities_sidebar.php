@@ -200,27 +200,27 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
         position: fixed;
         bottom: -100%;
         left: 50%;
-        transform: translateX(-50%);
-        width: 100%;
-        max-width: 500px;
+        transform: translate3d(-50%, 0, 0);
+        width: 92%;
+        max-width: 640px;
         background: #ffffff;
-        border-radius: 24px 24px 0 0;
-        padding: 20px 20px 85px 20px;
-        box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.25);
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        border-radius: 24px;
+        padding: 20px 20px 24px 20px;
+        box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.15), 0 10px 30px rgba(0, 0, 0, 0.1);
         z-index: 10001;
-        transition: bottom 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+        transition: bottom 0.35s cubic-bezier(0.32, 0.72, 0, 1), transform 0.35s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.25s ease;
         font-family: 'Poppins', sans-serif;
     }
 
     .dark-theme .citizen-menu-sheet {
         background: #1e293b;
         border: 1px solid rgba(255, 255, 255, 0.1);
-        border-bottom: none;
-        box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.6);
+        box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5), 0 10px 30px rgba(0, 0, 0, 0.4);
     }
 
     .citizen-menu-sheet.open {
-        bottom: 0;
+        bottom: 96px; /* Floats perfectly above bottom: 16px + height: 66px = 82px */
     }
 
     .citizen-sheet-handle {
@@ -229,6 +229,12 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
         background: #cbd5e1;
         border-radius: 99px;
         margin: 0 auto 16px auto;
+        cursor: grab;
+        user-select: none;
+    }
+
+    .citizen-sheet-handle:active {
+        cursor: grabbing;
     }
 
     .dark-theme .citizen-sheet-handle {
@@ -2194,16 +2200,28 @@ function toggleSidebarDropdown(button) {
 function openCitizenMenuSheet() {
     const sheet = document.getElementById('citizenMenuSheet');
     const backdrop = document.getElementById('citizenSheetBackdrop');
-    if (sheet) sheet.classList.add('open');
-    if (backdrop) backdrop.classList.add('active');
+    if (sheet) {
+        sheet.classList.add('open');
+        sheet.style.transform = 'translate3d(-50%, 0, 0)';
+    }
+    if (backdrop) {
+        backdrop.classList.add('active');
+        backdrop.style.opacity = '1';
+    }
     document.body.style.overflow = 'hidden';
 }
 
 function closeCitizenMenuSheet() {
     const sheet = document.getElementById('citizenMenuSheet');
     const backdrop = document.getElementById('citizenSheetBackdrop');
-    if (sheet) sheet.classList.remove('open');
-    if (backdrop) backdrop.classList.remove('active');
+    if (sheet) {
+        sheet.classList.remove('open');
+        sheet.style.transform = '';
+    }
+    if (backdrop) {
+        backdrop.classList.remove('active');
+        backdrop.style.opacity = '';
+    }
     document.body.style.overflow = '';
 }
 
@@ -2388,6 +2406,73 @@ window.addEventListener('click', function(event) {
             }, 120);
         });
     });
+
+    // Drag-to-dismiss for Citizen Menu Sheet
+    (function() {
+        const sheet = document.getElementById('citizenMenuSheet');
+        const handle = document.querySelector('.citizen-sheet-handle');
+        const backdrop = document.getElementById('citizenSheetBackdrop');
+        if (!sheet || !handle) return;
+
+        let startY = 0;
+        let currentY = 0;
+        let isDragging = false;
+
+        // Start drag on handle
+        handle.addEventListener('touchstart', onDragStart, { passive: true });
+        handle.addEventListener('mousedown', onDragStart);
+
+        function onDragStart(e) {
+            startY = e.touches ? e.touches[0].clientY : e.clientY;
+            isDragging = true;
+            sheet.style.transition = 'none';
+            if (backdrop) backdrop.style.transition = 'none';
+
+            document.addEventListener('touchmove', onDragMove, { passive: false });
+            document.addEventListener('mousemove', onDragMove);
+            document.addEventListener('touchend', onDragEnd);
+            document.addEventListener('mouseup', onDragEnd);
+        }
+
+        function onDragMove(e) {
+            if (!isDragging) return;
+            
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            const deltaY = clientY - startY;
+
+            if (deltaY > 0) {
+                // Prevent default scrolling only when dragging down
+                if (e.cancelable) e.preventDefault();
+                currentY = deltaY;
+                sheet.style.transform = `translate3d(-50%, ${deltaY}px, 0)`;
+                if (backdrop) {
+                    const opacity = Math.max(0, 1 - (deltaY / 250));
+                    backdrop.style.opacity = opacity;
+                }
+            }
+        }
+
+        function onDragEnd() {
+            if (!isDragging) return;
+            isDragging = false;
+
+            document.removeEventListener('touchmove', onDragMove);
+            document.removeEventListener('mousemove', onDragMove);
+            document.removeEventListener('touchend', onDragEnd);
+            document.removeEventListener('mouseup', onDragEnd);
+
+            sheet.style.transition = '';
+            if (backdrop) backdrop.style.transition = '';
+
+            if (currentY > 80) {
+                closeCitizenMenuSheet();
+            } else {
+                sheet.style.transform = 'translate3d(-50%, 0, 0)';
+                if (backdrop) backdrop.style.opacity = '1';
+            }
+            currentY = 0;
+        }
+    })();
 })();
 </script>
 
