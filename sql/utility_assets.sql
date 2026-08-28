@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS `asset_types` (
 -- 2. Create utility assets table
 CREATE TABLE IF NOT EXISTS `utility_assets` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `asset_id` VARCHAR(50) NOT NULL UNIQUE,
+  `asset_id` VARCHAR(50) NOT NULL,
   `name` VARCHAR(100) NOT NULL,
   `asset_type_id` INT NOT NULL,
   `quantity` INT NOT NULL DEFAULT 1,

@@ -426,7 +426,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $decStmt->execute([$requestedQty, $aid]);
                             
                             // 3b. Insert new split asset
-                            $newAssetId = $assetRow['asset_id'] . '-L' . time() . rand(10, 99);
+                            $newAssetId = $assetRow['asset_id'];
                             $insStmt = $pdo->prepare("
                                 INSERT INTO utility_assets (
                                     asset_id, name, asset_type_id, quantity, location, 
