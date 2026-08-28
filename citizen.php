@@ -27,72 +27,8 @@ try {
 
     $activeReports = $totalReports - $resolvedReports;
 } catch (Exception $e) {
-    // Fallback if schema differs slightly
-}
-
-// Fetch latest 5 advisories from RSS Bridge using Guzzle
-require_once __DIR__ . '/vendor/autoload.php';
-use GuzzleHttp\Client;
-use GuzzleHttp\Promise;
-use Carbon\Carbon;
-
-$advisories = [];
-$cacheFile = __DIR__ . '/cache/advisories_cache.json';
-$cacheValid = false;
-
-if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < 1800) {
-    $cacheData = json_decode(file_get_contents($cacheFile), true);
-    if (is_array($cacheData)) {
-        $advisories = $cacheData;
-        $cacheValid = true;
-    }
-}
-
-if (!$cacheValid) {
-    try {
-        $client = new Client(['timeout' => 8.0, 'verify' => false]);
-        
-        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
-        $host = $_SERVER['HTTP_HOST'] ?? '127.0.0.1';
-        $localBridgeUrl = $protocol . $host . '/rss-bridge/';
-        
-        $promises = [
-            'qcdrrmc' => $client->getAsync($localBridgeUrl . '?action=display&bridge=Facebook&context=Username&format=Json&u=qcdrrmc'),
-            'QCGov'   => $client->getAsync($localBridgeUrl . '?action=display&bridge=Facebook&context=Username&format=Json&u=QCGov'),
-        ];
-        
-        $responses = Promise\Utils::settle($promises)->wait();
-        
-        $mergedItems = [];
-        foreach ($responses as $key => $response) {
-            if ($response['state'] === 'fulfilled') {
-                $body = $response['value']->getBody()->getContents();
-                $data = json_decode($body, true);
-                if (isset($data['items']) && is_array($data['items'])) {
-                    $mergedItems = array_merge($mergedItems, $data['items']);
-                }
-            }
-        }
-        
-        if (!empty($mergedItems)) {
-            usort($mergedItems, function($a, $b) {
-                return strtotime($b['date_modified'] ?? '0') < strtotime($a['date_modified'] ?? '0') ? 1 : -1;
-            });
-            $advisories = array_slice($mergedItems, 0, 5);
-            
-            if (!is_dir(__DIR__ . '/cache')) {
-                mkdir(__DIR__ . '/cache', 0777, true);
-            }
-            file_put_contents($cacheFile, json_encode($advisories));
-        } elseif (file_exists($cacheFile)) {
-            $advisories = json_decode(file_get_contents($cacheFile), true) ?: [];
-        }
-    } catch (\Throwable $e) {
-        if (file_exists($cacheFile)) {
-            $advisories = json_decode(file_get_contents($cacheFile), true) ?: [];
-        }
-    }
-}
+// The Facebook Page Plugin is handled client-side via embedded iframes in the HTML below.
+// This avoids server-side blocking from Facebook.
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -413,36 +349,29 @@ if (!$cacheValid) {
         <div class="dashboard-layout" style="grid-template-columns: 1fr;">
             
             <!-- Left: Latest Utility Advisories -->
-            <div class="box">
-                <h3><i class="fas fa-bullhorn"></i> Latest LGU Advisories</h3>
-                <?php if (empty($advisories)): ?>
-                    <p style="color:#64748b; font-size:13px;">No LGU advisories published recently or unable to fetch.</p>
-                <?php else: ?>
-                    <?php foreach ($advisories as $adv): 
-                        $timeAgo = '';
-                        try {
-                            $timeAgo = \Carbon\Carbon::parse($adv['date_modified'] ?? 'now')->diffForHumans();
-                        } catch (\Throwable $e) {
-                            $timeAgo = date('M d, Y', strtotime($adv['date_modified'] ?? 'now'));
-                        }
-                        
-                        $content = strip_tags($adv['content_html'] ?? '');
-                        $excerpt = mb_strlen($content) > 180 ? mb_substr($content, 0, 180) . '...' : $content;
-                        $url = $adv['url'] ?? '#';
-                        $author = $adv['author']['name'] ?? 'LGU';
-                    ?>
-                        <div class="item-card" style="border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; margin-bottom: 12px; transition: box-shadow 0.2s;">
-                            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                                <h4 style="color:#2c3e50; font-size:14px; font-weight:600;"><i class="fab fa-facebook" style="color:#1877F2;"></i> <?php echo htmlspecialchars($author); ?></h4>
-                                <span style="font-size:11px; color:#64748b; font-weight: 500;"><i class="far fa-clock"></i> <?php echo htmlspecialchars($timeAgo); ?></span>
-                            </div>
-                            <p style="font-size:13px; color:#475569; margin-top:8px; line-height: 1.5;"><?php echo htmlspecialchars($excerpt); ?></p>
-                            <div style="margin-top:10px;">
-                                <a href="<?php echo htmlspecialchars($url); ?>" target="_blank" style="font-size:12px; color:#3762c8; font-weight:600; text-decoration: none;"><i class="fas fa-external-link-alt"></i> View original post</a>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                <?php endif; ?>
+            <div class="box" style="padding: 25px; overflow: hidden;">
+                <h3 style="margin-bottom: 20px;"><i class="fas fa-bullhorn"></i> Latest LGU Advisories</h3>
+                <div style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: space-between;">
+                    
+                    <!-- QCGov Embedded Feed -->
+                    <div style="flex: 1; min-width: 300px; max-width: 500px; display: flex; justify-content: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px;">
+                        <iframe src="https://www.facebook.com/plugins/page.php?href=https%3A%2F%2Fwww.facebook.com%2FQCGov&tabs=timeline&width=340&height=500&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=false&appId" 
+                                width="340" height="500" style="border:none;overflow:hidden; border-radius: 8px; width: 100%; max-width: 340px;" 
+                                scrolling="no" frameborder="0" allowfullscreen="true" 
+                                allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share">
+                        </iframe>
+                    </div>
+
+                    <!-- QCDRRMC Embedded Feed -->
+                    <div style="flex: 1; min-width: 300px; max-width: 500px; display: flex; justify-content: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px;">
+                        <iframe src="https://www.facebook.com/plugins/page.php?href=https%3A%2F%2Fwww.facebook.com%2Fqcdrrmc&tabs=timeline&width=340&height=500&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=false&appId" 
+                                width="340" height="500" style="border:none;overflow:hidden; border-radius: 8px; width: 100%; max-width: 340px;" 
+                                scrolling="no" frameborder="0" allowfullscreen="true" 
+                                allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share">
+                        </iframe>
+                    </div>
+
+                </div>
             </div>
 
 
