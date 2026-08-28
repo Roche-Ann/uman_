@@ -415,42 +415,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         $assignedAid = $aid;
 
-                        // 3. Process assignment (full vs partial)
-                        if ($requestedQty === $availQty) {
-                            // Full assignment
-                            $upd->execute([$facilityId, $facilityName, $aid]);
-                        } else {
-                            // Partial assignment: split the asset
-                            // 3a. Decrease original asset quantity
-                            $decStmt = $pdo->prepare("UPDATE utility_assets SET quantity = quantity - ?, updated_at = NOW() WHERE id = ?");
-                            $decStmt->execute([$requestedQty, $aid]);
+                        // 3. Check if facility already has this exact asset (merge check)
+                        $checkStmt = $pdo->prepare("SELECT id, quantity FROM utility_assets WHERE asset_id = ? AND cprf_facility_id = ? AND condition_status = ? AND cprf_custody_status = 'ON_LOAN_AT_FACILITY'");
+                        $checkStmt->execute([$assetRow['asset_id'], $facilityId, $assetRow['condition_status']]);
+                        $existingAsset = $checkStmt->fetch(PDO::FETCH_ASSOC);
+
+                        if ($existingAsset) {
+                            // Merge into existing asset
+                            $mergeId = $existingAsset['id'];
                             
-                            // 3b. Insert new split asset
-                            $newAssetId = $assetRow['asset_id'];
-                            $insStmt = $pdo->prepare("
-                                INSERT INTO utility_assets (
-                                    asset_id, name, asset_type_id, quantity, location, 
-                                    latitude, longitude, date_installed, condition_status, 
-                                    description, responsible_office, cprf_facility_id, 
-                                    cprf_custody_status, created_at, updated_at
-                                ) VALUES (?, ?, ?, ?, COALESCE(NULLIF(?,''), CONCAT('CPRF: ', ?)), ?, ?, ?, ?, ?, ?, ?, 'ON_LOAN_AT_FACILITY', NOW(), NOW())
-                            ");
-                            $insStmt->execute([
-                                $newAssetId,
-                                $assetRow['name'],
-                                $assetRow['asset_type_id'],
-                                $requestedQty,
-                                $assetRow['location'],
-                                $facilityName,
-                                $assetRow['latitude'],
-                                $assetRow['longitude'],
-                                $assetRow['date_installed'],
-                                $assetRow['condition_status'],
-                                $assetRow['description'],
-                                $assetRow['responsible_office'],
-                                $facilityId
-                            ]);
-                            $assignedAid = $pdo->lastInsertId();
+                            $pdo->prepare("UPDATE utility_assets SET quantity = quantity + ?, updated_at = NOW() WHERE id = ?")->execute([$requestedQty, $mergeId]);
+                            
+                            if ($requestedQty === $availQty) {
+                                // Full assignment -> Delete original warehouse row since it's merged
+                                $pdo->prepare("DELETE FROM utility_assets WHERE id = ?")->execute([$aid]);
+                            } else {
+                                // Partial assignment -> Decrease original warehouse row
+                                $pdo->prepare("UPDATE utility_assets SET quantity = quantity - ?, updated_at = NOW() WHERE id = ?")->execute([$requestedQty, $aid]);
+                            }
+                            
+                            $assignedAid = $mergeId;
+                        } else {
+                            // No existing asset to merge into. Process as normal full/partial
+                            if ($requestedQty === $availQty) {
+                                // Full assignment
+                                $upd->execute([$facilityId, $facilityName, $aid]);
+                                $assignedAid = $aid;
+                            } else {
+                                // Partial assignment: split the asset
+                                // 3a. Decrease original asset quantity
+                                $decStmt = $pdo->prepare("UPDATE utility_assets SET quantity = quantity - ?, updated_at = NOW() WHERE id = ?");
+                                $decStmt->execute([$requestedQty, $aid]);
+                                
+                                // 3b. Insert new split asset
+                                $newAssetId = $assetRow['asset_id'];
+                                $insStmt = $pdo->prepare("
+                                    INSERT INTO utility_assets (
+                                        asset_id, name, asset_type_id, quantity, location, 
+                                        latitude, longitude, date_installed, condition_status, 
+                                        description, responsible_office, cprf_facility_id, 
+                                        cprf_custody_status, created_at, updated_at
+                                    ) VALUES (?, ?, ?, ?, COALESCE(NULLIF(?,''), CONCAT('CPRF: ', ?)), ?, ?, ?, ?, ?, ?, ?, 'ON_LOAN_AT_FACILITY', NOW(), NOW())
+                                ");
+                                $insStmt->execute([
+                                    $newAssetId,
+                                    $assetRow['name'],
+                                    $assetRow['asset_type_id'],
+                                    $requestedQty,
+                                    $assetRow['location'],
+                                    $facilityName,
+                                    $assetRow['latitude'],
+                                    $assetRow['longitude'],
+                                    $assetRow['date_installed'],
+                                    $assetRow['condition_status'],
+                                    $assetRow['description'],
+                                    $assetRow['responsible_office'],
+                                    $facilityId
+                                ]);
+                                $assignedAid = $pdo->lastInsertId();
+                            }
                         }
 
                         $assigned++;
