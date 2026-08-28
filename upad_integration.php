@@ -811,16 +811,22 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                                 };
                                                 echo $statusDisplay;
 
-                                                // Build dynamic problem-aware AI recommendation string
+                                                // Build dynamic problem-aware recommendation string
                                                 $dynamicRecom = !empty($r['corrective_recommendation']) ? $r['corrective_recommendation'] : (!empty($r['remarks']) ? $r['remarks'] : "Conduct physical site audit of service drop entrance, transformer load, and metering equipment in " . ($r['barangay'] ?? 'Central') . " prior to final energization.");
                                             ?>
+                                            <?php if (!empty($r['result_payload'])): ?>
+                                                <br><a href="javascript:void(0)" onclick="openPayloadModal('<?php echo htmlspecialchars(addslashes($r['result_payload'])); ?>')" style="font-size: 11px; color: #3b82f6; font-weight: 600; margin-top: 4px; display: inline-flex; align-items: center; gap: 3px; text-decoration: none;">
+                                                    <i class="fas fa-file-code"></i> View Sent Data
+                                                </a>
+                                            <?php endif; ?>
                                         </td>
                                         <td>
                                             <div style="display:flex; gap:6px; flex-wrap:wrap;">
                                                 <button type="button" class="btn btn-success" style="padding: 6px 14px; font-size: 12px; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;" 
                                                         onclick="openApproveModal(
                                                             '<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>',
-                                                            '<?php echo $aiScore !== null ? (int)round($aiScore) : 'N/A'; ?>'
+                                                            '<?php echo $aiScore !== null ? (int)round($aiScore) : 'N/A'; ?>',
+                                                            '<?php echo (int)($r['application_id'] ?? 0); ?>'
                                                         )" title="Approve inspection">
                                                     <i class="fas fa-check-circle"></i> Approve
                                                 </button>
@@ -829,7 +835,8 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                                         onclick="openRejectModal(
                                                             '<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>',
                                                             '<?php echo $aiScore !== null ? (int)round($aiScore) : 'N/A'; ?>',
-                                                            '<?php echo htmlspecialchars(addslashes($dynamicRecom)); ?>'
+                                                            '<?php echo htmlspecialchars(addslashes($dynamicRecom)); ?>',
+                                                            '<?php echo (int)($r['application_id'] ?? 0); ?>'
                                                         )" title="Reject inspection and edit recommendation">
                                                     <i class="fas fa-times-circle"></i> Reject
                                                 </button>
@@ -847,7 +854,7 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     <!-- Approval & Confirmation Modal -->
     <div class="modal" id="approveModal">
-        <div class="modal-content" style="max-width: 620px;">
+        <div class="modal-content" style="max-width: 650px;">
             <div class="modal-header">
                 <h3><i class="fas fa-check-circle" style="color: #10b981;"></i> Confirm Inspection Approval</h3>
                 <button type="button" onclick="closeApproveModal()" style="border:none; background:none; font-size:18px; cursor:pointer;">&times;</button>
@@ -857,7 +864,7 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <input type="hidden" name="reference_id" id="app_ref_id">
 
                 <div style="padding: 10px 0;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; background: #ecfdf5; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #a7f3d0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; background: #ecfdf5; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #a7f3d0;">
                         <div>
                             <small style="color: #065f46; font-weight: 600; text-transform: uppercase; font-size: 11px;">Inspection Ref ID</small>
                             <h4 id="app_ref_display" style="margin: 2px 0 0 0; font-size: 18px; font-weight: 700; color: #065f46;">-</h4>
@@ -865,6 +872,21 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <div style="text-align: right;">
                             <small style="color: #065f46; font-weight: 600; text-transform: uppercase; font-size: 11px;">Inspection Score</small>
                             <div id="app_score_display" style="font-size: 20px; font-weight: 800; color: #059669; font-family: monospace;">-%</div>
+                        </div>
+                    </div>
+
+                    <!-- Outgoing UPAD Integration Data Preview -->
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 16px; margin-bottom: 15px;">
+                        <div style="font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 5px;">
+                            <i class="fas fa-paper-plane" style="color: #10b981;"></i> Outgoing UPAD Integration Data Fields:
+                        </div>
+                        <div style="font-family: monospace; font-size: 11px; color: #334155; line-height: 1.6; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 15px;">
+                            <div><strong>application_id:</strong> #<span id="app_pay_app_id">-</span></div>
+                            <div><strong>grid_id:</strong> <span id="app_pay_grid_id">-</span></div>
+                            <div><strong>overall_condition:</strong> Good</div>
+                            <div><strong>severity:</strong> Low</div>
+                            <div><strong>engineer_assigned:</strong> Engr. Juan Dela Cruz</div>
+                            <div><strong>inspection_date:</strong> <?php echo date('Y-m-d'); ?></div>
                         </div>
                     </div>
 
@@ -889,7 +911,7 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     <!-- Rejection & Editable Corrective Action Modal -->
     <div class="modal" id="rejectModal">
-        <div class="modal-content" style="max-width: 620px;">
+        <div class="modal-content" style="max-width: 650px;">
             <div class="modal-header">
                 <h3><i class="fas fa-times-circle" style="color: #ef4444;"></i> Reject Inspection & Edit Corrective Action</h3>
                 <button type="button" onclick="closeRejectModal()" style="border:none; background:none; font-size:18px; cursor:pointer;">&times;</button>
@@ -899,7 +921,7 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <input type="hidden" name="reference_id" id="rej_ref_id">
 
                 <div style="padding: 10px 0;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; background: #fef2f2; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #fecaca;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; background: #fef2f2; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #fecaca;">
                         <div>
                             <small style="color: #991b1b; font-weight: 600; text-transform: uppercase; font-size: 11px;">Inspection Ref ID</small>
                             <h4 id="rej_ref_display" style="margin: 2px 0 0 0; font-size: 18px; font-weight: 700; color: #991b1b;">-</h4>
@@ -907,6 +929,21 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <div style="text-align: right;">
                             <small style="color: #991b1b; font-weight: 600; text-transform: uppercase; font-size: 11px;">Inspection Score</small>
                             <div id="rej_score_display" style="font-size: 20px; font-weight: 800; color: #dc2626; font-family: monospace;">-%</div>
+                        </div>
+                    </div>
+
+                    <!-- Outgoing UPAD Integration Data Preview -->
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 16px; margin-bottom: 15px;">
+                        <div style="font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 5px;">
+                            <i class="fas fa-paper-plane" style="color: #ef4444;"></i> Outgoing UPAD Integration Data Fields:
+                        </div>
+                        <div style="font-family: monospace; font-size: 11px; color: #334155; line-height: 1.6; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 15px;">
+                            <div><strong>application_id:</strong> #<span id="rej_pay_app_id">-</span></div>
+                            <div><strong>grid_id:</strong> <span id="rej_pay_grid_id">-</span></div>
+                            <div><strong>overall_condition:</strong> Poor</div>
+                            <div><strong>severity:</strong> High</div>
+                            <div><strong>engineer_assigned:</strong> Engr. Juan Dela Cruz</div>
+                            <div><strong>inspection_date:</strong> <?php echo date('Y-m-d'); ?></div>
                         </div>
                     </div>
 
@@ -932,26 +969,60 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
     </div>
 
+    <!-- Outgoing Payload Viewer Modal -->
+    <div class="modal" id="payloadModal">
+        <div class="modal-content" style="max-width: 650px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-paper-plane" style="color: #3b82f6;"></i> Actual Outgoing UPAD Inspection Payload Data</h3>
+                <button type="button" onclick="closePayloadModal()" style="border:none; background:none; font-size:18px; cursor:pointer;">&times;</button>
+            </div>
+            <div style="padding: 10px 0;">
+                <div style="background: #0f172a; color: #38bdf8; padding: 16px; border-radius: 12px; font-family: monospace; font-size: 12px; line-height: 1.6; max-height: 350px; overflow-y: auto; white-space: pre-wrap;" id="payload_json_box">
+                </div>
+                <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
+                    <button type="button" class="btn btn-outline" onclick="closePayloadModal()">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
-        function openApproveModal(refId, score) {
+        function openApproveModal(refId, score, appId) {
             document.getElementById('app_ref_id').value = refId;
             document.getElementById('app_ref_display').innerText = refId;
             document.getElementById('app_score_display').innerText = (score !== 'N/A') ? score + '%' : 'N/A';
+            document.getElementById('app_pay_app_id').innerText = appId || '0';
+            document.getElementById('app_pay_grid_id').innerText = refId;
             document.getElementById('approveModal').classList.add('show');
         }
         function closeApproveModal() {
             document.getElementById('approveModal').classList.remove('show');
         }
 
-        function openRejectModal(refId, score, recommendation) {
+        function openRejectModal(refId, score, recommendation, appId) {
             document.getElementById('rej_ref_id').value = refId;
             document.getElementById('rej_ref_display').innerText = refId;
             document.getElementById('rej_score_display').innerText = (score !== 'N/A') ? score + '%' : 'N/A';
+            document.getElementById('rej_pay_app_id').innerText = appId || '0';
+            document.getElementById('rej_pay_grid_id').innerText = refId;
             document.getElementById('rej_recom_textarea').value = recommendation;
             document.getElementById('rejectModal').classList.add('show');
         }
         function closeRejectModal() {
             document.getElementById('rejectModal').classList.remove('show');
+        }
+
+        function openPayloadModal(rawJson) {
+            try {
+                const parsed = JSON.parse(rawJson);
+                document.getElementById('payload_json_box').innerText = JSON.stringify(parsed, null, 2);
+            } catch(e) {
+                document.getElementById('payload_json_box').innerText = rawJson;
+            }
+            document.getElementById('payloadModal').classList.add('show');
+        }
+        function closePayloadModal() {
+            document.getElementById('payloadModal').classList.remove('show');
         }
 
         function filterRequests(status, element) {
