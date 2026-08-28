@@ -1081,28 +1081,84 @@
                 display: block;
                 padding: 0 1.25rem;
                 position: relative;
-                overflow: hidden;
+                height: 400px; /* fixed height for stack */
+                margin-top: 1rem;
+                overflow: visible !important;
             }
             .modules-carousel-track {
-                display: flex;
-                transition: transform 0.45s cubic-bezier(0.32, 0.72, 0, 1);
-                will-change: transform;
+                position: relative;
+                width: 100%;
+                height: 100%;
+                overflow: visible !important;
             }
             .modules-carousel-track .module-card {
-                flex: 0 0 100%;
-                width: 100%;
-                min-width: 0;
+                position: absolute !important;
+                top: 0;
+                left: 0;
+                width: 100% !important;
+                height: 100% !important;
+                margin: 0 !important;
                 box-sizing: border-box;
-                margin: 0;
-                /* override hover-lift transform on touch */
-                transform: none !important;
+                background: #ffffff;
+                border-radius: var(--radius-modern);
+                padding: 2.2rem 1.8rem;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08) !important;
+                border: 1px solid rgba(11, 61, 145, 0.08);
+                transform-origin: center bottom;
+                transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+                            opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+                            z-index 0.45s ease;
+                opacity: 0;
+                pointer-events: none;
+                z-index: 0;
+                transform: translate3d(0, 20px, 0) scale(0.9);
             }
+
+            .dark-theme .modules-carousel-track .module-card {
+                background: #111827 !important;
+                border-color: rgba(255, 255, 255, 0.08) !important;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4) !important;
+            }
+
+            /* Front/active card */
+            .modules-carousel-track .module-card.card-active {
+                opacity: 1;
+                pointer-events: auto;
+                z-index: 3;
+                transform: translate3d(0, 0, 0) scale(1);
+            }
+
+            /* Stacked card behind front card */
+            .modules-carousel-track .module-card.card-next {
+                opacity: 0.7;
+                pointer-events: none;
+                z-index: 2;
+                transform: translate3d(0, 16px, 0) scale(0.94);
+            }
+
+            /* Fly-out animation classes */
+            .modules-carousel-track .module-card.card-swiped-left {
+                opacity: 0;
+                pointer-events: none;
+                z-index: 4;
+                transform: translate3d(-130%, 0, 0) rotate(-12deg) !important;
+            }
+
+            .modules-carousel-track .module-card.card-swiped-right {
+                opacity: 0;
+                pointer-events: none;
+                z-index: 4;
+                transform: translate3d(130%, 0, 0) rotate(12deg) !important;
+            }
+
             /* Dot indicators */
             .carousel-dots {
                 display: flex;
                 justify-content: center;
                 gap: 6px;
-                margin-top: 16px;
+                margin-top: 32px;
+                position: relative;
+                z-index: 10;
             }
             .carousel-dot {
                 width: 8px;
@@ -1118,6 +1174,45 @@
                 background: var(--civic-sapphire);
                 width: 22px;
                 border-radius: 99px;
+            }
+
+            /* ── Footer mobile space optimization ── */
+            .civic-footer {
+                padding: 2rem 0 1rem !important;
+            }
+            .footer-grid {
+                grid-template-columns: 1fr !important;
+                gap: 1.5rem !important;
+            }
+            /* Place link groups side-by-side on mobile to save vertical space */
+            .footer-grid > div:not(.footer-brand) {
+                display: inline-block !important;
+                width: 46% !important;
+                margin-right: 3% !important;
+                vertical-align: top !important;
+                margin-bottom: 1rem !important;
+                box-sizing: border-box !important;
+            }
+            .footer-grid > div:last-child {
+                width: 95% !important;
+                margin-right: 0 !important;
+            }
+            .footer-brand {
+                margin-bottom: 0.5rem !important;
+            }
+            .footer-description {
+                font-size: 0.85rem !important;
+                line-height: 1.5 !important;
+            }
+            .footer-heading {
+                font-size: 0.95rem !important;
+                margin-bottom: 0.6rem !important;
+            }
+            .footer-links li {
+                margin-bottom: 0.4rem !important;
+            }
+            .footer-links a {
+                font-size: 0.85rem !important;
             }
         }
     </style>
@@ -1498,8 +1593,8 @@
             <!-- Column 1: Brand -->
             <div class="footer-brand">
                 <div class="footer-logo">
-                    <div class="footer-logo-icon">
-                        <i class="fas fa-bolt"></i>
+                    <div class="footer-logo-icon" style="padding: 4px; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                        <img src="assets/images/logocityhall.png" alt="QC Logo" style="width: 100%; height: 100%; object-fit: contain;">
                     </div>
                     <span class="footer-logo-text">Quezon City<br><small>Web-Based Utilities Management</small></span>
                 </div>
@@ -1736,10 +1831,16 @@
     </script>
 
     <script>
-        /* ── Featured Services Carousel (mobile only) ── */
+        /* ── Featured Services Layered Stack Carousel (mobile only) ── */
         (function() {
+            let carouselInitialized = false;
+
             function initCarousel() {
-                if (window.innerWidth > 768) return; // desktop: do nothing
+                if (window.innerWidth > 768) {
+                    carouselInitialized = false;
+                    return; // desktop: do nothing
+                }
+                if (carouselInitialized) return;
 
                 const wrapper  = document.getElementById('modulesCarousel');
                 const track    = document.getElementById('modulesTrack');
@@ -1751,70 +1852,166 @@
                 let current    = 0;
                 let autoTimer  = null;
                 let startX     = 0;
+                let startY     = 0;
                 let isDragging = false;
+                let currentX   = 0;
 
-                // Build dot buttons
+                carouselInitialized = true;
+
+                // Build dot indicators
                 dotsBox.innerHTML = '';
                 cards.forEach((_, i) => {
                     const dot = document.createElement('button');
                     dot.className = 'carousel-dot' + (i === 0 ? ' active' : '');
                     dot.setAttribute('aria-label', 'Slide ' + (i + 1));
-                    dot.addEventListener('click', () => goTo(i));
+                    dot.addEventListener('click', () => {
+                        stopAuto();
+                        goTo(i);
+                        startAuto();
+                    });
                     dotsBox.appendChild(dot);
                 });
 
-                function goTo(index) {
-                    current = (index + total) % total;
-                    track.style.transform = `translateX(-${current * 100}%)`;
+                function updateStackClasses() {
+                    cards.forEach((card, i) => {
+                        card.className = 'module-card'; // reset classes
+                        card.style.transform = '';     // clear inline dragging styles
+                        card.style.opacity = '';
+                        card.style.zIndex = '';
+                        
+                        const nextIndex = (current + 1) % total;
+                        
+                        if (i === current) {
+                            card.classList.add('card-active');
+                        } else if (i === nextIndex) {
+                            card.classList.add('card-next');
+                        }
+                    });
+
                     dotsBox.querySelectorAll('.carousel-dot').forEach((d, i) => {
                         d.classList.toggle('active', i === current);
                     });
                 }
 
+                function goTo(index) {
+                    current = (index + total) % total;
+                    updateStackClasses();
+                }
+
+                function nextSlide() {
+                    const activeCard = cards[current];
+                    if (!activeCard) return;
+
+                    // Tinder fly-away animation to left
+                    activeCard.classList.add('card-swiped-left');
+
+                    // Promote next card immediately to top card
+                    current = (current + 1) % total;
+                    
+                    setTimeout(() => {
+                        updateStackClasses();
+                    }, 350);
+                }
+
                 function startAuto() {
                     stopAuto();
-                    autoTimer = setInterval(() => goTo(current + 1), 5000);
+                    autoTimer = setInterval(nextSlide, 5000);
                 }
 
                 function stopAuto() {
                     if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
                 }
 
-                // Touch / mouse swipe
-                function onDragStart(e) {
-                    startX = e.touches ? e.touches[0].clientX : e.clientX;
+                // Touch / Swipe controls
+                function onTouchStart(e) {
+                    const t = e.touches ? e.touches[0] : e;
+                    startX = t.clientX;
+                    startY = t.clientY;
                     isDragging = true;
+                    currentX = 0;
                     stopAuto();
+                    
+                    const activeCard = cards[current];
+                    if (activeCard) {
+                        activeCard.style.transition = 'none';
+                    }
                 }
-                function onDragEnd(e) {
+
+                function onTouchMove(e) {
+                    if (!isDragging) return;
+                    const t = e.touches ? e.touches[0] : e;
+                    const diffX = t.clientX - startX;
+                    const diffY = t.clientY - startY;
+
+                    if (Math.abs(diffX) > Math.abs(diffY)) {
+                        if (e.cancelable) e.preventDefault();
+                    }
+
+                    currentX = diffX;
+                    const activeCard = cards[current];
+                    if (activeCard) {
+                        const rotation = diffX * 0.04;
+                        activeCard.style.transform = `translate3d(${diffX}px, 0, 0) rotate(${rotation}deg)`;
+                    }
+                }
+
+                function onTouchEnd() {
                     if (!isDragging) return;
                     isDragging = false;
-                    const endX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
-                    const diff = startX - endX;
-                    if (Math.abs(diff) > 40) {
-                        goTo(diff > 0 ? current + 1 : current - 1);
+
+                    const activeCard = cards[current];
+                    if (!activeCard) return;
+
+                    activeCard.style.transition = '';
+
+                    if (Math.abs(currentX) > 80) {
+                        // Swipe animation
+                        const swipeClass = currentX > 0 ? 'card-swiped-right' : 'card-swiped-left';
+                        activeCard.classList.add(swipeClass);
+
+                        current = (current + 1) % total;
+                        setTimeout(() => {
+                            updateStackClasses();
+                        }, 300);
+                    } else {
+                        // Snap back
+                        activeCard.style.transform = '';
                     }
+
                     startAuto();
                 }
 
-                track.addEventListener('touchstart', onDragStart, { passive: true });
-                track.addEventListener('touchend',   onDragEnd,   { passive: true });
-                track.addEventListener('mousedown',  onDragStart);
-                track.addEventListener('mouseup',    onDragEnd);
+                // Bind touch events
+                track.addEventListener('touchstart', onTouchStart, { passive: true });
+                track.addEventListener('touchmove',  onTouchMove,  { passive: false });
+                track.addEventListener('touchend',    onTouchEnd);
 
-                // Pause on hover (desktop-like fallback)
-                wrapper.addEventListener('mouseenter', stopAuto);
-                wrapper.addEventListener('mouseleave', startAuto);
+                // Bind mouse fallback events
+                let mouseIsDown = false;
+                track.addEventListener('mousedown', (e) => {
+                    mouseIsDown = true;
+                    onTouchStart(e);
+                });
+                window.addEventListener('mousemove', (e) => {
+                    if (!mouseIsDown) return;
+                    onTouchMove(e);
+                });
+                window.addEventListener('mouseup', (e) => {
+                    if (!mouseIsDown) return;
+                    mouseIsDown = false;
+                    onTouchEnd();
+                });
 
                 goTo(0);
                 startAuto();
             }
 
             document.addEventListener('DOMContentLoaded', initCarousel);
-            window.addEventListener('resize', () => {
-                // Re-init if viewport crosses the 768px boundary
-                if (window.innerWidth <= 768) initCarousel();
-            });
+            window.addEventListener('resize', initCarousel);
+            // Run immediately in case DOMContentLoaded already fired
+            if (document.readyState === 'complete' || document.readyState === 'interactive') {
+                initCarousel();
+            }
         })();
     </script>
 </body>
