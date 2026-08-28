@@ -106,6 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['otp'])) {
             $_SESSION['full_name'] = $pendingUser['name'];
             $_SESSION['user_email']= $pendingUser['email'];
             $_SESSION['logged_in'] = true;
+            $_SESSION['just_logged_in'] = true;
 
             $stmt = $pdo->prepare("UPDATE users SET last_login = NOW() WHERE id = ?");
             $stmt->execute([$pendingUser['id']]);

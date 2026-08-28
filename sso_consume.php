@@ -85,6 +85,7 @@ $_SESSION['user_name'] = $user['full_name'];
 $_SESSION['full_name'] = $user['full_name'];
 $_SESSION['user_email'] = $user['email'];
 $_SESSION['logged_in'] = true;
+$_SESSION['just_logged_in'] = true;
 $_SESSION['sso_from_mainlgu'] = true;
 
 $pdo->prepare('UPDATE users SET login_attempts = 0, blocked_until = NULL WHERE id = ?')->execute([$user['id']]);

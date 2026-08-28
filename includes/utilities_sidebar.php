@@ -2460,3 +2460,242 @@ window.addEventListener('beforeunload', function() {
     if (spinner) spinner.classList.remove('hidden');
 });
 </script>
+
+<?php
+$triggerSplash = false;
+if (isset($_SESSION['just_logged_in']) && $_SESSION['just_logged_in'] === true) {
+    $triggerSplash = true;
+    unset($_SESSION['just_logged_in']);
+}
+?>
+<!-- SYSTEM LOGO INTRO ANIMATION ON LOGIN -->
+<div id="login-logo-splash" class="login-logo-splash-overlay<?php echo $triggerSplash ? ' active' : ''; ?>" role="dialog" aria-modal="true" aria-label="System Login Intro">
+    <div class="splash-content">
+        <div class="splash-logo-wrapper">
+            <div class="splash-glow-ring"></div>
+            <div class="splash-glow-ring-inner"></div>
+            <img src="<?php echo $sidebarBase; ?>assets/images/logocityhall.png" alt="System Logo" class="splash-logo-img">
+        </div>
+        <div class="splash-brand-details">
+            <h1 class="splash-title">UMAN</h1>
+            <p class="splash-subtitle">Utilities Management System</p>
+            <div class="splash-welcome-pill"><i class="fas fa-user-check"></i> Welcome back, <?php echo $userName; ?></div>
+        </div>
+        <div class="splash-progress-track">
+            <div class="splash-progress-bar"></div>
+        </div>
+    </div>
+</div>
+
+<style>
+.login-logo-splash-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: radial-gradient(circle at center, #0f172a 0%, #070b14 100%);
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+    z-index: 9999999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    opacity: 0;
+    transition: opacity 0.55s cubic-bezier(0.4, 0, 0.2, 1), transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.login-logo-splash-overlay.active {
+    display: flex !important;
+    opacity: 1 !important;
+}
+
+.login-logo-splash-overlay.splash-exit {
+    opacity: 0 !important;
+    transform: scale(1.08) !important;
+    pointer-events: none !important;
+}
+
+.splash-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 30px;
+    position: relative;
+    z-index: 2;
+    font-family: 'Poppins', sans-serif;
+}
+
+.splash-logo-wrapper {
+    position: relative;
+    width: 150px;
+    height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24px;
+}
+
+.splash-glow-ring {
+    position: absolute;
+    width: 170px;
+    height: 170px;
+    border-radius: 50%;
+    background: conic-gradient(from 0deg, #3762c8, #00A896, #6384d2, #3762c8);
+    animation: splashSpinGlow 3s linear infinite;
+    filter: blur(14px);
+    opacity: 0.8;
+}
+
+.splash-glow-ring-inner {
+    position: absolute;
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    box-shadow: 0 0 35px rgba(55, 98, 200, 0.6), inset 0 0 20px rgba(0, 168, 150, 0.35);
+    animation: splashPulseRing 2s ease-in-out infinite alternate;
+}
+
+.splash-logo-img {
+    width: 105px;
+    height: 105px;
+    object-fit: contain;
+    position: relative;
+    z-index: 3;
+    filter: drop-shadow(0 10px 25px rgba(0, 0, 0, 0.6));
+    animation: splashLogoEntrance 0.85s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.splash-brand-details {
+    opacity: 0;
+    transform: translateY(18px);
+    animation: splashTextRise 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.35s forwards;
+}
+
+.splash-title {
+    font-family: 'Poppins', sans-serif;
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: 3px;
+    background: linear-gradient(135deg, #ffffff 0%, #93c5fd 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 4px;
+    line-height: 1.1;
+}
+
+.splash-subtitle {
+    font-size: 13px;
+    color: #94a3b8;
+    font-weight: 500;
+    letter-spacing: 0.8px;
+    margin-bottom: 14px;
+}
+
+.splash-welcome-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 16px;
+    background: rgba(55, 98, 200, 0.25);
+    border: 1px solid rgba(99, 132, 210, 0.35);
+    border-radius: 99px;
+    color: #93c5fd;
+    font-size: 12px;
+    font-weight: 600;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+}
+
+.splash-progress-track {
+    width: 200px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 99px;
+    margin-top: 26px;
+    overflow: hidden;
+    position: relative;
+}
+
+.splash-progress-bar {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, #3762c8, #00A896, #6384d2);
+    border-radius: 99px;
+    animation: splashFillProgress 1.65s cubic-bezier(0.4, 0, 0.2, 1) 0.2s forwards;
+}
+
+@keyframes splashSpinGlow {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes splashPulseRing {
+    0% { transform: scale(0.94); opacity: 0.5; }
+    100% { transform: scale(1.06); opacity: 1; }
+}
+
+@keyframes splashLogoEntrance {
+    0% {
+        opacity: 0;
+        transform: scale(0.2) rotate(-18deg);
+    }
+    70% {
+        transform: scale(1.12) rotate(3deg);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) rotate(0deg);
+    }
+}
+
+@keyframes splashTextRise {
+    0% {
+        opacity: 0;
+        transform: translateY(18px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes splashFillProgress {
+    0% { width: 0%; }
+    100% { width: 100%; }
+}
+</style>
+
+<script>
+(function() {
+    const splash = document.getElementById('login-logo-splash');
+    if (!splash) return;
+    
+    // Check if triggered via session OR client sessionStorage flag
+    const clientTrigger = sessionStorage.getItem('just_logged_in') === 'true';
+    const serverTrigger = splash.classList.contains('active');
+    
+    if (serverTrigger || clientTrigger) {
+        splash.classList.add('active');
+        sessionStorage.removeItem('just_logged_in');
+        
+        // Hide standard spinner while splash plays
+        const globalSpinner = document.getElementById('global-spinner');
+        if (globalSpinner) globalSpinner.classList.add('hidden');
+
+        document.body.style.overflow = 'hidden';
+        
+        setTimeout(function() {
+            splash.classList.add('splash-exit');
+            setTimeout(function() {
+                splash.classList.remove('active');
+                splash.style.display = 'none';
+                document.body.style.overflow = '';
+            }, 550);
+        }, 1950);
+    }
+})();
+</script>
