@@ -100,12 +100,15 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
         border: 1px solid rgba(255, 255, 255, 0.18);
         border-radius: 32px;
         display: flex;
-        align-items: center;
-        justify-content: space-around;
-        padding: 0 10px;
+        flex-direction: column;
+        justify-content: flex-end;
+        overflow: hidden;
+        padding: 0;
         z-index: 10000;
         box-shadow: 0 12px 35px rgba(0, 0, 0, 0.4);
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: height 0.38s cubic-bezier(0.32, 0.72, 0, 1),
+                    border-radius 0.38s cubic-bezier(0.32, 0.72, 0, 1),
+                    box-shadow 0.38s ease;
         font-family: 'Poppins', sans-serif;
     }
 
@@ -119,6 +122,187 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
         background: #111827;
         border: 1px solid #1f2937;
         box-shadow: 0 12px 35px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Expanded state - bar grows upward to show menu */
+    .citizen-bottom-nav.menu-expanded {
+        height: auto;
+        border-radius: 24px;
+        box-shadow: 0 -4px 40px rgba(0, 0, 0, 0.35), 0 12px 35px rgba(0, 0, 0, 0.4);
+    }
+
+    /* The row of nav items pinned to the bottom */
+    .citizen-bottom-nav-items {
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+        width: 100%;
+        height: 66px;
+        flex-shrink: 0;
+        padding: 0 10px;
+    }
+
+    /* Expanded menu panel that sits above the nav items */
+    .citizen-bottom-menu-panel {
+        width: 100%;
+        max-height: 0;
+        overflow: hidden;
+        opacity: 0;
+        transition: max-height 0.36s cubic-bezier(0.32, 0.72, 0, 1),
+                    opacity 0.28s ease,
+                    padding 0.3s ease;
+        padding: 0 14px;
+        box-sizing: border-box;
+    }
+
+    .citizen-bottom-nav.menu-expanded .citizen-bottom-menu-panel {
+        max-height: 360px;
+        opacity: 1;
+        padding: 18px 14px 0 14px;
+    }
+
+    /* Divider between expanded panel and nav items */
+    .citizen-bottom-nav.menu-expanded .citizen-bottom-menu-divider {
+        display: block !important;
+    }
+
+    .citizen-bottom-menu-divider {
+        display: none;
+        height: 1px;
+        background: rgba(255, 255, 255, 0.1);
+        margin: 0 14px;
+        flex-shrink: 0;
+    }
+
+    body:not(.dark-theme) .citizen-bottom-menu-divider {
+        background: rgba(0, 0, 0, 0.08);
+    }
+
+    /* Menu panel user header */
+    .citizen-panel-user {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding-bottom: 14px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        margin-bottom: 12px;
+    }
+
+    body:not(.dark-theme) .citizen-panel-user {
+        border-bottom-color: rgba(0, 0, 0, 0.08);
+    }
+
+    .citizen-panel-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #3762c8, #6384d2);
+        display: grid;
+        place-items: center;
+        color: #fff;
+        font-size: 16px;
+        flex-shrink: 0;
+        box-shadow: 0 4px 12px rgba(55, 98, 200, 0.3);
+    }
+
+    .citizen-panel-name {
+        font-size: 14px;
+        font-weight: 700;
+        color: #f8fafc;
+        line-height: 1.2;
+    }
+
+    body:not(.dark-theme) .citizen-panel-name {
+        color: #1e293b;
+    }
+
+    .citizen-panel-role {
+        font-size: 11px;
+        color: #94a3b8;
+        font-weight: 500;
+    }
+
+    /* Menu panel items */
+    .citizen-panel-items {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+        padding-bottom: 14px;
+    }
+
+    .citizen-panel-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 14px;
+        border-radius: 12px;
+        text-decoration: none;
+        color: #f8fafc;
+        font-size: 13px;
+        font-weight: 600;
+        background: rgba(255, 255, 255, 0.07);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        transition: background 0.2s ease, transform 0.15s ease;
+        cursor: pointer;
+        width: 100%;
+        text-align: left;
+        box-sizing: border-box;
+    }
+
+    body:not(.dark-theme) .citizen-panel-item {
+        color: #1e293b;
+        background: rgba(0, 0, 0, 0.04);
+        border-color: rgba(0, 0, 0, 0.08);
+    }
+
+    .citizen-panel-item:hover {
+        background: rgba(55, 98, 200, 0.18);
+        transform: translateX(3px);
+    }
+
+    body:not(.dark-theme) .citizen-panel-item:hover {
+        background: rgba(55, 98, 200, 0.08);
+    }
+
+    .citizen-panel-item.logout-item {
+        color: #f87171;
+        background: rgba(239, 68, 68, 0.08);
+        border-color: rgba(239, 68, 68, 0.2);
+    }
+
+    body:not(.dark-theme) .citizen-panel-item.logout-item {
+        color: #dc2626;
+        background: #fef2f2;
+        border-color: #fee2e2;
+    }
+
+    .citizen-panel-item.logout-item:hover {
+        background: rgba(239, 68, 68, 0.18);
+    }
+
+    .citizen-panel-item-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .citizen-panel-item-left i {
+        width: 20px;
+        text-align: center;
+        font-size: 14px;
+        color: #6384d2;
+    }
+
+    body:not(.dark-theme) .citizen-panel-item-left i {
+        color: #3762c8;
+    }
+
+    .citizen-panel-item.logout-item .citizen-panel-item-left i {
+        color: #f87171;
+    }
+
+    body:not(.dark-theme) .citizen-panel-item.logout-item .citizen-panel-item-left i {
+        color: #dc2626;
     }
 
     .citizen-bottom-item {
@@ -195,170 +379,7 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
         border-color: #ffffff;
     }
 
-    /* Slide-Up Citizen Action Menu Sheet */
-    .citizen-menu-sheet {
-        position: fixed;
-        bottom: -100%;
-        left: 50%;
-        transform: translate3d(-50%, 0, 0);
-        width: 92%;
-        max-width: 640px;
-        background: #ffffff;
-        border: 1px solid rgba(0, 0, 0, 0.08);
-        border-radius: 24px;
-        padding: 20px 20px 24px 20px;
-        box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.15), 0 10px 30px rgba(0, 0, 0, 0.1);
-        z-index: 10001;
-        transition: bottom 0.35s cubic-bezier(0.32, 0.72, 0, 1), transform 0.35s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.25s ease;
-        font-family: 'Poppins', sans-serif;
-    }
 
-    .dark-theme .citizen-menu-sheet {
-        background: #1e293b;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5), 0 10px 30px rgba(0, 0, 0, 0.4);
-    }
-
-    .citizen-menu-sheet.open {
-        bottom: 96px; /* Floats perfectly above bottom: 16px + height: 66px = 82px */
-    }
-
-    .citizen-sheet-handle {
-        width: 42px;
-        height: 5px;
-        background: #cbd5e1;
-        border-radius: 99px;
-        margin: 0 auto 16px auto;
-        cursor: grab;
-        user-select: none;
-    }
-
-    .citizen-sheet-handle:active {
-        cursor: grabbing;
-    }
-
-    .dark-theme .citizen-sheet-handle {
-        background: #475569;
-    }
-
-    .citizen-sheet-header {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        padding-bottom: 14px;
-        border-bottom: 1px solid #f1f5f9;
-        margin-bottom: 14px;
-    }
-
-    .dark-theme .citizen-sheet-header {
-        border-bottom-color: #334155;
-    }
-
-    .citizen-sheet-avatar {
-        width: 46px;
-        height: 46px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #3762c8, #6384d2);
-        display: grid;
-        place-items: center;
-        color: #fff;
-        font-size: 18px;
-        box-shadow: 0 4px 12px rgba(55, 98, 200, 0.3);
-    }
-
-    .citizen-sheet-user-name {
-        font-size: 15px;
-        font-weight: 700;
-        color: #1e293b;
-    }
-
-    .dark-theme .citizen-sheet-user-name {
-        color: #f8fafc;
-    }
-
-    .citizen-sheet-user-role {
-        font-size: 12px;
-        color: #64748b;
-        font-weight: 500;
-    }
-
-    .dark-theme .citizen-sheet-user-role {
-        color: #94a3b8;
-    }
-
-    .citizen-sheet-menu {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-    }
-
-    .citizen-sheet-item {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 12px 16px;
-        border-radius: 12px;
-        text-decoration: none;
-        color: #1e293b;
-        font-size: 13.5px;
-        font-weight: 600;
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        transition: all 0.2s ease;
-        cursor: pointer;
-    }
-
-    .dark-theme .citizen-sheet-item {
-        background: #0f172a;
-        border-color: #334155;
-        color: #f8fafc;
-    }
-
-    .citizen-sheet-item:hover {
-        background: #edf2f7;
-        transform: translateX(4px);
-    }
-
-    .dark-theme .citizen-sheet-item:hover {
-        background: #1e293b;
-    }
-
-    .citizen-sheet-item-left {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .citizen-sheet-item-left i {
-        width: 22px;
-        font-size: 16px;
-        color: #3762c8;
-        text-align: center;
-    }
-
-    .dark-theme .citizen-sheet-item-left i {
-        color: #6384d2;
-    }
-
-    .citizen-sheet-backdrop {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
-        backdrop-filter: blur(4px);
-        -webkit-backdrop-filter: blur(4px);
-        z-index: 10000;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-    }
-
-    .citizen-sheet-backdrop.active {
-        display: block;
-        opacity: 1;
-    }
 
     /* ===== GLASSMORPHISM SIDEBAR — matches utilities_dashboard.php exactly ===== */
     .sidebar-nav {
@@ -2087,83 +2108,85 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
 </nav>
 
 <?php if ($userType !== 'employee'): ?>
-<!-- ===== CITIZEN BOTTOM NAVIGATION BAR (Messenger Style - Photo 3) ===== -->
+<!-- ===== CITIZEN BOTTOM NAVIGATION BAR (Expandable Island) ===== -->
 <div class="citizen-bottom-nav" id="citizenBottomNav" role="navigation" aria-label="Citizen Bottom Navigation">
-    <a href="<?php echo $sidebarBase; ?>citizen.php" class="citizen-bottom-item<?php echo $currentPage === 'citizen.php' ? ' active' : ''; ?>">
-        <i class="fas fa-home"></i>
-        <span>Home</span>
-    </a>
-    <a href="<?php echo $sidebarBase; ?>citizen_reports.php" class="citizen-bottom-item<?php echo ($currentPage === 'citizen_reports.php' || $currentPage === 'citizen_submit_report.php') ? ' active' : ''; ?>">
-        <i class="fas fa-file-invoice"></i>
-        <span>Reports</span>
-        <?php if ($activeReportCount > 0): ?>
-            <span class="citizen-bottom-badge"><?php echo $activeReportCount; ?></span>
-        <?php endif; ?>
-    </a>
-    <a href="<?php echo $sidebarBase; ?>citizen_asset_request.php" class="citizen-bottom-item<?php echo $currentPage === 'citizen_asset_request.php' ? ' active' : ''; ?>">
-        <i class="fas fa-boxes-stacked"></i>
-        <span>Requests</span>
-    </a>
-    <a href="<?php echo $sidebarBase; ?>citizen_advisories.php" class="citizen-bottom-item<?php echo $currentPage === 'citizen_advisories.php' ? ' active' : ''; ?>">
-        <i class="fas fa-bullhorn"></i>
-        <span>Advisories</span>
-    </a>
-    <button type="button" class="citizen-bottom-item<?php echo ($currentPage === 'citizen_notifications.php' || $currentPage === 'citizen_profile.php') ? ' active' : ''; ?>" onclick="toggleCitizenMenuSheet()" aria-label="Open Menu">
-        <i class="fas fa-bars"></i>
-        <span>Menu</span>
-        <?php if ($unreadNotifCount > 0): ?>
-            <span class="citizen-bottom-badge"><?php echo $unreadNotifCount; ?></span>
-        <?php endif; ?>
-    </button>
-</div>
 
-<!-- Backdrop Overlay for Citizen Action Sheet -->
-<div class="citizen-sheet-backdrop" id="citizenSheetBackdrop" onclick="closeCitizenMenuSheet()"></div>
-
-<!-- ===== CITIZEN SLIDE-UP MENU SHEET ===== -->
-<div class="citizen-menu-sheet" id="citizenMenuSheet" role="dialog" aria-modal="true" aria-label="Citizen Menu">
-    <div class="citizen-sheet-handle"></div>
-    <div class="citizen-sheet-header">
-        <div class="citizen-sheet-avatar">
-            <i class="fas fa-user"></i>
+    <!-- Expanded menu panel (hidden until Menu is clicked) -->
+    <div class="citizen-bottom-menu-panel" id="citizenMenuPanel">
+        <!-- User info header -->
+        <div class="citizen-panel-user">
+            <div class="citizen-panel-avatar"><i class="fas fa-user"></i></div>
+            <div>
+                <div class="citizen-panel-name"><?php echo $userName; ?></div>
+                <div class="citizen-panel-role"><i class="fas fa-shield-alt" style="margin-right:4px; color:#3762c8;"></i>Resident Portal</div>
+            </div>
         </div>
-        <div>
-            <div class="citizen-sheet-user-name"><?php echo $userName; ?></div>
-            <div class="citizen-sheet-user-role"><i class="fas fa-shield-alt" style="margin-right:4px; color:#3762c8;"></i>Resident Portal</div>
+        <!-- Menu items -->
+        <div class="citizen-panel-items">
+            <a href="<?php echo $sidebarBase; ?>citizen_notifications.php" class="citizen-panel-item">
+                <div class="citizen-panel-item-left">
+                    <i class="fas fa-bell"></i>
+                    <span>Notifications</span>
+                </div>
+                <?php if ($unreadNotifCount > 0): ?>
+                    <span style="background:#ef4444; color:#fff; font-size:11px; padding:2px 8px; border-radius:99px; font-weight:700;"><?php echo $unreadNotifCount; ?> new</span>
+                <?php else: ?>
+                    <i class="fas fa-chevron-right" style="color:#94a3b8; font-size:12px;"></i>
+                <?php endif; ?>
+            </a>
+            <a href="<?php echo $sidebarBase; ?>citizen_profile.php" class="citizen-panel-item">
+                <div class="citizen-panel-item-left">
+                    <i class="fas fa-user-cog"></i>
+                    <span>Profile Settings</span>
+                </div>
+                <i class="fas fa-chevron-right" style="color:#94a3b8; font-size:12px;"></i>
+            </a>
+            <button type="button" class="citizen-panel-item" onclick="toggleTheme()">
+                <div class="citizen-panel-item-left">
+                    <i class="fas fa-moon" id="citizen-sheet-theme-icon"></i>
+                    <span id="citizen-sheet-theme-text">Dark Mode</span>
+                </div>
+                <span style="font-size:12px; color:#94a3b8; font-weight:500;">Toggle</span>
+            </button>
+            <button type="button" class="citizen-panel-item logout-item" onclick="confirmLogout()">
+                <div class="citizen-panel-item-left">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </div>
+                <i class="fas fa-chevron-right" style="font-size:12px;"></i>
+            </button>
         </div>
     </div>
-    <div class="citizen-sheet-menu">
-        <a href="<?php echo $sidebarBase; ?>citizen_notifications.php" class="citizen-sheet-item">
-            <div class="citizen-sheet-item-left">
-                <i class="fas fa-bell"></i>
-                <span>Notifications</span>
-            </div>
-            <?php if ($unreadNotifCount > 0): ?>
-                <span style="background:#ef4444; color:#fff; font-size:11px; padding:2px 8px; border-radius:99px; font-weight:700;"><?php echo $unreadNotifCount; ?> new</span>
-            <?php else: ?>
-                <i class="fas fa-chevron-right" style="color:#94a3b8; font-size:12px;"></i>
+
+    <div class="citizen-bottom-menu-divider"></div>
+
+    <!-- Nav items row (always visible) -->
+    <div class="citizen-bottom-nav-items">
+        <a href="<?php echo $sidebarBase; ?>citizen.php" class="citizen-bottom-item<?php echo $currentPage === 'citizen.php' ? ' active' : ''; ?>">
+            <i class="fas fa-home"></i>
+            <span>Home</span>
+        </a>
+        <a href="<?php echo $sidebarBase; ?>citizen_reports.php" class="citizen-bottom-item<?php echo ($currentPage === 'citizen_reports.php' || $currentPage === 'citizen_submit_report.php') ? ' active' : ''; ?>">
+            <i class="fas fa-file-invoice"></i>
+            <span>Reports</span>
+            <?php if ($activeReportCount > 0): ?>
+                <span class="citizen-bottom-badge"><?php echo $activeReportCount; ?></span>
             <?php endif; ?>
         </a>
-        <a href="<?php echo $sidebarBase; ?>citizen_profile.php" class="citizen-sheet-item">
-            <div class="citizen-sheet-item-left">
-                <i class="fas fa-user-cog"></i>
-                <span>Profile Settings</span>
-            </div>
-            <i class="fas fa-chevron-right" style="color:#94a3b8; font-size:12px;"></i>
+        <a href="<?php echo $sidebarBase; ?>citizen_asset_request.php" class="citizen-bottom-item<?php echo $currentPage === 'citizen_asset_request.php' ? ' active' : ''; ?>">
+            <i class="fas fa-boxes-stacked"></i>
+            <span>Requests</span>
         </a>
-        <button type="button" class="citizen-sheet-item" onclick="toggleTheme()" style="width:100%; text-align:left;">
-            <div class="citizen-sheet-item-left">
-                <i class="fas fa-moon" id="citizen-sheet-theme-icon"></i>
-                <span id="citizen-sheet-theme-text">Dark Mode</span>
-            </div>
-            <span style="font-size:12px; color:#64748b; font-weight:500;">Toggle</span>
-        </button>
-        <button type="button" class="citizen-sheet-item" onclick="confirmLogout()" style="width:100%; border-color:#fee2e2; background:#fef2f2; color:#dc2626;">
-            <div class="citizen-sheet-item-left">
-                <i class="fas fa-sign-out-alt" style="color:#dc2626;"></i>
-                <span style="color:#dc2626;">Logout</span>
-            </div>
-            <i class="fas fa-chevron-right" style="color:#dc2626; font-size:12px;"></i>
+        <a href="<?php echo $sidebarBase; ?>citizen_advisories.php" class="citizen-bottom-item<?php echo $currentPage === 'citizen_advisories.php' ? ' active' : ''; ?>">
+            <i class="fas fa-bullhorn"></i>
+            <span>Advisories</span>
+        </a>
+        <button type="button" class="citizen-bottom-item<?php echo ($currentPage === 'citizen_notifications.php' || $currentPage === 'citizen_profile.php') ? ' active' : ''; ?>" id="citizenMenuBtn" onclick="toggleCitizenMenuSheet()" aria-label="Open Menu" aria-expanded="false">
+            <i class="fas fa-bars" id="citizenMenuIcon"></i>
+            <span>Menu</span>
+            <?php if ($unreadNotifCount > 0): ?>
+                <span class="citizen-bottom-badge"><?php echo $unreadNotifCount; ?></span>
+            <?php endif; ?>
         </button>
     </div>
 </div>
@@ -2198,41 +2221,45 @@ function toggleSidebarDropdown(button) {
 }
 
 function openCitizenMenuSheet() {
-    const sheet = document.getElementById('citizenMenuSheet');
-    const backdrop = document.getElementById('citizenSheetBackdrop');
-    if (sheet) {
-        sheet.classList.add('open');
-        sheet.style.transform = 'translate3d(-50%, 0, 0)';
+    const nav = document.getElementById('citizenBottomNav');
+    const btn = document.getElementById('citizenMenuBtn');
+    const icon = document.getElementById('citizenMenuIcon');
+    if (nav) nav.classList.add('menu-expanded');
+    if (btn) btn.setAttribute('aria-expanded', 'true');
+    if (icon) {
+        icon.classList.remove('fa-bars');
+        icon.classList.add('fa-xmark');
     }
-    if (backdrop) {
-        backdrop.classList.add('active');
-        backdrop.style.opacity = '1';
-    }
-    document.body.style.overflow = 'hidden';
 }
 
 function closeCitizenMenuSheet() {
-    const sheet = document.getElementById('citizenMenuSheet');
-    const backdrop = document.getElementById('citizenSheetBackdrop');
-    if (sheet) {
-        sheet.classList.remove('open');
-        sheet.style.transform = '';
+    const nav = document.getElementById('citizenBottomNav');
+    const btn = document.getElementById('citizenMenuBtn');
+    const icon = document.getElementById('citizenMenuIcon');
+    if (nav) nav.classList.remove('menu-expanded');
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+    if (icon) {
+        icon.classList.remove('fa-xmark');
+        icon.classList.add('fa-bars');
     }
-    if (backdrop) {
-        backdrop.classList.remove('active');
-        backdrop.style.opacity = '';
-    }
-    document.body.style.overflow = '';
 }
 
 function toggleCitizenMenuSheet() {
-    const sheet = document.getElementById('citizenMenuSheet');
-    if (sheet && sheet.classList.contains('open')) {
+    const nav = document.getElementById('citizenBottomNav');
+    if (nav && nav.classList.contains('menu-expanded')) {
         closeCitizenMenuSheet();
     } else {
         openCitizenMenuSheet();
     }
 }
+
+// Close when clicking outside the bar
+document.addEventListener('click', function(e) {
+    const nav = document.getElementById('citizenBottomNav');
+    if (nav && nav.classList.contains('menu-expanded') && !nav.contains(e.target)) {
+        closeCitizenMenuSheet();
+    }
+});
 
 function applyTheme(theme) {
     const icon = document.getElementById('theme-toggle-icon');
