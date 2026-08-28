@@ -352,23 +352,23 @@ try {
         <div class="dashboard-layout" style="grid-template-columns: 1fr;">
             
             <!-- Left: Latest Utility Advisories -->
-            <div class="box" style="padding: 25px; overflow: hidden;">
-                <h3 style="margin-bottom: 20px;"><i class="fas fa-bullhorn"></i> Latest LGU Advisories</h3>
-                <div style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: space-between;">
+            <div class="box" style="padding: 25px;">
+                <h3 style="margin-bottom: 20px; font-size: 1.2rem; color: #1e293b;"><i class="fas fa-bullhorn" style="color: #3762c8; margin-right: 8px;"></i> Latest LGU Advisories</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; width: 100%;">
                     
                     <!-- QCGov Embedded Feed -->
-                    <div style="flex: 1; min-width: 300px; max-width: 500px; display: flex; justify-content: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px;">
-                        <iframe src="https://www.facebook.com/plugins/page.php?href=https%3A%2F%2Fwww.facebook.com%2FQCGov&tabs=timeline&width=340&height=500&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=false&appId" 
-                                width="340" height="500" style="border:none;overflow:hidden; border-radius: 8px; width: 100%; max-width: 340px;" 
+                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); display: flex; justify-content: center; align-items: flex-start; height: 700px;">
+                        <iframe src="https://www.facebook.com/plugins/page.php?href=https%3A%2F%2Fwww.facebook.com%2FQCGov&tabs=timeline&width=500&height=700&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=false&appId" 
+                                width="500" height="700" style="border:none; overflow:hidden; width: 100%; max-width: 500px;" 
                                 scrolling="no" frameborder="0" allowfullscreen="true" 
                                 allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share">
                         </iframe>
                     </div>
 
                     <!-- QCDRRMC Embedded Feed -->
-                    <div style="flex: 1; min-width: 300px; max-width: 500px; display: flex; justify-content: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px;">
-                        <iframe src="https://www.facebook.com/plugins/page.php?href=https%3A%2F%2Fwww.facebook.com%2Fqcdrrmc&tabs=timeline&width=340&height=500&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=false&appId" 
-                                width="340" height="500" style="border:none;overflow:hidden; border-radius: 8px; width: 100%; max-width: 340px;" 
+                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); display: flex; justify-content: center; align-items: flex-start; height: 700px;">
+                        <iframe src="https://www.facebook.com/plugins/page.php?href=https%3A%2F%2Fwww.facebook.com%2Fqcdrrmc&tabs=timeline&width=500&height=700&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=false&appId" 
+                                width="500" height="700" style="border:none; overflow:hidden; width: 100%; max-width: 500px;" 
                                 scrolling="no" frameborder="0" allowfullscreen="true" 
                                 allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share">
                         </iframe>
