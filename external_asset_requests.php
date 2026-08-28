@@ -394,22 +394,72 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                location = COALESCE(NULLIF(location,''), CONCAT('CPRF: ', ?)),
                                updated_at = NOW()
                          WHERE id = ?
-                           AND condition_status IN ('Operational','Needs Inspection')
-                           AND cprf_custody_status IN ('WAREHOUSED','LOAN_RETURNED')
                     ");
+
                     foreach ($assetIds as $aid) {
-                        $upd->execute([$facilityId, $facilityName, $aid]);
-                        if ($upd->rowCount() <= 0) {
+                        // 1. Fetch current asset for quantity check (with row lock)
+                        $assetStmt = $pdo->prepare("SELECT asset_id, name, asset_type_id, quantity, location, latitude, longitude, date_installed, condition_status, description, responsible_office FROM utility_assets WHERE id = ? AND condition_status IN ('Operational','Needs Inspection') AND cprf_custody_status IN ('WAREHOUSED','LOAN_RETURNED') FOR UPDATE");
+                        $assetStmt->execute([$aid]);
+                        $assetRow = $assetStmt->fetch(PDO::FETCH_ASSOC);
+
+                        if (!$assetRow) {
                             $skipped[] = $aid;
                             continue;
                         }
+
+                        // 2. Determine assignment quantity
+                        $requestedQty = isset($_POST['assign_qty'][$aid]) ? (int)$_POST['assign_qty'][$aid] : 1;
+                        $availQty = (int)$assetRow['quantity'];
+                        if ($requestedQty < 1) $requestedQty = 1;
+                        if ($requestedQty > $availQty) $requestedQty = $availQty; // clamp
+
+                        $assignedAid = $aid;
+
+                        // 3. Process assignment (full vs partial)
+                        if ($requestedQty === $availQty) {
+                            // Full assignment
+                            $upd->execute([$facilityId, $facilityName, $aid]);
+                        } else {
+                            // Partial assignment: split the asset
+                            // 3a. Decrease original asset quantity
+                            $decStmt = $pdo->prepare("UPDATE utility_assets SET quantity = quantity - ?, updated_at = NOW() WHERE id = ?");
+                            $decStmt->execute([$requestedQty, $aid]);
+                            
+                            // 3b. Insert new split asset
+                            $newAssetId = $assetRow['asset_id'] . '-L' . time() . rand(10, 99);
+                            $insStmt = $pdo->prepare("
+                                INSERT INTO utility_assets (
+                                    asset_id, name, asset_type_id, quantity, location, 
+                                    latitude, longitude, date_installed, condition_status, 
+                                    description, responsible_office, cprf_facility_id, 
+                                    cprf_custody_status, created_at, updated_at
+                                ) VALUES (?, ?, ?, ?, COALESCE(NULLIF(?,''), CONCAT('CPRF: ', ?)), ?, ?, ?, ?, ?, ?, ?, 'ON_LOAN_AT_FACILITY', NOW(), NOW())
+                            ");
+                            $insStmt->execute([
+                                $newAssetId,
+                                $assetRow['name'],
+                                $assetRow['asset_type_id'],
+                                $requestedQty,
+                                $assetRow['location'],
+                                $facilityName,
+                                $assetRow['latitude'],
+                                $assetRow['longitude'],
+                                $assetRow['date_installed'],
+                                $assetRow['condition_status'],
+                                $assetRow['description'],
+                                $assetRow['responsible_office'],
+                                $facilityId
+                            ]);
+                            $assignedAid = $pdo->lastInsertId();
+                        }
+
                         $assigned++;
-                        $meta = build_asset_meta($pdo, $aid);
-                        $eventRef = 'UFE-' . date('YmdHis') . '-' . $aid;
+                        $meta = build_asset_meta($pdo, $assignedAid);
+                        $eventRef = 'UFE-' . date('YmdHis') . '-' . $assignedAid;
                         $wh = uman_post_to_cprf('utilities/equipment/assigned', [
                             'facility_id'       => $facilityId,
                             'facility_name'     => $facilityName,
-                            'uman_asset_id'     => $aid,
+                            'uman_asset_id'     => $assignedAid,
                             'assignment_source' => $source,
                             'assigned_by'       => $actor,
                             'assigned_at'       => date('c'),
@@ -855,7 +905,7 @@ if ($selectedFacilityIsCitizen) {
 
         $assignableStmt = $pdo->query("
             SELECT a.id, a.asset_id AS asset_code, a.name, a.condition_status,
-                   t.name AS asset_type, a.responsible_office
+                   t.name AS asset_type, a.responsible_office, a.quantity
             FROM utility_assets a JOIN asset_types t ON t.id = a.asset_type_id
             WHERE a.condition_status IN ('Operational','Needs Inspection')
               AND a.cprf_custody_status = 'WAREHOUSED'
@@ -1817,6 +1867,7 @@ try {
                                                 <th>Name</th>
                                                 <th>Type</th>
                                                 <th>Condition</th>
+                                                <th style="width:100px;">Qty to Assign</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -1829,6 +1880,10 @@ try {
                                                     <td><?= h($a['name'] ?? ''); ?></td>
                                                     <td><?= h($a['asset_type'] ?? ''); ?></td>
                                                     <td><span class="badge available"><?= h($a['condition_status'] ?? ''); ?></span></td>
+                                                    <td>
+                                                        <?php $availQty = (int)($a['quantity'] ?? 1); ?>
+                                                        <input type="number" name="assign_qty[<?= $id; ?>]" class="form-control" style="width:80px; padding:4px 8px; font-size:13px;" value="<?= $availQty ?>" min="1" max="<?= $availQty ?>">
+                                                    </td>
                                                 </tr>
                                             <?php endforeach; ?>
                                         </tbody>
