@@ -810,14 +810,14 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                                     </button>
                                                 </form>
 
-                                                <form method="POST" style="display:inline;">
-                                                    <input type="hidden" name="action" value="manual_reject">
-                                                    <input type="hidden" name="reference_id" value="<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>">
-                                                    <input type="hidden" name="recommendation" value="<?php echo htmlspecialchars($r['remarks'] ?? 'Inspection rejected. Corrective action required.'); ?>">
-                                                    <button type="submit" class="btn btn-danger" style="padding: 6px 14px; font-size: 12px; background: #ef4444; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;" title="Reject inspection and send for correction">
-                                                        <i class="fas fa-times-circle"></i> Reject
-                                                    </button>
-                                                </form>
+                                                <button type="button" class="btn btn-danger" style="padding: 6px 14px; font-size: 12px; background: #ef4444; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;" 
+                                                        onclick="openRejectModal(
+                                                            '<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>',
+                                                            '<?php echo $aiScore !== null ? (int)round($aiScore) : 'N/A'; ?>',
+                                                            '<?php echo htmlspecialchars(addslashes($r['remarks'] ?? 'Inspection rejected upon review. Corrective action required based on findings.')); ?>'
+                                                        )" title="Reject inspection and edit recommendation">
+                                                    <i class="fas fa-times-circle"></i> Reject
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -830,213 +830,61 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
     </main>
 
-    <!-- Callback Modal -->
-    <div class="modal" id="callbackModal">
-        <div class="modal-content">
+    <!-- Rejection & Editable AI Recommendation Modal -->
+    <div class="modal" id="rejectModal">
+        <div class="modal-content" style="max-width: 620px;">
             <div class="modal-header">
-                <h3><i class="fas fa-paper-plane" style="color: #10b981;"></i> Send Inspection Callback to UPAD</h3>
-                <button type="button" onclick="closeCallbackModal()" style="border:none; background:none; font-size:18px; cursor:pointer;">&times;</button>
+                <h3><i class="fas fa-times-circle" style="color: #ef4444;"></i> Reject Inspection & Edit AI Recommendation</h3>
+                <button type="button" onclick="closeRejectModal()" style="border:none; background:none; font-size:18px; cursor:pointer;">&times;</button>
             </div>
             <form method="POST">
-                <input type="hidden" name="action" value="send_callback">
-                <input type="hidden" name="reference_id" id="modal_ref_id">
+                <input type="hidden" name="action" value="manual_reject">
+                <input type="hidden" name="reference_id" id="rej_ref_id">
 
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label>Inspection Date</label>
-                        <input type="date" name="inspection_date" class="form-control" value="<?php echo date('Y-m-d'); ?>" required>
+                <div style="padding: 10px 0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; background: #fef2f2; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #fecaca;">
+                        <div>
+                            <small style="color: #991b1b; font-weight: 600; text-transform: uppercase; font-size: 11px;">Inspection Ref ID</small>
+                            <h4 id="rej_ref_display" style="margin: 2px 0 0 0; font-size: 18px; font-weight: 700; color: #991b1b;">-</h4>
+                        </div>
+                        <div style="text-align: right;">
+                            <small style="color: #991b1b; font-weight: 600; text-transform: uppercase; font-size: 11px;">AI Inspection Score</small>
+                            <div id="rej_score_display" style="font-size: 20px; font-weight: 800; color: #dc2626; font-family: monospace;">-%</div>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>Engineer Assigned</label>
-                        <input type="text" name="engineer_assigned" class="form-control" value="Engr. Juan Dela Cruz" required>
-                    </div>
-                </div>
 
-                <div class="form-grid">
                     <div class="form-group">
-                        <label>Overall Condition</label>
-                        <select name="overall_condition" class="form-control">
-                            <option value="Excellent">Excellent</option>
-                            <option value="Good" selected>Good</option>
-                            <option value="Fair">Fair</option>
-                            <option value="Poor">Poor</option>
-                            <option value="Critical">Critical</option>
-                        </select>
+                        <label style="font-size: 12px; font-weight: 700; color: #334155; display: block; margin-bottom: 8px;">
+                            <i class="fas fa-edit" style="color: #3b82f6; margin-right: 4px;"></i>
+                            AI-Generated Recommendation (Review & Edit before saving):
+                        </label>
+                        <textarea name="recommendation" id="rej_recom_textarea" class="form-control" rows="5" style="width: 100%; border-radius: 10px; border: 1px solid #cbd5e1; padding: 12px; font-size: 13px; line-height: 1.5; font-family: inherit;" required></textarea>
+                        <small style="color: #64748b; font-size: 11px; margin-top: 6px; display: block;">
+                            You can review, modify, or refine the AI-generated recommendation above prior to saving the final rejection.
+                        </small>
                     </div>
-                    <div class="form-group">
-                        <label>Grid Capacity Condition</label>
-                        <select name="grid_capacity_condition" class="form-control">
-                            <option value="Good" selected>Good (Within Load Limit)</option>
-                            <option value="Fair">Fair (Near Capacity)</option>
-                            <option value="Poor">Poor (Overloaded)</option>
-                        </select>
+
+                    <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px;">
+                        <button type="button" class="btn btn-outline" onclick="closeRejectModal()">Cancel</button>
+                        <button type="submit" class="btn btn-danger" style="background: #ef4444; color: white; border: none; border-radius: 8px; font-weight: 600; padding: 10px 18px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                            <i class="fas fa-paper-plane"></i> Save Rejection & Send Recommendation
+                        </button>
                     </div>
-                </div>
-
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label>Transformer Condition</label>
-                        <select name="transformer_condition" class="form-control">
-                            <option value="Good" selected>Good</option>
-                            <option value="Fair">Fair</option>
-                            <option value="Poor">Poor</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Severity Level</label>
-                        <select name="severity" class="form-control">
-                            <option value="Low" selected>Low</option>
-                            <option value="Medium">Medium</option>
-                            <option value="High">High</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>Recommendation</label>
-                    <input type="text" name="recommendation" class="form-control" value="Grid capacity verified. Approved for connection." required>
-                </div>
-
-                <div class="form-group">
-                    <label>Engineer Remarks</label>
-                    <textarea name="remarks" class="form-control" rows="3">Site inspection completed. Existing transformer capacity and grid stability are sufficient.</textarea>
-                </div>
-
-                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
-                    <button type="button" class="btn btn-outline" onclick="closeCallbackModal()">Cancel</button>
-                    <button type="submit" class="btn btn-success"><i class="fas fa-check"></i> Send Callback to UPAD</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Inspection Details Modal -->
-    <div class="modal" id="detailsModal">
-        <div class="modal-content" style="max-width: 620px;">
-            <div class="modal-header">
-                <h3><i class="fas fa-microchip" style="color: #3b82f6;"></i> Inspection Result & Recommended Action</h3>
-                <button type="button" onclick="closeDetailsModal()" style="border:none; background:none; font-size:18px; cursor:pointer;">&times;</button>
-            </div>
-            <div style="padding: 10px 0;">
-                <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #e2e8f0;">
-                    <div>
-                        <small style="color: #64748b; font-weight: 600; text-transform: uppercase; font-size: 11px;">Reference ID</small>
-                        <h4 id="det_ref_id" style="margin: 2px 0 0 0; font-size: 18px; font-weight: 700; color: #0f172a;">-</h4>
-                    </div>
-                    <div style="text-align: right;">
-                        <small style="color: #64748b; font-weight: 600; text-transform: uppercase; font-size: 11px;">AI Inspection Score</small>
-                        <div id="det_score_badge" style="font-size: 22px; font-weight: 800; color: #3b82f6; font-family: monospace;">-%</div>
-                    </div>
-                </div>
-
-                <div style="margin-bottom: 18px;">
-                    <label style="font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; display: block; margin-bottom: 6px;">Inspection Result</label>
-                    <div id="det_decision_box" style="padding: 14px 16px; border-radius: 10px; font-weight: 700; font-size: 15px; display: flex; align-items: center; justify-content: space-between;">
-                        <span id="det_decision_text">-</span>
-                        <span id="det_review_tag" style="display: none; font-size: 11px; padding: 4px 10px; border-radius: 6px; background: rgba(245, 158, 11, 0.2); color: #b45309; font-weight: 700;">
-                            <i class="fas fa-user-clock"></i> Flagged for Manual Review
-                        </span>
-                    </div>
-                </div>
-
-                <div style="margin-bottom: 20px;">
-                    <label style="font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; display: block; margin-bottom: 6px;">AI-Generated Recommended Action</label>
-                    <div style="background: rgba(59, 130, 246, 0.06); border-left: 4px solid #3b82f6; padding: 16px; border-radius: 8px; color: #1e293b; font-size: 13px; line-height: 1.6;">
-                        <i class="fas fa-lightbulb" style="color: #3b82f6; margin-right: 6px; font-size: 15px;"></i>
-                        <span id="det_recommendation_text">Evaluating recommendation...</span>
-                    </div>
-                </div>
-
-                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px;">
-                    <button type="button" class="btn btn-outline" onclick="closeDetailsModal()">Close</button>
-
-                    <div id="det_manual_actions" style="display: none; gap: 8px;">
-                        <form method="POST" style="display:inline;">
-                            <input type="hidden" name="action" value="manual_approve">
-                            <input type="hidden" name="reference_id" id="det_ref_input_app">
-                            <button type="submit" class="btn btn-success" style="padding: 8px 14px; font-size: 12px;">
-                                <i class="fas fa-check"></i> Approve Inspection
-                            </button>
-                        </form>
-                        <form method="POST" style="display:inline;">
-                            <input type="hidden" name="action" value="manual_reject">
-                            <input type="hidden" name="reference_id" id="det_ref_input_rej">
-                            <input type="hidden" name="recommendation" id="det_recom_input_rej">
-                            <button type="submit" class="btn btn-danger" style="padding: 8px 14px; font-size: 12px; background: #ef4444; color: white; border: none; border-radius: 8px;">
-                                <i class="fas fa-times"></i> Reject Inspection
-                            </button>
-                        </form>
-                    </div>
-
-                    <button type="button" id="det_callback_btn" class="btn btn-success" onclick="closeDetailsModal(); openCallbackModal(document.getElementById('det_ref_id').innerText);">
-                        <i class="fas fa-paper-plane"></i> Proceed to Callback
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <script>
-        function openCallbackModal(refId) {
-            document.getElementById('modal_ref_id').value = refId;
-            document.getElementById('callbackModal').classList.add('show');
+        function openRejectModal(refId, score, recommendation) {
+            document.getElementById('rej_ref_id').value = refId;
+            document.getElementById('rej_ref_display').innerText = refId;
+            document.getElementById('rej_score_display').innerText = (score !== 'N/A') ? score + '%' : 'N/A';
+            document.getElementById('rej_recom_textarea').value = recommendation;
+            document.getElementById('rejectModal').classList.add('show');
         }
-        function closeCallbackModal() {
-            document.getElementById('callbackModal').classList.remove('show');
-        }
-
-        function openDetailsModal(refId, project, barangay, score, decision, recommendation) {
-            document.getElementById('det_ref_id').innerText = refId;
-            document.getElementById('det_score_badge').innerText = (score !== 'N/A') ? score + '%' : 'N/A';
-            document.getElementById('det_ref_input_app').value = refId;
-            document.getElementById('det_ref_input_rej').value = refId;
-            document.getElementById('det_recom_input_rej').value = recommendation;
-
-            const decisionBox = document.getElementById('det_decision_box');
-            const decisionText = document.getElementById('det_decision_text');
-            const reviewTag = document.getElementById('det_review_tag');
-            const manualActions = document.getElementById('det_manual_actions');
-            const callbackBtn = document.getElementById('det_callback_btn');
-
-            decisionText.innerText = decision;
-
-            if (decision === 'Approved') {
-                decisionBox.style.background = 'rgba(16, 185, 129, 0.12)';
-                decisionBox.style.color = '#065f46';
-                decisionBox.style.border = '1px solid rgba(16, 185, 129, 0.3)';
-                reviewTag.style.display = 'none';
-                manualActions.style.display = 'none';
-                callbackBtn.style.display = 'inline-flex';
-            } else if (decision === 'Conditional') {
-                decisionBox.style.background = 'rgba(245, 158, 11, 0.12)';
-                decisionBox.style.color = '#92400e';
-                decisionBox.style.border = '1px solid rgba(245, 158, 11, 0.3)';
-                reviewTag.innerText = 'Flagged for Manual Check';
-                reviewTag.style.display = 'inline-block';
-                manualActions.style.display = 'inline-flex';
-                callbackBtn.style.display = 'none';
-            } else if (decision === 'Rejected') {
-                decisionBox.style.background = 'rgba(239, 68, 68, 0.12)';
-                decisionBox.style.color = '#991b1b';
-                decisionBox.style.border = '1px solid rgba(239, 68, 68, 0.3)';
-                reviewTag.style.display = 'none';
-                manualActions.style.display = 'none';
-                callbackBtn.style.display = 'none';
-            } else {
-                decisionBox.style.background = '#f1f5f9';
-                decisionBox.style.color = '#64748b';
-                decisionBox.style.border = '1px solid #cbd5e1';
-                reviewTag.style.display = 'none';
-                manualActions.style.display = 'none';
-                callbackBtn.style.display = 'none';
-            }
-
-            document.getElementById('det_recommendation_text').innerText = recommendation;
-            document.getElementById('detailsModal').classList.add('show');
-        }
-
-        function closeDetailsModal() {
-            document.getElementById('detailsModal').classList.remove('show');
+        function closeRejectModal() {
+            document.getElementById('rejectModal').classList.remove('show');
         }
 
         function filterRequests(status, element) {
