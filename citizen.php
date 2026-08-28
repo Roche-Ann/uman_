@@ -27,6 +27,9 @@ try {
 
     $activeReports = $totalReports - $resolvedReports;
 } catch (Exception $e) {
+    // Fallback if schema differs slightly
+}
+
 // The Facebook Page Plugin is handled client-side via embedded iframes in the HTML below.
 // This avoids server-side blocking from Facebook.
 ?>
