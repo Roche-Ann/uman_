@@ -634,7 +634,7 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <div class="page-header">
                 <div>
                     <h1><i class="fas fa-city" style="color: #3b82f6;"></i> Urban Planning (UPAD) Integration Hub</h1>
-                    <p>Inbound electrical grid inspection requests from Urban Planning with automated AI assessment and callback delivery.</p>
+                    <p>Inbound electrical grid inspection requests from Urban Planning with automated AI assessment and decision integration.</p>
                 </div>
                 <div>
                     <a href="ai_analytics.php" class="btn btn-outline"><i class="fas fa-brain"></i> AI Analytics</a>
@@ -665,11 +665,11 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <p>Awaiting Inspection</p>
                     </div>
                 </div>
-                <div class="stat-card completed" data-filter="completed" onclick="filterRequests('completed', document.querySelector('.filter-tab[data-filter=\'completed\']'))" title="Click to view delivered callbacks">
+                <div class="stat-card completed" data-filter="completed" onclick="filterRequests('completed', document.querySelector('.filter-tab[data-filter=\'completed\']'))" title="Click to view inspected requests">
                     <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
                     <div class="stat-info">
                         <h3><?php echo $completedCount; ?></h3>
-                        <p>Callback Delivered</p>
+                        <p>Inspected Requests</p>
                     </div>
                 </div>
                 <div class="stat-card failed" data-filter="failed" onclick="filterRequests('failed', document.querySelector('.filter-tab[data-filter=\'failed\']'))" title="Click to view failed deliveries">
@@ -695,7 +695,7 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <i class="fas fa-hourglass-half"></i> Awaiting Inspection <span class="tab-badge"><?php echo $pendingCount; ?></span>
                         </button>
                         <button type="button" class="filter-tab" data-filter="completed" onclick="filterRequests('completed', this)">
-                            <i class="fas fa-check-circle"></i> Delivered <span class="tab-badge"><?php echo $completedCount; ?></span>
+                            <i class="fas fa-check-circle"></i> Inspected <span class="tab-badge"><?php echo $completedCount; ?></span>
                         </button>
                         <button type="button" class="filter-tab" data-filter="failed" onclick="filterRequests('failed', this)">
                             <i class="fas fa-times-circle"></i> Failed <span class="tab-badge"><?php echo $failedCount; ?></span>
@@ -713,7 +713,7 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <th>Load (kVA)</th>
                                 <th>Priority</th>
                                 <th>AI Evaluation</th>
-                                <th>Callback Status</th>
+                                <th>Status</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -802,59 +802,22 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                         </td>
                                         <td>
                                             <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                                                <?php if ($aiDecision === 'Approved' || ($aiScore !== null && $aiScore >= 80.0)): ?>
-                                                    <!-- AUTOMATICALLY APPROVED (80-100): APPROVE & CALLBACK AVAILABLE -->
-                                                    <button type="button" class="btn btn-success" style="padding: 5px 10px; font-size: 11px; background: #10b981; color: white;" onclick="openCallbackModal('<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>')">
-                                                        <i class="fas fa-check-circle"></i> Approve & Callback
+                                                <form method="POST" style="display:inline;">
+                                                    <input type="hidden" name="action" value="manual_approve">
+                                                    <input type="hidden" name="reference_id" value="<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>">
+                                                    <button type="submit" class="btn btn-success" style="padding: 6px 14px; font-size: 12px; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;" title="Approve inspection">
+                                                        <i class="fas fa-check-circle"></i> Approve
                                                     </button>
+                                                </form>
 
-                                                    <form method="POST" style="display:inline;">
-                                                        <input type="hidden" name="action" value="manual_reject">
-                                                        <input type="hidden" name="reference_id" value="<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>">
-                                                        <input type="hidden" name="recommendation" value="<?php echo htmlspecialchars($r['remarks'] ?? 'Inspection rejected upon administrative review.'); ?>">
-                                                        <button type="submit" class="btn btn-danger" style="padding: 5px 10px; font-size: 11px; background: #ef4444; color: white; border: none; border-radius: 8px;" title="Override and reject this inspection">
-                                                            <i class="fas fa-times-circle"></i> Reject
-                                                        </button>
-                                                    </form>
-
-                                                <?php elseif ($aiDecision === 'Conditional' || ($aiScore !== null && $aiScore >= 50.0 && $aiScore < 80.0)): ?>
-                                                    <!-- AI SCORE 50-79: MANUAL CHECK WORKFLOW (Approve or Reject) -->
-                                                    <form method="POST" style="display:inline;">
-                                                        <input type="hidden" name="action" value="manual_approve">
-                                                        <input type="hidden" name="reference_id" value="<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>">
-                                                        <button type="submit" class="btn btn-success" style="padding: 5px 10px; font-size: 11px; background: #10b981; color: white;" title="Manually approve this inspection after Manual Check">
-                                                            <i class="fas fa-check-circle"></i> Approve
-                                                        </button>
-                                                    </form>
-
-                                                    <form method="POST" style="display:inline;">
-                                                        <input type="hidden" name="action" value="manual_reject">
-                                                        <input type="hidden" name="reference_id" value="<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>">
-                                                        <input type="hidden" name="recommendation" value="<?php echo htmlspecialchars($r['remarks'] ?? 'Inspection rejected upon manual review. Corrective action required.'); ?>">
-                                                        <button type="submit" class="btn btn-danger" style="padding: 5px 10px; font-size: 11px; background: #ef4444; color: white; border: none; border-radius: 8px;" title="Manually reject this inspection and request correction">
-                                                            <i class="fas fa-times-circle"></i> Reject
-                                                        </button>
-                                                    </form>
-
-                                                <?php else: ?>
-                                                    <!-- REJECTED WORKFLOW: SEND BACK / CALLBACK + RE-EVALUATE -->
-                                                    <form method="POST" style="display:inline;">
-                                                        <input type="hidden" name="action" value="request_correction">
-                                                        <input type="hidden" name="reference_id" value="<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>">
-                                                        <input type="hidden" name="recommendation" value="<?php echo htmlspecialchars($r['remarks'] ?? 'Corrective action required based on inspection findings.'); ?>">
-                                                        <button type="submit" class="btn btn-warning" style="padding: 5px 10px; font-size: 11px; background: #f59e0b; color: white;" title="Send rejected inspection + AI recommendation back to team for correction">
-                                                            <i class="fas fa-paper-plane"></i> Send Back / Callback
-                                                        </button>
-                                                    </form>
-
-                                                    <form method="POST" style="display:inline;">
-                                                        <input type="hidden" name="action" value="reinspect">
-                                                        <input type="hidden" name="reference_id" value="<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>">
-                                                        <button type="submit" class="btn btn-ai" style="padding: 5px 10px; font-size: 11px; background: #8b5cf6; color: white;" title="Re-evaluate inspection using updated data after corrective work is completed">
-                                                            <i class="fas fa-sync"></i> Re-evaluate
-                                                        </button>
-                                                    </form>
-                                                <?php endif; ?>
+                                                <form method="POST" style="display:inline;">
+                                                    <input type="hidden" name="action" value="manual_reject">
+                                                    <input type="hidden" name="reference_id" value="<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>">
+                                                    <input type="hidden" name="recommendation" value="<?php echo htmlspecialchars($r['remarks'] ?? 'Inspection rejected. Corrective action required.'); ?>">
+                                                    <button type="submit" class="btn btn-danger" style="padding: 6px 14px; font-size: 12px; background: #ef4444; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;" title="Reject inspection and send for correction">
+                                                        <i class="fas fa-times-circle"></i> Reject
+                                                    </button>
+                                                </form>
                                             </div>
                                         </td>
                                     </tr>
