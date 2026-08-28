@@ -544,6 +544,14 @@ $expiryTimestamp = $otpData ? strtotime($otpData['expires_at']) : 0;
         }
 
         @media (max-width: 768px) {
+            body {
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                justify-content: center !important;
+                min-height: 100vh !important;
+                box-sizing: border-box !important;
+            }
             body, .dark-theme body {
                 background: url("assets/images/cityhall.jpeg") center/cover no-repeat !important;
             }
@@ -561,7 +569,7 @@ $expiryTimestamp = $otpData ? strtotime($otpData['expires_at']) : 0;
             }
             .verify-card {
                 width: calc(100% - 2rem) !important;
-                margin: 2rem auto !important;
+                margin: 0 auto !important;
                 padding: 2rem 1.5rem !important;
             }
         }
