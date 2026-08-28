@@ -813,13 +813,13 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                         </td>
                                         <td>
                                             <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                                                <form method="POST" style="display:inline;">
-                                                    <input type="hidden" name="action" value="manual_approve">
-                                                    <input type="hidden" name="reference_id" value="<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>">
-                                                    <button type="submit" class="btn btn-success" style="padding: 6px 14px; font-size: 12px; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;" title="Approve inspection">
-                                                        <i class="fas fa-check-circle"></i> Approve
-                                                    </button>
-                                                </form>
+                                                <button type="button" class="btn btn-success" style="padding: 6px 14px; font-size: 12px; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;" 
+                                                        onclick="openApproveModal(
+                                                            '<?php echo htmlspecialchars($r['reference_id'] ?? ''); ?>',
+                                                            '<?php echo $aiScore !== null ? (int)round($aiScore) : 'N/A'; ?>'
+                                                        )" title="Approve inspection">
+                                                    <i class="fas fa-check-circle"></i> Approve
+                                                </button>
 
                                                 <button type="button" class="btn btn-danger" style="padding: 6px 14px; font-size: 12px; background: #ef4444; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;" 
                                                         onclick="openRejectModal(
@@ -840,6 +840,48 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
             </div>
         </div>
     </main>
+
+    <!-- Approval & Confirmation Modal -->
+    <div class="modal" id="approveModal">
+        <div class="modal-content" style="max-width: 620px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-check-circle" style="color: #10b981;"></i> Confirm Inspection Approval</h3>
+                <button type="button" onclick="closeApproveModal()" style="border:none; background:none; font-size:18px; cursor:pointer;">&times;</button>
+            </div>
+            <form method="POST">
+                <input type="hidden" name="action" value="manual_approve">
+                <input type="hidden" name="reference_id" id="app_ref_id">
+
+                <div style="padding: 10px 0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; background: #ecfdf5; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #a7f3d0;">
+                        <div>
+                            <small style="color: #065f46; font-weight: 600; text-transform: uppercase; font-size: 11px;">Inspection Ref ID</small>
+                            <h4 id="app_ref_display" style="margin: 2px 0 0 0; font-size: 18px; font-weight: 700; color: #065f46;">-</h4>
+                        </div>
+                        <div style="text-align: right;">
+                            <small style="color: #065f46; font-weight: 600; text-transform: uppercase; font-size: 11px;">AI Inspection Score</small>
+                            <div id="app_score_display" style="font-size: 20px; font-weight: 800; color: #059669; font-family: monospace;">-%</div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label style="font-size: 12px; font-weight: 700; color: #334155; display: block; margin-bottom: 8px;">
+                            <i class="fas fa-edit" style="color: #10b981; margin-right: 4px;"></i>
+                            Approval Remarks & Notes (Review & Edit before confirming):
+                        </label>
+                        <textarea name="remarks" id="app_remarks_textarea" class="form-control" rows="4" style="width: 100%; border-radius: 10px; border: 1px solid #cbd5e1; padding: 12px; font-size: 13px; line-height: 1.5; font-family: inherit;" required>Grid infrastructure and capacity verified. Approved for immediate utility connection.</textarea>
+                    </div>
+
+                    <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px;">
+                        <button type="button" class="btn btn-outline" onclick="closeApproveModal()">Cancel</button>
+                        <button type="submit" class="btn btn-success" style="background: #10b981; color: white; border: none; border-radius: 8px; font-weight: 600; padding: 10px 18px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                            <i class="fas fa-check-circle"></i> Confirm & Approve Inspection
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <!-- Rejection & Editable AI Recommendation Modal -->
     <div class="modal" id="rejectModal">
@@ -887,6 +929,16 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
     </div>
 
     <script>
+        function openApproveModal(refId, score) {
+            document.getElementById('app_ref_id').value = refId;
+            document.getElementById('app_ref_display').innerText = refId;
+            document.getElementById('app_score_display').innerText = (score !== 'N/A') ? score + '%' : 'N/A';
+            document.getElementById('approveModal').classList.add('show');
+        }
+        function closeApproveModal() {
+            document.getElementById('approveModal').classList.remove('show');
+        }
+
         function openRejectModal(refId, score, recommendation) {
             document.getElementById('rej_ref_id').value = refId;
             document.getElementById('rej_ref_display').innerText = refId;
