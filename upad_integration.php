@@ -850,11 +850,6 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                                 // Build dynamic problem-aware recommendation string
                                                 $dynamicRecom = !empty($r['corrective_recommendation']) ? $r['corrective_recommendation'] : (!empty($r['remarks']) ? $r['remarks'] : "Conduct physical site audit of service drop entrance, transformer load, and metering equipment in " . ($r['barangay'] ?? 'Central') . " prior to final energization.");
                                             ?>
-                                            <?php if (!empty($r['result_payload'])): ?>
-                                                <br><a href="javascript:void(0)" onclick="openPayloadModal('<?php echo htmlspecialchars(addslashes($r['result_payload'])); ?>')" style="font-size: 11px; color: #3b82f6; font-weight: 600; margin-top: 4px; display: inline-flex; align-items: center; gap: 3px; text-decoration: none;">
-                                                    <i class="fas fa-file-code"></i> View Sent Data
-                                                </a>
-                                            <?php endif; ?>
                                         </td>
                                         <td>
                                             <div style="display:flex; gap:6px; flex-wrap:wrap;">
@@ -1079,23 +1074,6 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
     </div>
 
-    <!-- Outgoing Payload Viewer Modal -->
-    <div class="modal" id="payloadModal">
-        <div class="modal-content" style="max-width: 650px;">
-            <div class="modal-header">
-                <h3><i class="fas fa-paper-plane" style="color: #3b82f6;"></i> Actual Outgoing UPAD Inspection Payload Data</h3>
-                <button type="button" onclick="closePayloadModal()" style="border:none; background:none; font-size:18px; cursor:pointer;">&times;</button>
-            </div>
-            <div style="padding: 10px 0;">
-                <div style="background: #0f172a; color: #38bdf8; padding: 16px; border-radius: 12px; font-family: monospace; font-size: 12px; line-height: 1.6; max-height: 350px; overflow-y: auto; white-space: pre-wrap;" id="payload_json_box">
-                </div>
-                <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
-                    <button type="button" class="btn btn-outline" onclick="closePayloadModal()">Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <script>
         function openApproveModal(refId, score, appId, recom, remarks, lat, lng) {
             document.getElementById('app_ref_id').value = refId;
@@ -1125,19 +1103,6 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
         function closeRejectModal() {
             document.getElementById('rejectModal').classList.remove('show');
-        }
-
-        function openPayloadModal(rawJson) {
-            try {
-                const parsed = JSON.parse(rawJson);
-                document.getElementById('payload_json_box').innerText = JSON.stringify(parsed, null, 2);
-            } catch(e) {
-                document.getElementById('payload_json_box').innerText = rawJson;
-            }
-            document.getElementById('payloadModal').classList.add('show');
-        }
-        function closePayloadModal() {
-            document.getElementById('payloadModal').classList.remove('show');
         }
 
         function filterRequests(status, element) {
