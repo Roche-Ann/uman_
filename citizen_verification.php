@@ -132,6 +132,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['id_image'], $_FILES[
         .dark-theme .form-group label { color:#e2e8f0; }
         .dark-theme .form-group input[type="file"] { background:#1e293b; border-color:#475569; color:#f8fafc; }
         .dark-theme .status-unverified { background:#0f172a; border-color:#334155; color:#cbd5e1; }
+        .dark-theme .status-verified { background:rgba(6, 78, 59, 0.4); color:#6ee7b7; border-color:#065f46; }
+        .dark-theme .status-pending { background:rgba(113, 63, 18, 0.4); color:#fde047; border-color:#854d0e; }
+        .dark-theme .status-rejected { background:rgba(127, 29, 29, 0.4); color:#fca5a5; border-color:#991b1b; }
     </style>
 </head>
 <body>

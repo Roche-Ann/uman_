@@ -1038,25 +1038,98 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
     }
 
     /* Box panels styling in dark theme */
-    .dark-theme .box {
+    .dark-theme .box,
+    .dark-theme .form-section,
+    .dark-theme .table-section,
+    .dark-theme .section-box,
+    .dark-theme .filter-panel {
         background: #1e293b !important;
         border-color: #334155 !important;
         color: #f8fafc !important;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
     }
     .dark-theme .box h3,
-    .dark-theme .box h4 {
+    .dark-theme .box h4,
+    .dark-theme .form-section h3,
+    .dark-theme .table-section h3,
+    .dark-theme .section-box h3,
+    .dark-theme .filter-panel h3 {
         color: #f8fafc !important;
         border-bottom-color: #334155 !important;
     }
 
-    /* Override hardcoded inline text colors in dark theme */
+    /* Item cards, feeds & notifications in dark mode */
+    .dark-theme .item-card,
+    .dark-theme .report-item,
+    .dark-theme .notif-item {
+        background: #0f172a !important;
+        border: 1px solid #334155 !important;
+        color: #f8fafc !important;
+    }
+    .dark-theme .notif-item.unread {
+        background: #151f32 !important;
+        border-left: 5px solid #3762c8 !important;
+    }
+    .dark-theme .item-card:hover,
+    .dark-theme .report-item:hover {
+        background: #151f32 !important;
+    }
+    .dark-theme .item-card h4,
+    .dark-theme .advisory-title,
+    .dark-theme .notif-content h4,
+    .dark-theme .report-id,
+    .dark-theme .timeline-title {
+        color: #f8fafc !important;
+    }
+    .dark-theme .item-card p,
+    .dark-theme .advisory-card p,
+    .dark-theme .report-item p,
+    .dark-theme .timeline-desc,
+    .dark-theme #track-desc {
+        color: #cbd5e1 !important;
+    }
+    .dark-theme .advisory-date,
+    .dark-theme .notif-content span,
+    .dark-theme .empty-state,
+    .dark-theme .empty-state p {
+        color: #94a3b8 !important;
+    }
+    .dark-theme .empty-state i {
+        color: #475569 !important;
+    }
+
+    /* Timelines & Rating Stars */
+    .dark-theme .timeline::before {
+        background: #334155 !important;
+    }
+    .dark-theme .timeline-step::before {
+        background: #475569 !important;
+        border-color: #1e293b !important;
+    }
+    .dark-theme .timeline-step.active::before {
+        background: #3762c8 !important;
+    }
+    .dark-theme #feedback-section {
+        border-top-color: #334155 !important;
+    }
+    .dark-theme #feedback-section h4 {
+        color: #f8fafc !important;
+    }
+    .dark-theme .star-btn {
+        color: #475569 !important;
+    }
+    .dark-theme .star-btn.selected {
+        color: #f1c40f !important;
+    }
+
+    /* Override hardcoded inline text & background colors in dark theme */
     .dark-theme [style*="color:#2c3e50"],
     .dark-theme [style*="color: #2c3e50"],
     .dark-theme [style*="color:rgb(44, 62, 80)"],
     .dark-theme [style*="color: rgb(44, 62, 80)"],
     .dark-theme [style*="color:#1e293b"],
     .dark-theme [style*="color: #1e293b"],
+    .dark-theme [style*="color:#000000"],
     .dark-theme [style*="color:#000"],
     .dark-theme [style*="color: #000"] {
         color: #f8fafc !important;
@@ -1064,8 +1137,10 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
     .dark-theme [style*="color:#64748b"],
     .dark-theme [style*="color: #64748b"],
     .dark-theme [style*="color:#475569"],
-    .dark-theme [style*="color: #475569"] {
-        color: #94a3b8 !important;
+    .dark-theme [style*="color: #475569"],
+    .dark-theme [style*="color:#334155"],
+    .dark-theme [style*="color: #334155"] {
+        color: #cbd5e1 !important;
     }
     .dark-theme [style*="background:#f8fafc"],
     .dark-theme [style*="background: #f8fafc"],
@@ -1074,6 +1149,16 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
     .dark-theme [style*="background:#f8f9fa"],
     .dark-theme [style*="background: #f8f9fa"] {
         background: #0f172a !important;
+    }
+    .dark-theme [style*="background:white"],
+    .dark-theme [style*="background: white"],
+    .dark-theme [style*="background:#ffffff"],
+    .dark-theme [style*="background: #ffffff"] {
+        background: #1e293b !important;
+    }
+    .dark-theme [style*="border-top:1px solid #edf2f7"],
+    .dark-theme [style*="border-top: 1px solid #edf2f7"] {
+        border-top-color: #334155 !important;
     }
 
     /* Badges in dark mode */
