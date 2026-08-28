@@ -1817,7 +1817,6 @@ try {
                                                 <th>Name</th>
                                                 <th>Type</th>
                                                 <th>Condition</th>
-                                                <th>Responsible Office</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -1830,7 +1829,6 @@ try {
                                                     <td><?= h($a['name'] ?? ''); ?></td>
                                                     <td><?= h($a['asset_type'] ?? ''); ?></td>
                                                     <td><span class="badge available"><?= h($a['condition_status'] ?? ''); ?></span></td>
-                                                    <td class="muted"><?= h($a['responsible_office'] ?? ''); ?></td>
                                                 </tr>
                                             <?php endforeach; ?>
                                         </tbody>
