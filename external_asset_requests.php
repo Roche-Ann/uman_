@@ -2079,6 +2079,53 @@ try {
     </div>
 </div>
 
+<!-- Accept Return Modal -->
+<div id="acceptReturnModal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h3 id="acceptReturnTitle">Accept Return</h3>
+            <button class="modal-close" type="button" onclick="closeAcceptReturnModal()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <p id="acceptReturnSubtitle" style="font-size: 14px; color: #475569; margin-bottom: 15px;"></p>
+            
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label style="display:block; margin-bottom:5px; font-weight:bold; font-size: 14px;">Reason (shown in CPRF audit log):</label>
+                <input type="text" id="acceptReturnReason" class="form-control" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px;" value="Inspected and returned to UMAN warehouse">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label style="display:block; margin-bottom:5px; font-weight:bold; font-size: 14px;">Condition after return:</label>
+                <select id="acceptReturnCondition" class="form-control" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                    <option value="Operational">Operational</option>
+                    <option value="Needs Inspection">Needs Inspection</option>
+                    <option value="Damaged">Damaged</option>
+                    <option value="Condemned">Condemned</option>
+                </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label style="display:flex; align-items:center; gap:8px; font-weight:bold; font-size: 14px; cursor: pointer;">
+                    <input type="checkbox" id="acceptReturnReplace" value="yes" style="width:16px; height:16px; accent-color: #3b82f6;" onchange="toggleReplacementOptions()">
+                    Send a REPLACEMENT to this facility?
+                </label>
+                <p style="font-size: 12px; color: #64748b; margin-top: 4px; margin-left: 24px;">Check this to create an approved replacement request.</p>
+            </div>
+
+            <div class="form-group" id="replacementAssetGroup" style="display:none; margin-left: 24px;">
+                <label style="display:block; margin-bottom:5px; font-size: 14px;">Pick a replacement asset (optional):</label>
+                <select id="acceptReturnReplacementAsset" class="form-control" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                    <option value="0">-- Fulfill later --</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-outline" onclick="closeAcceptReturnModal()">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="submitAcceptReturn()">Accept Return</button>
+        </div>
+    </div>
+</div>
+
 <script>
 (function () {
     "use strict";
@@ -2209,7 +2256,64 @@ try {
         });
     }
 
-    // ── Accept return (prompts) ────────────────────────────────────────
+    // ── Accept return (modal) ────────────────────────────────────────
+    let currentReturnAssetType = '';
+    const replacementCandidates = <?= json_encode(
+        array_map(static fn($r) => [
+            'id'        => (int)($r['id'] ?? 0),
+            'code'      => (string)($r['asset_code'] ?? ''),
+            'name'      => (string)($r['name'] ?? ''),
+            'type'      => (string)($r['asset_type'] ?? ''),
+            'condition' => (string)($r['condition_status'] ?? ''),
+        ], $replacementCandidates ?? []),
+        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+    ); ?>;
+
+    window.closeAcceptReturnModal = function() {
+        document.getElementById('acceptReturnModal').classList.remove('open');
+    };
+
+    window.toggleReplacementOptions = function() {
+        const checked = document.getElementById('acceptReturnReplace').checked;
+        document.getElementById('replacementAssetGroup').style.display = checked ? 'block' : 'none';
+    };
+
+    window.submitAcceptReturn = function() {
+        const form = document.getElementById('acceptReturnForm');
+        if (!form) return;
+        
+        form.querySelectorAll('.dynamic-input').forEach(el => el.remove());
+
+        const reason = document.getElementById('acceptReturnReason').value.trim();
+        const cond = document.getElementById('acceptReturnCondition').value;
+        const wantReplace = document.getElementById('acceptReturnReplace').checked;
+        const replaceId = document.getElementById('acceptReturnReplacementAsset').value;
+
+        if (!reason) {
+            alert("Reason is required.");
+            return;
+        }
+
+        const add = function (name, value) {
+            const inp = document.createElement('input');
+            inp.type = 'hidden'; inp.className = 'dynamic-input';
+            inp.name = name; inp.value = value;
+            form.appendChild(inp);
+        };
+
+        add('reason', reason);
+        add('condition_after_return', cond);
+        
+        if (wantReplace) {
+            add('replacement', '1');
+            if (Number(replaceId) > 0) {
+                add('replacement_asset_id', replaceId);
+            }
+        }
+
+        form.submit();
+    };
+
     document.querySelectorAll('.accept-return-btn').forEach(function (btn) {
         btn.addEventListener('click', function () {
             const ds = btn.dataset || {};
@@ -2219,73 +2323,28 @@ try {
             const type = ds.assetType || '';
             if (id <= 0) return;
 
-            const reason = window.prompt(
-                'Accept return of ' + name + ' (#' + code + ')\n\nReason (shown in CPRF audit log):',
-                'Inspected and returned to UMAN warehouse'
-            );
-            if (reason === null) return;
-
-            const cond = window.prompt(
-                'Condition after return (Operational / Needs Inspection / Damaged / Condemned):',
-                'Operational'
-            );
-            if (cond === null) return;
-
-            const wantReplace = window.confirm(
-                'Send a REPLACEMENT to this facility?\n\n' +
-                'OK → create an approved replacement request (type: ' + type + '), option to pick a replacement asset now.\n' +
-                'Cancel → just return the unit, no replacement.'
-            );
-
-            const form = document.getElementById('acceptReturnForm');
-            if (!form) return;
-            form.querySelectorAll('.dynamic-input').forEach(function (el) { el.remove(); });
-
-            const add = function (name, value) {
-                const inp = document.createElement('input');
-                inp.type = 'hidden'; inp.className = 'dynamic-input';
-                inp.name = name; inp.value = value;
-                form.appendChild(inp);
-            };
-            add('reason', reason);
-            add('condition_after_return', cond);
-            if (wantReplace) {
-                add('replacement', '1');
-                const candidates = <?= json_encode(
-                    array_map(static fn($r) => [
-                        'id'        => (int)($r['id'] ?? 0),
-                        'code'      => (string)($r['asset_code'] ?? ''),
-                        'name'      => (string)($r['name'] ?? ''),
-                        'type'      => (string)($r['asset_type'] ?? ''),
-                        'condition' => (string)($r['condition_status'] ?? ''),
-                    ], $replacementCandidates),
-                    JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
-                ); ?>;
-                const sameType = candidates.filter(function (c) {
-                    return (c.type || '').toLowerCase() === String(type || '').toLowerCase();
-                });
-                const pool = sameType.length > 0 ? sameType : candidates;
-
-                let msg = 'Pick a replacement asset (type ' + type + ').\nEnter 0 to fulfill later.\n\n';
-                pool.slice(0, 20).forEach(function (c, i) {
-                    msg += (i + 1) + ') #' + c.code + ' — ' + c.name + ' [' + c.condition + ']\n';
-                });
-                if (pool.length > 20) msg += '\n…+' + (pool.length - 20) + ' more';
-                const pickStr = window.prompt(msg, pool.length > 0 ? String(pool[0].id) : '0');
-                if (pickStr === null) return;
-                const pickIdx = Number(pickStr) || 0;
-                let assetId = 0;
-                if (pickIdx > 0) {
-                    const picked = pool[pickIdx - 1];
-                    assetId = picked ? Number(picked.id) || 0 : 0;
-                }
-                if (assetId > 0) {
-                    add('replacement_asset_id', String(assetId));
-                }
-            }
-
             document.getElementById('ret-asset-id').value = String(id);
-            form.submit();
+            document.getElementById('acceptReturnSubtitle').textContent = `Accept return of ${name} (#${code})`;
+            document.getElementById('acceptReturnReason').value = 'Inspected and returned to UMAN warehouse';
+            document.getElementById('acceptReturnCondition').value = 'Operational';
+            document.getElementById('acceptReturnReplace').checked = false;
+            toggleReplacementOptions();
+            
+            currentReturnAssetType = type;
+
+            const sameType = replacementCandidates.filter(c => (c.type || '').toLowerCase() === String(type || '').toLowerCase());
+            const pool = sameType.length > 0 ? sameType : replacementCandidates;
+
+            const select = document.getElementById('acceptReturnReplacementAsset');
+            select.innerHTML = '<option value="0">-- Fulfill later --</option>';
+            pool.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = `#${c.code} — ${c.name} [${c.condition}]`;
+                select.appendChild(opt);
+            });
+
+            document.getElementById('acceptReturnModal').classList.add('open');
         });
     });
 })();
