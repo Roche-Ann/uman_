@@ -50,48 +50,27 @@ if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < 1800) {
 
 if (!$cacheValid) {
     try {
-        $client = new Client(['timeout' => 5.0, 'verify' => false]);
-        $instances = [
-            'https://rss-bridge.org/bridge01/',
-            'https://bridge.suumitsu.eu/',
-            'https://rss.ktachibana.party/',
-            'https://rssbridge.cweiske.de/'
+        $client = new Client(['timeout' => 8.0, 'verify' => false]);
+        
+        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+        $host = $_SERVER['HTTP_HOST'] ?? '127.0.0.1';
+        $localBridgeUrl = $protocol . $host . '/rss-bridge/';
+        
+        $promises = [
+            'qcdrrmc' => $client->getAsync($localBridgeUrl . '?action=display&bridge=Facebook&context=Username&format=Json&u=qcdrrmc'),
+            'QCGov'   => $client->getAsync($localBridgeUrl . '?action=display&bridge=Facebook&context=Username&format=Json&u=QCGov'),
         ];
         
+        $responses = Promise\Utils::settle($promises)->wait();
+        
         $mergedItems = [];
-        $success = false;
-
-        foreach ($instances as $instance) {
-            if ($success) break;
-            
-            try {
-                $promises = [
-                    'qcdrrmc' => $client->getAsync($instance . '?action=display&bridge=Facebook&context=Username&format=Json&u=qcdrrmc'),
-                    'QCGov'   => $client->getAsync($instance . '?action=display&bridge=Facebook&context=Username&format=Json&u=QCGov'),
-                ];
-                
-                $responses = Promise\Utils::settle($promises)->wait();
-                
-                $tempMerged = [];
-                $validResponses = 0;
-                
-                foreach ($responses as $key => $response) {
-                    if ($response['state'] === 'fulfilled') {
-                        $body = $response['value']->getBody()->getContents();
-                        $data = json_decode($body, true);
-                        if (isset($data['items']) && is_array($data['items'])) {
-                            $tempMerged = array_merge($tempMerged, $data['items']);
-                            $validResponses++;
-                        }
-                    }
+        foreach ($responses as $key => $response) {
+            if ($response['state'] === 'fulfilled') {
+                $body = $response['value']->getBody()->getContents();
+                $data = json_decode($body, true);
+                if (isset($data['items']) && is_array($data['items'])) {
+                    $mergedItems = array_merge($mergedItems, $data['items']);
                 }
-                
-                if ($validResponses > 0) {
-                    $mergedItems = $tempMerged;
-                    $success = true;
-                }
-            } catch (\Throwable $e) {
-                // Ignore and try next instance
             }
         }
         
