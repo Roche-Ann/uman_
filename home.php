@@ -917,6 +917,17 @@
         }
         
         @media (max-width: 768px) {
+        .logo-entity {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+            cursor: default;
+            user-select: none;
+            -webkit-user-select: none;
+            pointer-events: none;
+        }
+
         .menu-toggle {
             display: none;
             background: none;
@@ -924,9 +935,13 @@
             font-size: 1.5rem;
             color: var(--civic-sapphire);
             cursor: pointer;
-            padding: 6px;
+            padding: 8px;
             border-radius: 8px;
             transition: var(--transition-smooth);
+            z-index: 1005;
+            position: relative;
+            pointer-events: auto;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .menu-toggle:hover {
@@ -946,25 +961,25 @@
 
             .nav-links {
                 position: fixed;
-                top: 80px;
+                top: 0;
                 right: -100%;
-                width: 80%;
-                max-width: 320px;
-                height: calc(100vh - 80px);
-                height: calc(100dvh - 80px);
-                background: white;
+                width: min(320px, 82vw);
+                height: 100vh;
+                height: 100dvh;
+                background: #ffffff;
                 flex-direction: column;
                 justify-content: flex-start;
-                padding: 2rem 1.5rem;
-                box-shadow: -10px 0 30px rgba(0,0,0,0.12);
-                transition: 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+                padding: calc(90px + env(safe-area-inset-top, 0px)) 1.75rem 2rem;
+                box-shadow: -10px 0 35px rgba(0,0,0,0.18);
+                transition: right 0.35s cubic-bezier(0.16, 1, 0.3, 1);
                 z-index: 1000;
                 display: flex !important;
                 gap: 1.25rem;
+                overflow-y: auto;
             }
 
             .nav-links.active {
-                right: 0;
+                right: 0 !important;
             }
 
             .nav-links .mobile-nav-actions {
@@ -1427,7 +1442,7 @@
     <!-- Civic Navigation -->
     <nav class="civic-navigation" id="mainNav">
         <div class="nav-container">
-            <a href="home.php" class="logo-entity">
+            <div class="logo-entity">
                 <div class="logo-marker">
                     <img src="assets/images/logocityhall.png" alt="LGU Logo" class="logo-only">
                 </div>
@@ -1435,7 +1450,7 @@
                     <span class="logo-primary">Utilities Management System</span>
                     <span class="logo-secondary"><span class="title-gradient">uMAN</span> · LGU Command Center</span>
                 </div>
-            </a>
+            </div>
 
             <button class="menu-toggle" id="mobileMenuBtn" aria-label="Toggle navigation">
                 <i class="fas fa-bars"></i>
@@ -1967,41 +1982,6 @@
                 }
             });
         }, 5000);
-
-        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
-        const navLinksList = document.getElementById('navLinksList');
-        const mobileActionsGroup = document.querySelector('.mobile-nav-actions');
-
-        mobileMenuBtn.addEventListener('click', () => {
-            navLinksList.classList.toggle('active');
-            const icon = mobileMenuBtn.querySelector('i');
-            
-            if(navLinksList.classList.contains('active')) {
-                icon.className = 'fas fa-times';
-                if(window.innerWidth <= 992) {
-                    mobileActionsGroup.style.display = 'flex';
-                }
-            } else {
-                icon.className = 'fas fa-bars';
-                mobileActionsGroup.style.display = 'none';
-            }
-        });
-
-        document.querySelectorAll('.nav-link').forEach(link => {
-            link.addEventListener('click', () => {
-                navLinksList.classList.remove('active');
-                mobileMenuBtn.querySelector('i').className = 'fas fa-bars';
-                mobileActionsGroup.style.display = 'none';
-            });
-        });
-
-        window.addEventListener('resize', () => {
-            if(window.innerWidth > 992) {
-                navLinksList.classList.remove('active');
-                mobileMenuBtn.querySelector('i').className = 'fas fa-bars';
-                mobileActionsGroup.style.display = 'none';
-            }
-        });
         
         if(document.getElementById('landing-page')){
             showLandingPage();

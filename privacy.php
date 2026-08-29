@@ -497,13 +497,13 @@
     <!-- Navigation -->
     <nav class="civic-navigation" id="mainNav">
         <div class="nav-container">
-            <a href="home.php" class="logo-entity">
+            <div class="logo-entity">
                 <img src="assets/images/logocityhall.png" alt="LGU Logo" class="logo-only">
                 <div class="logo-text">
                     <span class="logo-primary">Utilities Management System</span>
                     <span class="logo-secondary"><span class="title-gradient">uMAN</span></span>
                 </div>
-            </a>
+            </div>
 
             <button class="menu-toggle" id="mobileMenuBtn">
                 <i class="fas fa-bars"></i>

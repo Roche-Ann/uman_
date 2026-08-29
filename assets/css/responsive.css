@@ -846,6 +846,10 @@ body {
         text-decoration: none !important;
         min-width: 0 !important;
         flex: 1 1 auto !important;
+        pointer-events: none !important;
+        cursor: default !important;
+        user-select: none !important;
+        -webkit-user-select: none !important;
     }
 
     .logo-marker {
@@ -899,7 +903,11 @@ body {
         border: none !important;
         cursor: pointer !important;
         flex-shrink: 0 !important;
-        padding: 6px !important;
+        padding: 8px !important;
+        z-index: 1005 !important;
+        position: relative !important;
+        pointer-events: auto !important;
+        -webkit-tap-highlight-color: transparent !important;
     }
 
     /* Citizen Dashboard & Resident UI */
