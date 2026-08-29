@@ -1466,7 +1466,7 @@
                 <li class="nav-link-item"><a href="#modules" class="nav-link">Modules</a></li>
                 <li class="nav-link-item"><a href="#methodology" class="nav-link">History</a></li>
                 <li class="nav-link-item"><a href="#analytics" class="nav-link">Contact</a></li>
-                <li class="mobile-nav-actions">
+                <li class="mobile-nav-actions" style="display: none;">
                     <a href="create.php" class="civic-button button-secondary" style="width:100%; justify-content:center;">Register</a>
                     <a href="login.php" class="civic-button button-primary" style="width:100%; justify-content:center;">Login</a>
                 </li>
@@ -2217,6 +2217,8 @@
         document.addEventListener('DOMContentLoaded', function() {
             const menuBtn = document.getElementById('mobileMenuBtn');
             const navLinks = document.getElementById('navLinksList');
+            const mobileActions = navLinks ? navLinks.querySelector('.mobile-nav-actions') : null;
+
             if (menuBtn && navLinks) {
                 menuBtn.addEventListener('click', function(e) {
                     e.stopPropagation();
@@ -2226,9 +2228,13 @@
                         if (navLinks.classList.contains('active')) {
                             icon.classList.remove('fa-bars');
                             icon.classList.add('fa-times');
+                            if (window.innerWidth <= 992 && mobileActions) {
+                                mobileActions.style.display = 'flex';
+                            }
                         } else {
                             icon.classList.remove('fa-times');
                             icon.classList.add('fa-bars');
+                            if (mobileActions) mobileActions.style.display = 'none';
                         }
                     }
                 });
@@ -2242,6 +2248,7 @@
                             icon.classList.remove('fa-times');
                             icon.classList.add('fa-bars');
                         }
+                        if (mobileActions) mobileActions.style.display = 'none';
                     });
                 });
 
@@ -2254,6 +2261,20 @@
                             icon.classList.remove('fa-times');
                             icon.classList.add('fa-bars');
                         }
+                        if (mobileActions) mobileActions.style.display = 'none';
+                    }
+                });
+
+                // Reset on resize
+                window.addEventListener('resize', function() {
+                    if (window.innerWidth > 992) {
+                        navLinks.classList.remove('active');
+                        const icon = menuBtn.querySelector('i');
+                        if (icon) {
+                            icon.classList.remove('fa-times');
+                            icon.classList.add('fa-bars');
+                        }
+                        if (mobileActions) mobileActions.style.display = 'none';
                     }
                 });
             }
