@@ -1742,15 +1742,45 @@ try {
                                                 </form>
                                             </div>
                                         <?php elseif (in_array($req['status'], ['pending', 'approved'], true)): ?>
+                                            <?php
+                                                $reqSpecificCode = trim((string)($req['requested_asset_code'] ?? ''));
+                                                $autoSelectedAssetId = 0;
+                                                if (!empty($avail['matching_assets'])) {
+                                                    if ($reqSpecificCode !== '') {
+                                                        foreach ($avail['matching_assets'] as $a) {
+                                                            $aIdStr = trim((string)($a['asset_id'] ?? ''));
+                                                            if ($aIdStr !== '' && (
+                                                                strcasecmp($reqSpecificCode, $aIdStr) === 0 ||
+                                                                stripos($reqSpecificCode, $aIdStr) === 0 ||
+                                                                stripos($aIdStr, $reqSpecificCode) === 0
+                                                            )) {
+                                                                $autoSelectedAssetId = (int)$a['id'];
+                                                                break;
+                                                            }
+                                                        }
+                                                    }
+                                                    if ($autoSelectedAssetId <= 0 && count($avail['matching_assets']) === 1) {
+                                                        $autoSelectedAssetId = (int)$avail['matching_assets'][0]['id'];
+                                                    }
+                                                }
+                                            ?>
                                             <div class="action-form">
                                                 <form method="POST" onsubmit="event.preventDefault(); openConfirmModal(this, 'Fulfill Request', 'Are you sure you want to mark this request as fulfilled?', 'btn-success');">
                                                     <input type="hidden" name="id" value="<?= (int)$req['id']; ?>">
                                                     <input type="hidden" name="action" value="fulfill">
+                                                    <?php if ($reqSpecificCode !== '' && $autoSelectedAssetId > 0): ?>
+                                                        <div style="font-size:11px; color:#0f766e; background:#ccfbf1; border:1px solid #99f6e4; padding:3px 8px; border-radius:4px; margin-bottom:6px; font-weight:600; display:flex; align-items:center; gap:4px;">
+                                                            <i class="fas fa-magic"></i> Auto-selected requested asset
+                                                        </div>
+                                                    <?php endif; ?>
                                                     <select name="fulfilled_asset_id" required>
-                                                        <option value="">Select asset to fulfill…</option>
+                                                        <?php if ($autoSelectedAssetId <= 0): ?>
+                                                            <option value="">Select asset to fulfill…</option>
+                                                        <?php endif; ?>
                                                         <?php if (!empty($avail['matching_assets'])): ?>
                                                             <?php foreach ($avail['matching_assets'] as $a): ?>
-                                                                <option value="<?= (int)$a['id']; ?>">
+                                                                <?php $isSelected = ($autoSelectedAssetId > 0 && (int)$a['id'] === $autoSelectedAssetId); ?>
+                                                                <option value="<?= (int)$a['id']; ?>" <?= $isSelected ? 'selected' : ''; ?>>
                                                                     <?= htmlspecialchars($a['asset_id'] . ' — ' . $a['name'] . ' (' . $a['quantity'] . ' available)'); ?>
                                                                 </option>
                                                             <?php endforeach; ?>
