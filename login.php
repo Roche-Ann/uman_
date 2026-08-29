@@ -901,7 +901,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <span class="footer-logo-text">Quezon City<br><small>Web-Based Utilities Management</small></span>
                 </div>
                 <p class="footer-description">
-                    UMAN is a comprehensive municipal utility management system for Quezon City, streamlining water and energy monitoring, asset inventory, incident response, maintenance dispatch, and connected city integrations.
+                    UMAN is a utility management platform that helps local government units manage assets, incidents, maintenance, and energy and water monitoring in one system.
                 </p>
             </div>
             <div>

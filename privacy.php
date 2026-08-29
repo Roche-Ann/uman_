@@ -634,7 +634,7 @@
                     <span class="footer-logo-text">Quezon City<br><small>Web-Based Utilities Management</small></span>
                 </div>
                 <p class="footer-description">
-                    We streamline utility operations and provide easy access to monitor your consumption and service requests.
+                    UMAN is a utility management platform that helps local government units manage assets, incidents, maintenance, and energy and water monitoring in one system.
                 </p>
             </div>
             <div>
