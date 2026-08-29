@@ -401,16 +401,28 @@ try {
 
         .feed-box-card {
             background: #ffffff;
-            border: 1px solid #e2e8f0;
             border-radius: 14px;
             overflow: hidden;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
             display: flex;
             flex-direction: column;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        /* QC Gov Card Theming */
+        .feed-box-qcgov {
+            border: 1px solid rgba(59, 130, 246, 0.35);
+            border-top: 3px solid #3b82f6;
+        }
+
+        /* QCDRRMC Card Theming */
+        .feed-box-qcdrrmc {
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            border-top: 3px solid #ef4444;
         }
 
         .feed-box-header {
-            padding: 14px 18px;
+            padding: 12px 16px;
             background: #f8fafc;
             border-bottom: 1px solid #e2e8f0;
             display: flex;
@@ -421,10 +433,31 @@ try {
             color: #1e293b;
         }
 
-        .feed-box-header span {
+        .feed-box-header-title {
             display: flex;
             align-items: center;
             gap: 8px;
+        }
+
+        .btn-open-fb {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #64748b;
+            background: rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            padding: 4px 8px;
+            border-radius: 6px;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .btn-open-fb:hover {
+            color: #1e293b;
+            background: rgba(0, 0, 0, 0.08);
+            transform: translateY(-1px);
         }
 
         .feed-box-body {
@@ -433,6 +466,8 @@ try {
             min-height: 700px;
             width: 100%;
             background: #ffffff;
+            border-radius: 0 0 14px 14px;
+            overflow: hidden;
         }
 
         /* Emergency & Weather Sidebar */
@@ -599,7 +634,7 @@ try {
             background: rgba(239, 68, 68, 0.15);
             color: #dc2626;
             border: 1px solid rgba(239, 68, 68, 0.3);
-            font-size: 10.5px;
+            font-size: 10px;
             font-weight: 700;
             padding: 2px 7px;
             border-radius: 99px;
@@ -623,16 +658,40 @@ try {
         }
 
         /* Dark Theme Support */
-        .dark-theme .feed-box-card,
-        .dark-theme .emergency-card,
-        .dark-theme .weather-compact-card {
+        .dark-theme .feed-box-qcgov {
             background: #1e293b;
-            border-color: #334155;
-            color: #f8fafc;
+            border-color: rgba(59, 130, 246, 0.45);
+            border-top: 3px solid #3b82f6;
+            box-shadow: 0 4px 20px -2px rgba(59, 130, 246, 0.18);
+        }
+
+        .dark-theme .feed-box-qcdrrmc {
+            background: #1e293b;
+            border-color: rgba(239, 68, 68, 0.5);
+            border-top: 3px solid #ef4444;
+            box-shadow: 0 4px 20px -2px rgba(239, 68, 68, 0.22);
         }
 
         .dark-theme .feed-box-header {
             background: #0f172a;
+            border-color: #334155;
+            color: #f8fafc;
+        }
+
+        .dark-theme .btn-open-fb {
+            color: #94a3b8;
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+
+        .dark-theme .btn-open-fb:hover {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.14);
+        }
+
+        .dark-theme .emergency-card,
+        .dark-theme .weather-compact-card {
+            background: #1e293b;
             border-color: #334155;
             color: #f8fafc;
         }
@@ -714,9 +773,15 @@ try {
                 <div class="dual-feeds-container">
                     
                     <!-- 1. Quezon City Government Feed Box -->
-                    <div class="feed-box-card">
+                    <div class="feed-box-card feed-box-qcgov">
                         <div class="feed-box-header">
-                            <span><i class="fas fa-landmark" style="color: #3762c8;"></i> Quezon City Government</span>
+                            <div class="feed-box-header-title">
+                                <i class="fas fa-landmark" style="color: #3b82f6;"></i>
+                                <span>Quezon City Government</span>
+                            </div>
+                            <a href="https://www.facebook.com/QCGov" target="_blank" rel="noopener noreferrer" class="btn-open-fb">
+                                Open Facebook <i class="fas fa-arrow-up-right-from-square"></i>
+                            </a>
                         </div>
                         <div class="feed-box-body">
                             <div class="fb-page" 
@@ -735,12 +800,18 @@ try {
                     </div>
 
                     <!-- 2. QCDRRMC Disaster Alerts Feed Box -->
-                    <div class="feed-box-card">
+                    <div class="feed-box-card feed-box-qcdrrmc">
                         <div class="feed-box-header">
-                            <span><i class="fas fa-shield-halved" style="color: #dc2626;"></i> QCDRRMC Disaster Alerts</span>
-                            <span id="tabAlertBadge" class="tab-alert-badge" style="display: none;">
-                                <span class="pulse-dot-red"></span> Alert Active
-                            </span>
+                            <div class="feed-box-header-title">
+                                <i class="fas fa-shield-halved" style="color: #ef4444;"></i>
+                                <span>QCDRRMC Disaster Alerts</span>
+                                <span id="tabAlertBadge" class="tab-alert-badge" style="display: none;">
+                                    <span class="pulse-dot-red"></span> Alert Active
+                                </span>
+                            </div>
+                            <a href="https://www.facebook.com/qcdrrmc" target="_blank" rel="noopener noreferrer" class="btn-open-fb">
+                                Open Facebook <i class="fas fa-arrow-up-right-from-square"></i>
+                            </a>
                         </div>
                         <div class="feed-box-body">
                             <div class="fb-page" 
