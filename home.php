@@ -827,9 +827,93 @@
         }
         
         @media (max-width: 992px) {
+        @media (max-width: 1024px) {
+            .hero-grid,
+            .analytics-grid {
+                grid-template-columns: 1fr;
+                gap: 3rem;
+            }
+            
+            .hero-title {
+                font-size: 2.75rem;
+            }
+            
+            .section-title {
+                font-size: 2rem;
+            }
+        }
+        
+        @media (max-width: 992px) {
             .footer-grid {
                 grid-template-columns: repeat(2, 1fr);
             }
+        }
+
+        /* ── History methodology cards base styling ── */
+        .methodology-container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        .methodology-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            width: 100%;
+        }
+
+        .method-card {
+            position: relative;
+            width: 100%;
+            min-height: 250px;
+            height: auto;
+            background-size: cover;
+            background-position: center;
+            border-radius: 16px;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            overflow: hidden;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            transition: var(--transition-smooth);
+        }
+
+        .method-card-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, rgba(15, 23, 42, 0.95) 0%, rgba(15, 23, 42, 0.72) 55%, rgba(15, 23, 42, 0.3) 100%);
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .method-card-content {
+            position: relative;
+            z-index: 2;
+            padding: clamp(1rem, 3.5vw, 1.75rem);
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+        }
+
+        .method-card-title {
+            margin: 0 0 0.4rem 0;
+            font-size: clamp(1.15rem, 3.5vw, 1.55rem);
+            font-weight: 700;
+            font-family: var(--font-heading);
+            color: #ffffff;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+            line-height: 1.25;
+        }
+
+        .method-card-text {
+            margin: 0;
+            font-size: clamp(0.85rem, 2.2vw, 0.96rem);
+            color: rgba(255, 255, 255, 0.92);
+            line-height: 1.55;
+            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
         }
         
         @media (max-width: 768px) {
@@ -837,88 +921,175 @@
             html, body {
                 overflow-x: hidden !important;
                 max-width: 100vw;
+                width: 100%;
             }
 
             body {
                 background: #ffffff !important;
             }
 
-            /* ── Navigation ── */
+            /* ── Adaptive Civic Navigation ── */
+            .civic-navigation {
+                padding: 0.55rem 0 !important;
+                padding-top: max(0.55rem, env(safe-area-inset-top, 0px)) !important;
+            }
+
             .nav-container {
-                padding: 0 1rem;
+                padding: 0 clamp(8px, 2.5vw, 16px) !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: space-between !important;
+                gap: clamp(6px, 1.5vw, 12px) !important;
+                width: 100% !important;
+                max-width: 100vw !important;
+                box-sizing: border-box !important;
             }
             
             .nav-links {
-                display: none;
+                display: none !important;
+            }
+
+            .logo-entity {
+                min-width: 0 !important;
+                flex: 1 1 auto !important;
+                gap: clamp(6px, 1.5vw, 10px) !important;
+                overflow: hidden !important;
+                display: flex !important;
+                align-items: center !important;
+            }
+
+            .logo-marker {
+                flex-shrink: 0 !important;
+                display: flex !important;
+                align-items: center !important;
+            }
+
+            .logo-only {
+                width: clamp(28px, 7vw, 36px) !important;
+                height: clamp(28px, 7vw, 36px) !important;
+                flex-shrink: 0 !important;
+            }
+
+            .logo-text {
+                min-width: 0 !important;
+                overflow: hidden !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: center !important;
+            }
+
+            .logo-primary {
+                font-size: clamp(0.72rem, 2.8vw, 0.95rem) !important;
+                line-height: 1.15 !important;
+                white-space: nowrap !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
+            }
+
+            .logo-secondary {
+                font-size: clamp(0.52rem, 1.8vw, 0.65rem) !important;
+                line-height: 1.1 !important;
+                white-space: nowrap !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
+                margin-top: 1px !important;
+            }
+
+            .nav-actions {
+                flex-shrink: 0 !important;
+                display: flex !important;
+                align-items: center !important;
+                gap: clamp(4px, 1.2vw, 8px) !important;
+                margin-left: auto !important;
+            }
+
+            .nav-actions .civic-button {
+                padding: clamp(0.38rem, 1.5vw, 0.52rem) clamp(0.6rem, 2vw, 0.9rem) !important;
+                font-size: clamp(0.72rem, 1.8vw, 0.82rem) !important;
+                border-radius: 99px !important;
+                white-space: nowrap !important;
+                line-height: 1.2 !important;
+                gap: 0.25rem !important;
             }
 
             /* ── Hero Section ── */
             .hero-platform {
-                padding: 100px 0 60px;
-                background: linear-gradient(160deg, #0B3D91 0%, #1a5276 40%, #00A896 100%);
+                padding: clamp(85px, 12vh, 120px) 0 clamp(35px, 6vh, 55px) !important;
+                background: linear-gradient(160deg, #0B3D91 0%, #1a5276 40%, #00A896 100%) !important;
             }
 
             .hero-grid {
-                grid-template-columns: 1fr;
-                gap: 2rem;
-                padding: 0 1.25rem;
-                text-align: center;
+                grid-template-columns: 1fr !important;
+                gap: 1.75rem !important;
+                padding: 0 1.25rem !important;
+                text-align: center !important;
             }
 
             .hero-content {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
             }
 
             .context-badge {
-                margin-left: auto;
-                margin-right: auto;
-                background: rgba(255,255,255,0.15);
-                color: #ffffff;
-                border-color: rgba(255,255,255,0.25);
+                margin-left: auto !important;
+                margin-right: auto !important;
+                background: rgba(255,255,255,0.15) !important;
+                color: #ffffff !important;
+                border-color: rgba(255,255,255,0.25) !important;
+                font-size: 0.8rem !important;
+                padding: 0.35rem 0.8rem !important;
+                margin-bottom: 1rem !important;
             }
 
             .hero-title {
-                font-size: 2rem;
-                color: #ffffff;
-                text-align: center;
+                font-size: clamp(1.55rem, 5.5vw, 2.2rem) !important;
+                color: #ffffff !important;
+                text-align: center !important;
+                line-height: 1.2 !important;
+                word-break: break-word !important;
             }
 
             .title-gradient {
-                background: linear-gradient(135deg, #7ec8e3, #FFD700, #00e5c9);
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-                background-clip: text;
+                background: linear-gradient(135deg, #7ec8e3, #FFD700, #00e5c9) !important;
+                -webkit-background-clip: text !important;
+                -webkit-text-fill-color: transparent !important;
+                background-clip: text !important;
             }
 
             .hero-description {
-                font-size: 1rem;
-                color: rgba(255,255,255,0.85);
-                text-align: center;
-                max-width: 100%;
+                font-size: clamp(0.9rem, 2.5vw, 1.05rem) !important;
+                color: rgba(255,255,255,0.88) !important;
+                text-align: center !important;
+                max-width: 100% !important;
+                margin-bottom: 1.75rem !important;
+                line-height: 1.6 !important;
             }
 
             .hero-platform .cta-actions {
-                flex-direction: column;
-                align-items: center;
-                width: 100%;
-                gap: 0.75rem;
+                flex-direction: column !important;
+                align-items: center !important;
+                width: 100% !important;
+                gap: 0.75rem !important;
             }
 
             .hero-platform .cta-actions .civic-button {
-                width: 100%;
-                max-width: 320px;
-                justify-content: center;
+                width: 100% !important;
+                max-width: 320px !important;
+                justify-content: center !important;
             }
 
             .hero-visual {
-                width: 100%;
+                width: 100% !important;
             }
 
             .visual-container {
                 transform: none !important;
-                border-radius: 16px;
+                border-radius: 16px !important;
+            }
+
+            .visual-container img {
+                height: clamp(200px, 32vh, 280px) !important;
             }
 
             /* ── Sections general ── */
@@ -926,188 +1097,71 @@
             .methodology-section,
             .analytics-showcase,
             .cta-section {
-                padding: 3rem 0;
+                padding: clamp(2.5rem, 5vh, 4rem) 0 !important;
             }
 
             .section-header {
-                padding: 0 1.25rem;
-                margin-bottom: 2rem;
+                padding: 0 1.25rem !important;
+                margin-bottom: 1.75rem !important;
             }
 
             .section-title {
-                font-size: 1.6rem;
+                font-size: clamp(1.4rem, 4.5vw, 1.85rem) !important;
             }
 
             .section-description {
-                font-size: 0.95rem;
+                font-size: clamp(0.88rem, 2.5vw, 0.98rem) !important;
             }
 
-            /* ── Modules ── */
-            .modules-grid {
-                grid-template-columns: 1fr;
-                padding: 0 1.25rem;
-            }
-
-            /* ── History section ── */
-            .methodology-section {
-                background: #F8FAFF !important;
-            }
-
-            .methodology-container {
-                padding: 0 1.25rem;
-            }
-
-            .methodology-stack {
-                grid-template-columns: 1fr;
-                gap: 1.25rem;
-            }
-
-            /* ── Stat panel ── */
-            .stat-panel {
-                position: relative;
-                bottom: auto;
-                left: auto;
-                right: auto;
-                margin-top: 1.5rem;
-            }
-
-            /* ── Analytics / Contact section ── */
-            .analytics-showcase {
-                background: #ffffff !important;
-            }
-
-            .analytics-grid {
-                grid-template-columns: 1fr;
-                gap: 2rem;
-                padding: 0 1.25rem;
-            }
-
-            .ai-visual {
-                background: transparent !important;
-                padding: 0 !important;
-                box-shadow: none !important;
-                min-height: 260px;
-            }
-
-            /* ── CTA section ── */
-            .cta-actions {
-                flex-direction: column;
-                align-items: center;
-            }
-            
-            .cta-button {
-                width: 100%;
-                justify-content: center;
-            }
-
-            .cta-title {
-                font-size: 1.75rem;
-            }
-
-            .cta-description {
-                font-size: 1rem;
-            }
-            
-            /* ── Footer ── */
-            .footer-grid {
-                grid-template-columns: 1fr;
-                gap: 2rem;
-                padding: 0 1.25rem;
-            }
-
-            .footer-bottom {
-                padding: 0 1.25rem;
-                padding-top: 2rem;
-            }
-        }
-        
-        .hover-lift {
-            transition: var(--transition-smooth);
-        }
-        
-        .hover-lift:hover {
-            transform: translateY(-4px);
-        }
-        
-        :focus-visible {
-            outline: 2px solid var(--civic-sapphire);
-            outline-offset: 2px;
-        }
-
-        /* ── Mobile Carousel for Featured Services ── */
-        .modules-carousel-wrapper {
-            display: none; /* hidden on desktop */
-        }
-
-        @media (max-width: 768px) {
-            /* Navbar compact fix */
-            .civic-navigation {
-                padding: 0.6rem 0;
-            }
-            .logo-only {
-                width: 38px;
-                height: 38px;
-            }
-            .logo-primary {
-                font-size: 1rem;
-                line-height: 1.15;
-            }
-            .logo-secondary {
-                font-size: 0.65rem;
-            }
-            .nav-actions .civic-button {
-                padding: 0.5rem 0.9rem;
-                font-size: 0.8rem;
-                gap: 0.25rem;
-            }
-            .nav-actions {
-                gap: 0.5rem;
-            }
-
-            /* Fix dark background on modules & other sections */
+            /* ── Modules Carousel ── */
             .modules-section {
                 background: #ffffff !important;
             }
 
-            /* Hide desktop grid, show carousel */
             .modules-grid {
                 display: none !important;
             }
+
             .modules-carousel-wrapper {
-                display: block;
-                padding: 0 1.25rem;
-                position: relative;
-                height: 400px; /* fixed height for stack */
-                margin-top: 1rem;
+                display: block !important;
+                padding: 0 1.25rem !important;
+                position: relative !important;
+                height: clamp(340px, 48vh, 400px) !important;
+                margin-top: 1rem !important;
                 overflow: visible !important;
             }
+
             .modules-carousel-track {
-                position: relative;
-                width: 100%;
-                height: 100%;
+                position: relative !important;
+                width: 100% !important;
+                height: 100% !important;
                 overflow: visible !important;
             }
+
             .modules-carousel-track .module-card {
                 position: absolute !important;
-                top: 0;
-                left: 0;
+                top: 0 !important;
+                left: 0 !important;
                 width: 100% !important;
                 height: 100% !important;
                 margin: 0 !important;
-                box-sizing: border-box;
-                background: #ffffff;
-                border-radius: var(--radius-modern);
-                padding: 2.2rem 1.8rem;
+                box-sizing: border-box !important;
+                background: #ffffff !important;
+                border-radius: var(--radius-modern) !important;
+                padding: clamp(1.4rem, 4vw, 2rem) clamp(1.2rem, 3.5vw, 1.8rem) !important;
                 box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08) !important;
-                border: 1px solid rgba(11, 61, 145, 0.08);
-                transform-origin: center bottom;
+                border: 1px solid rgba(11, 61, 145, 0.08) !important;
+                transform-origin: center bottom !important;
                 transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1),
                             opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1),
-                            z-index 0.45s ease;
-                opacity: 0;
-                pointer-events: none;
-                z-index: 0;
-                transform: translate3d(0, 20px, 0) scale(0.9);
+                            z-index 0.45s ease !important;
+                opacity: 0 !important;
+                pointer-events: none !important;
+                z-index: 0 !important;
+                transform: translate3d(0, 20px, 0) scale(0.9) !important;
+                display: flex !important;
+                flex-direction: column !important;
+                overflow-y: auto !important;
             }
 
             .dark-theme .modules-carousel-track .module-card {
@@ -1116,42 +1170,38 @@
                 box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08) !important;
             }
 
-            /* Front/active card */
             .modules-carousel-track .module-card.card-active {
-                opacity: 1;
-                pointer-events: auto;
-                z-index: 3;
-                transform: translate3d(0, 0, 0) scale(1);
-                will-change: transform, opacity;
+                opacity: 1 !important;
+                pointer-events: auto !important;
+                z-index: 3 !important;
+                transform: translate3d(0, 0, 0) scale(1) !important;
+                will-change: transform, opacity !important;
             }
 
-            /* Stacked card behind front card */
             .modules-carousel-track .module-card.card-next {
-                opacity: 0.7;
-                pointer-events: none;
-                z-index: 2;
-                transform: translate3d(0, 16px, 0) scale(0.94);
-                will-change: transform, opacity;
+                opacity: 0.7 !important;
+                pointer-events: none !important;
+                z-index: 2 !important;
+                transform: translate3d(0, 16px, 0) scale(0.94) !important;
+                will-change: transform, opacity !important;
             }
 
-            /* Fly-out animation classes */
             .modules-carousel-track .module-card.card-swiped-left {
-                opacity: 0;
-                pointer-events: none;
-                z-index: 4;
+                opacity: 0 !important;
+                pointer-events: none !important;
+                z-index: 4 !important;
                 transform: translate3d(-130%, 0, 0) rotate(-12deg) !important;
-                will-change: transform, opacity;
+                will-change: transform, opacity !important;
             }
 
             .modules-carousel-track .module-card.card-swiped-right {
-                opacity: 0;
-                pointer-events: none;
-                z-index: 4;
+                opacity: 0 !important;
+                pointer-events: none !important;
+                z-index: 4 !important;
                 transform: translate3d(130%, 0, 0) rotate(12deg) !important;
-                will-change: transform, opacity;
+                will-change: transform, opacity !important;
             }
 
-            /* ── Dark Theme Card Content Contrast Fix (Keep them light cards with dark text) ── */
             .dark-theme .modules-carousel-track .module-card .module-title {
                 color: var(--municipal-slate) !important;
             }
@@ -1162,7 +1212,58 @@
                 color: rgba(47, 72, 88, 0.8) !important;
             }
 
-            /* ── Dark Theme Contact cards styling (Keep them light cards with dark text) ── */
+            .carousel-dots {
+                display: flex !important;
+                justify-content: center !important;
+                gap: 6px !important;
+                margin-top: 24px !important;
+                position: relative !important;
+                z-index: 10 !important;
+            }
+            .carousel-dot {
+                width: 8px !important;
+                height: 8px !important;
+                border-radius: 50% !important;
+                background: #cbd5e1 !important;
+                transition: all 0.3s ease !important;
+                cursor: pointer !important;
+                border: none !important;
+                padding: 0 !important;
+            }
+            .carousel-dot.active {
+                background: var(--civic-sapphire) !important;
+                width: 22px !important;
+                border-radius: 99px !important;
+            }
+
+            /* ── History section ── */
+            .methodology-section {
+                background: #F8FAFF !important;
+            }
+
+            .methodology-container {
+                padding: 0 1.25rem !important;
+            }
+
+            .methodology-stack {
+                gap: 1.25rem !important;
+            }
+
+            .method-card {
+                min-height: 220px !important;
+            }
+
+            /* ── Analytics / Contact section ── */
+            .analytics-showcase {
+                background: #ffffff !important;
+            }
+
+            .analytics-grid {
+                grid-template-columns: 1fr !important;
+                gap: 1.5rem !important;
+                padding: 0 1.25rem !important;
+            }
+
             .dark-theme .insight-item {
                 background: #ffffff !important;
                 border-left-color: var(--civic-sapphire) !important;
@@ -1182,40 +1283,15 @@
                 color: var(--civic-sapphire) !important;
             }
 
-            /* Dot indicators */
-            .carousel-dots {
-                display: flex;
-                justify-content: center;
-                gap: 6px;
-                margin-top: 32px;
-                position: relative;
-                z-index: 10;
-            }
-            .carousel-dot {
-                width: 8px;
-                height: 8px;
-                border-radius: 50%;
-                background: #cbd5e1;
-                transition: all 0.3s ease;
-                cursor: pointer;
-                border: none;
-                padding: 0;
-            }
-            .carousel-dot.active {
-                background: var(--civic-sapphire);
-                width: 22px;
-                border-radius: 99px;
-            }
-
-            /* ── Footer mobile space optimization ── */
+            /* ── Footer ── */
             .civic-footer {
-                padding: 1.5rem 0 1rem !important;
+                padding: 2rem 0 1rem !important;
             }
             .footer-grid {
                 grid-template-columns: 1fr !important;
-                gap: 1rem !important;
+                gap: 1.25rem !important;
+                padding: 0 1.25rem !important;
             }
-            /* Place link groups side-by-side on mobile to save vertical space */
             .footer-grid > div:not(.footer-brand) {
                 display: inline-block !important;
                 width: 46% !important;
@@ -1247,10 +1323,48 @@
                 font-size: 0.8rem !important;
             }
             .footer-bottom {
-                padding: 0 1.25rem;
+                padding: 0 1.25rem !important;
                 padding-top: 1rem !important;
                 margin-top: 1rem !important;
             }
+        }
+
+        /* ── Extra Narrow Displays (<= 360px) ── */
+        @media (max-width: 360px) {
+            .nav-container {
+                padding: 0 6px !important;
+                gap: 4px !important;
+            }
+            .logo-only {
+                width: 26px !important;
+                height: 26px !important;
+            }
+            .logo-primary {
+                font-size: 0.7rem !important;
+            }
+            .logo-secondary {
+                display: none !important;
+            }
+            .nav-actions {
+                gap: 3px !important;
+            }
+            .nav-actions .civic-button {
+                padding: 0.35rem 0.5rem !important;
+                font-size: 0.7rem !important;
+            }
+        }
+
+        .hover-lift {
+            transition: var(--transition-smooth);
+        }
+        
+        .hover-lift:hover {
+            transform: translateY(-4px);
+        }
+        
+        :focus-visible {
+            outline: 2px solid var(--civic-sapphire);
+            outline-offset: 2px;
         }
     </style>
     
@@ -1506,43 +1620,34 @@
     <div class="methodology-container">
         <div class="methodology-stack">
             
-            <div class="method-card hover-lift" 
-                 style="position: relative; width: 100%; height: 250px; 
-                        background-image: url('assets/images/Manuel_Quezon.jpg'); 
-                        background-size: cover; background-position: center; 
-                        border-radius: 12px; color: white; 
-                        display: flex; flex-direction: column; justify-content: flex-end; 
-                        padding: 1rem; box-shadow: 0 4px 8px rgba(0,0,0,0.3); margin-bottom: 1rem;">
-                <h3 style="margin: 0; font-size: 1.5rem; font-weight: bold; text-shadow: 1px 1px 5px rgba(0,0,0,0.7);">1939: The Foundation</h3>
-                <p style="margin-top: 0.5rem; text-shadow: 1px 1px 4px rgba(0,0,0,0.7);">
-                    President Manuel L. Quezon signed Commonwealth Act No. 502, officially creating Quezon City to serve as the new capital of the Philippines, envisioned as a "showcase of the nation" with wide avenues and open spaces.
-                </p>
+            <div class="method-card hover-lift" style="background-image: url('assets/images/Manuel_Quezon.jpg');">
+                <div class="method-card-overlay"></div>
+                <div class="method-card-content">
+                    <h3 class="method-card-title">1939: The Foundation</h3>
+                    <p class="method-card-text">
+                        President Manuel L. Quezon signed Commonwealth Act No. 502, officially creating Quezon City to serve as the new capital of the Philippines, envisioned as a "showcase of the nation" with wide avenues and open spaces.
+                    </p>
+                </div>
             </div>
 
-            <div class="method-card hover-lift" 
-                 style="position: relative; width: 100%; height: 250px; 
-                        background-image: url('assets/images/QC.jpg'); 
-                        background-size: cover; background-position: center; 
-                        border-radius: 12px; color: white; 
-                        display: flex; flex-direction: column; justify-content: flex-end; 
-                        padding: 1rem; box-shadow: 0 4px 8px rgba(0,0,0,0.3); margin-bottom: 1rem;">
-                <h3 style="margin: 0; font-size: 1.5rem; font-weight: bold; text-shadow: 1px 1px 5px rgba(0,0,0,0.7);">1948: The Capital Move</h3>
-                <p style="margin-top: 0.5rem; text-shadow: 1px 1px 4px rgba(0,0,0,0.7);">
-                    Republic Act No. 333 officially declared Quezon City as the capital of the Philippines. This era marked a significant northward expansion, absorbing territories from Caloocan and San Juan to accommodate growing government infrastructure.
-                </p>
+            <div class="method-card hover-lift" style="background-image: url('assets/images/QC.jpg');">
+                <div class="method-card-overlay"></div>
+                <div class="method-card-content">
+                    <h3 class="method-card-title">1948: The Capital Move</h3>
+                    <p class="method-card-text">
+                        Republic Act No. 333 officially declared Quezon City as the capital of the Philippines. This era marked a significant northward expansion, absorbing territories from Caloocan and San Juan to accommodate growing government infrastructure.
+                    </p>
+                </div>
             </div>
 
-            <div class="method-card hover-lift" 
-                 style="position: relative; width: 100%; height: 250px; 
-                        background-image: url('assets/images/The_Heart_of_Quezon_City.jpg'); 
-                        background-size: cover; background-position: center; 
-                        border-radius: 12px; color: white; 
-                        display: flex; flex-direction: column; justify-content: flex-end; 
-                        padding: 1rem; box-shadow: 0 4px 8px rgba(0,0,0,0.3);">
-                <h3 style="margin: 0; font-size: 1.5rem; font-weight: bold; text-shadow: 1px 1px 5px rgba(0,0,0,0.7);">Today: The City of Stars</h3>
-                <p style="margin-top: 0.5rem; text-shadow: 1px 1px 4px rgba(0,0,0,0.7);">
-                    Now the most populous city in the Philippines, Quezon City serves as a premier hub for information technology, entertainment, and governance, continuing to modernize while prioritizing sustainable urban development and social services.
-                </p>
+            <div class="method-card hover-lift" style="background-image: url('assets/images/The_Heart_of_Quezon_City.jpg');">
+                <div class="method-card-overlay"></div>
+                <div class="method-card-content">
+                    <h3 class="method-card-title">Today: The City of Stars</h3>
+                    <p class="method-card-text">
+                        Now the most populous city in the Philippines, Quezon City serves as a premier hub for information technology, entertainment, and governance, continuing to modernize while prioritizing sustainable urban development and social services.
+                    </p>
+                </div>
             </div>
 
         </div>
