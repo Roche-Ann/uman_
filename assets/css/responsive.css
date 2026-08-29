@@ -825,79 +825,81 @@ body {
 /* ── Universal Citizen Side & Navigation Responsive Rules ───────────────── */
 @media (max-width: 768px) {
     .civic-navigation {
-        padding: 0.55rem 0 !important;
-        padding-top: max(0.55rem, env(safe-area-inset-top, 0px)) !important;
+        padding: 1rem 0 !important;
+        padding-top: max(1rem, env(safe-area-inset-top, 0px)) !important;
     }
 
     .nav-container {
-        padding: 0 clamp(8px, 2.5vw, 16px) !important;
+        padding: 0 1rem !important;
         display: flex !important;
         align-items: center !important;
         justify-content: space-between !important;
-        gap: clamp(6px, 1.5vw, 12px) !important;
         width: 100% !important;
         max-width: 100vw !important;
         box-sizing: border-box !important;
     }
 
     .logo-entity {
-        min-width: 0 !important;
-        flex: 1 1 auto !important;
-        gap: clamp(6px, 1.5vw, 10px) !important;
-        overflow: hidden !important;
         display: flex !important;
         align-items: center !important;
+        gap: 0.75rem !important;
+        text-decoration: none !important;
+        min-width: 0 !important;
+        flex: 1 1 auto !important;
     }
 
     .logo-marker {
         flex-shrink: 0 !important;
+        display: flex !important;
+        align-items: center !important;
     }
 
     .logo-only {
-        width: clamp(28px, 7vw, 36px) !important;
-        height: clamp(28px, 7vw, 36px) !important;
+        width: 58px !important;
+        height: 58px !important;
+        object-fit: contain !important;
         flex-shrink: 0 !important;
     }
 
     .logo-text {
-        min-width: 0 !important;
-        overflow: hidden !important;
         display: flex !important;
         flex-direction: column !important;
-        justify-content: center !important;
+        min-width: 0 !important;
     }
 
     .logo-primary {
-        font-size: clamp(0.72rem, 2.8vw, 0.95rem) !important;
-        line-height: 1.15 !important;
-        white-space: nowrap !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
+        font-family: var(--font-heading) !important;
+        font-weight: 700 !important;
+        font-size: 1.5rem !important;
+        background: linear-gradient(135deg, var(--civic-sapphire), var(--utility-teal)) !important;
+        -webkit-background-clip: text !important;
+        -webkit-text-fill-color: transparent !important;
+        background-clip: text !important;
+        line-height: 1 !important;
+        white-space: normal !important;
+        max-width: 240px !important;
     }
 
     .logo-secondary {
-        font-size: clamp(0.52rem, 1.8vw, 0.65rem) !important;
-        line-height: 1.1 !important;
+        font-size: 0.75rem !important;
+        color: var(--municipal-slate) !important;
+        opacity: 0.7 !important;
+        letter-spacing: 0.5px !important;
+        margin-top: 2px !important;
         white-space: nowrap !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-        margin-top: 1px !important;
     }
 
-    .nav-actions {
-        flex-shrink: 0 !important;
+    .menu-toggle {
         display: flex !important;
         align-items: center !important;
-        gap: clamp(4px, 1.2vw, 8px) !important;
-        margin-left: auto !important;
-    }
-
-    .nav-actions .civic-button {
-        padding: clamp(0.38rem, 1.5vw, 0.52rem) clamp(0.6rem, 2vw, 0.9rem) !important;
-        font-size: clamp(0.72rem, 1.8vw, 0.82rem) !important;
-        border-radius: 99px !important;
-        white-space: nowrap !important;
-        line-height: 1.2 !important;
+        justify-content: center !important;
+        font-size: 1.5rem !important;
+        color: var(--civic-sapphire) !important;
+        background: none !important;
+        border: none !important;
+        cursor: pointer !important;
+        flex-shrink: 0 !important;
+        padding: 6px !important;
     }
 
     /* Citizen Dashboard & Resident UI */
@@ -930,26 +932,18 @@ body {
     }
 }
 
-@media (max-width: 360px) {
+@media (max-width: 380px) {
     .nav-container {
-        padding: 0 6px !important;
-        gap: 4px !important;
+        padding: 0 0.75rem !important;
     }
     .logo-only {
-        width: 26px !important;
-        height: 26px !important;
+        width: 48px !important;
+        height: 48px !important;
     }
     .logo-primary {
-        font-size: 0.7rem !important;
+        font-size: 1.25rem !important;
     }
     .logo-secondary {
-        display: none !important;
-    }
-    .nav-actions {
-        gap: 3px !important;
-    }
-    .nav-actions .civic-button {
-        padding: 0.35rem 0.5rem !important;
         font-size: 0.7rem !important;
     }
 }

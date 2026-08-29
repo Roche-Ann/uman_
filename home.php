@@ -917,6 +917,68 @@
         }
         
         @media (max-width: 768px) {
+        .menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--civic-sapphire);
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 8px;
+            transition: var(--transition-smooth);
+        }
+
+        .menu-toggle:hover {
+            background: rgba(11, 61, 145, 0.06);
+        }
+
+        @media (max-width: 992px) {
+            .menu-toggle {
+                display: flex !important;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .nav-actions {
+                display: none !important;
+            }
+
+            .nav-links {
+                position: fixed;
+                top: 80px;
+                right: -100%;
+                width: 80%;
+                max-width: 320px;
+                height: calc(100vh - 80px);
+                height: calc(100dvh - 80px);
+                background: white;
+                flex-direction: column;
+                justify-content: flex-start;
+                padding: 2rem 1.5rem;
+                box-shadow: -10px 0 30px rgba(0,0,0,0.12);
+                transition: 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+                z-index: 1000;
+                display: flex !important;
+                gap: 1.25rem;
+            }
+
+            .nav-links.active {
+                right: 0;
+            }
+
+            .nav-links .mobile-nav-actions {
+                display: flex !important;
+                flex-direction: column;
+                gap: 0.75rem;
+                width: 100%;
+                margin-top: 1.5rem;
+                padding-top: 1.5rem;
+                border-top: 1px solid rgba(11, 61, 145, 0.1);
+            }
+        }
+        
+        @media (max-width: 768px) {
             /* ── Global page resets for mobile ── */
             html, body {
                 overflow-x: hidden !important;
@@ -928,34 +990,29 @@
                 background: #ffffff !important;
             }
 
-            /* ── Adaptive Civic Navigation ── */
+            /* ── Header Size Matching Photo 1 Exactly ── */
             .civic-navigation {
-                padding: 0.55rem 0 !important;
-                padding-top: max(0.55rem, env(safe-area-inset-top, 0px)) !important;
+                padding: 1rem 0 !important;
+                padding-top: max(1rem, env(safe-area-inset-top, 0px)) !important;
             }
 
             .nav-container {
-                padding: 0 clamp(8px, 2.5vw, 16px) !important;
+                padding: 0 1rem !important;
                 display: flex !important;
                 align-items: center !important;
                 justify-content: space-between !important;
-                gap: clamp(6px, 1.5vw, 12px) !important;
                 width: 100% !important;
                 max-width: 100vw !important;
                 box-sizing: border-box !important;
             }
-            
-            .nav-links {
-                display: none !important;
-            }
 
             .logo-entity {
-                min-width: 0 !important;
-                flex: 1 1 auto !important;
-                gap: clamp(6px, 1.5vw, 10px) !important;
-                overflow: hidden !important;
                 display: flex !important;
                 align-items: center !important;
+                gap: 0.75rem !important;
+                text-decoration: none !important;
+                min-width: 0 !important;
+                flex: 1 1 auto !important;
             }
 
             .logo-marker {
@@ -965,56 +1022,56 @@
             }
 
             .logo-only {
-                width: clamp(28px, 7vw, 36px) !important;
-                height: clamp(28px, 7vw, 36px) !important;
+                width: 58px !important;
+                height: 58px !important;
+                object-fit: contain !important;
                 flex-shrink: 0 !important;
             }
 
             .logo-text {
-                min-width: 0 !important;
-                overflow: hidden !important;
                 display: flex !important;
                 flex-direction: column !important;
-                justify-content: center !important;
+                min-width: 0 !important;
             }
 
             .logo-primary {
-                font-size: clamp(0.72rem, 2.8vw, 0.95rem) !important;
-                line-height: 1.15 !important;
-                white-space: nowrap !important;
-                overflow: hidden !important;
-                text-overflow: ellipsis !important;
+                font-family: var(--font-heading) !important;
+                font-weight: 700 !important;
+                font-size: 1.5rem !important;
+                background: linear-gradient(135deg, var(--civic-sapphire), var(--utility-teal)) !important;
+                -webkit-background-clip: text !important;
+                -webkit-text-fill-color: transparent !important;
+                background-clip: text !important;
+                line-height: 1 !important;
+                white-space: normal !important;
+                max-width: 240px !important;
             }
 
             .logo-secondary {
-                font-size: clamp(0.52rem, 1.8vw, 0.65rem) !important;
-                line-height: 1.1 !important;
+                font-size: 0.75rem !important;
+                color: var(--municipal-slate) !important;
+                opacity: 0.7 !important;
+                letter-spacing: 0.5px !important;
+                margin-top: 2px !important;
                 white-space: nowrap !important;
-                overflow: hidden !important;
-                text-overflow: ellipsis !important;
-                margin-top: 1px !important;
             }
 
-            .nav-actions {
-                flex-shrink: 0 !important;
+            .menu-toggle {
                 display: flex !important;
                 align-items: center !important;
-                gap: clamp(4px, 1.2vw, 8px) !important;
-                margin-left: auto !important;
-            }
-
-            .nav-actions .civic-button {
-                padding: clamp(0.38rem, 1.5vw, 0.52rem) clamp(0.6rem, 2vw, 0.9rem) !important;
-                font-size: clamp(0.72rem, 1.8vw, 0.82rem) !important;
-                border-radius: 99px !important;
-                white-space: nowrap !important;
-                line-height: 1.2 !important;
-                gap: 0.25rem !important;
+                justify-content: center !important;
+                font-size: 1.5rem !important;
+                color: var(--civic-sapphire) !important;
+                background: none !important;
+                border: none !important;
+                cursor: pointer !important;
+                flex-shrink: 0 !important;
+                padding: 6px !important;
             }
 
             /* ── Hero Section ── */
             .hero-platform {
-                padding: clamp(85px, 12vh, 120px) 0 clamp(35px, 6vh, 55px) !important;
+                padding: clamp(120px, 15vh, 150px) 0 clamp(35px, 6vh, 55px) !important;
                 background: linear-gradient(160deg, #0B3D91 0%, #1a5276 40%, #00A896 100%) !important;
             }
 
@@ -1329,27 +1386,19 @@
             }
         }
 
-        /* ── Extra Narrow Displays (<= 360px) ── */
-        @media (max-width: 360px) {
+        /* ── Extra Narrow Displays (<= 380px) ── */
+        @media (max-width: 380px) {
             .nav-container {
-                padding: 0 6px !important;
-                gap: 4px !important;
+                padding: 0 0.75rem !important;
             }
             .logo-only {
-                width: 26px !important;
-                height: 26px !important;
+                width: 48px !important;
+                height: 48px !important;
             }
             .logo-primary {
-                font-size: 0.7rem !important;
+                font-size: 1.25rem !important;
             }
             .logo-secondary {
-                display: none !important;
-            }
-            .nav-actions {
-                gap: 3px !important;
-            }
-            .nav-actions .civic-button {
-                padding: 0.35rem 0.5rem !important;
                 font-size: 0.7rem !important;
             }
         }
@@ -1378,7 +1427,7 @@
     <!-- Civic Navigation -->
     <nav class="civic-navigation" id="mainNav">
         <div class="nav-container">
-            <a href="#" class="logo-entity">
+            <a href="home.php" class="logo-entity">
                 <div class="logo-marker">
                     <img src="assets/images/logocityhall.png" alt="LGU Logo" class="logo-only">
                 </div>
@@ -1387,12 +1436,20 @@
                     <span class="logo-secondary"><span class="title-gradient">uMAN</span> · LGU Command Center</span>
                 </div>
             </a>
+
+            <button class="menu-toggle" id="mobileMenuBtn" aria-label="Toggle navigation">
+                <i class="fas fa-bars"></i>
+            </button>
             
-            <ul class="nav-links">
+            <ul class="nav-links" id="navLinksList">
                 <li class="nav-link-item"><a href="#hero" class="nav-link">Home</a></li>
                 <li class="nav-link-item"><a href="#modules" class="nav-link">Modules</a></li>
-                <li class="nav-link-item"><a href="#about" class="nav-link">About</a></li>
-                <li class="nav-link-item"><a href="#contacts" class="nav-link">Contact</a></li>
+                <li class="nav-link-item"><a href="#methodology" class="nav-link">History</a></li>
+                <li class="nav-link-item"><a href="#analytics" class="nav-link">Contact</a></li>
+                <li class="mobile-nav-actions">
+                    <a href="create.php" class="civic-button button-secondary" style="width:100%; justify-content:center;">Register</a>
+                    <a href="login.php" class="civic-button button-primary" style="width:100%; justify-content:center;">Login</a>
+                </li>
             </ul>
             
             <div class="nav-actions">
@@ -2170,6 +2227,52 @@
                 initCarousel();
             }
         })();
+
+        // Mobile Hamburger Menu Toggle
+        document.addEventListener('DOMContentLoaded', function() {
+            const menuBtn = document.getElementById('mobileMenuBtn');
+            const navLinks = document.getElementById('navLinksList');
+            if (menuBtn && navLinks) {
+                menuBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    navLinks.classList.toggle('active');
+                    const icon = menuBtn.querySelector('i');
+                    if (icon) {
+                        if (navLinks.classList.contains('active')) {
+                            icon.classList.remove('fa-bars');
+                            icon.classList.add('fa-times');
+                        } else {
+                            icon.classList.remove('fa-times');
+                            icon.classList.add('fa-bars');
+                        }
+                    }
+                });
+
+                // Close menu when clicking on any nav link
+                navLinks.querySelectorAll('a').forEach(link => {
+                    link.addEventListener('click', function() {
+                        navLinks.classList.remove('active');
+                        const icon = menuBtn.querySelector('i');
+                        if (icon) {
+                            icon.classList.remove('fa-times');
+                            icon.classList.add('fa-bars');
+                        }
+                    });
+                });
+
+                // Close menu when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (navLinks.classList.contains('active') && !navLinks.contains(e.target) && !menuBtn.contains(e.target)) {
+                        navLinks.classList.remove('active');
+                        const icon = menuBtn.querySelector('i');
+                        if (icon) {
+                            icon.classList.remove('fa-times');
+                            icon.classList.add('fa-bars');
+                        }
+                    }
+                });
+            }
+        });
     </script>
 </body>
 </html>
