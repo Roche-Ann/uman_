@@ -816,11 +816,11 @@
             padding: 0 2rem;
         }
 
-        /* Desktop: 3-column horizontal grid for Our History */
+        /* Our History — full-width stacked cards (desktop & mobile) */
         .methodology-stack {
-            display: grid !important;
-            grid-template-columns: repeat(3, 1fr) !important;
-            gap: 1.5rem !important;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 1.25rem !important;
             width: 100% !important;
             margin-top: 2.5rem !important;
         }
@@ -828,8 +828,8 @@
         .method-card {
             position: relative;
             width: 100%;
-            min-height: 320px;
-            height: 320px;
+            min-height: 400px;
+            height: 400px;
             background-size: cover;
             background-position: center;
             border-radius: 16px;
@@ -1300,12 +1300,12 @@
             }
 
             .methodology-stack {
-                grid-template-columns: 1fr !important;
-                gap: 1.25rem !important;
+                gap: 1rem !important;
             }
 
             .method-card {
-                min-height: 220px !important;
+                min-height: 280px !important;
+                height: 280px !important;
             }
 
             /* ── Analytics / Contact section ── */
