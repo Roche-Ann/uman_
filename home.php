@@ -1299,11 +1299,11 @@
                 
                 <h1 class="hero-title">
                     A Web-based Utilities Management System<br>
-                    <span class="title-gradient">with resident portal, AI Analytics, and UPAD Integration</span>
+                    <span class="title-gradient">with resident portal and AI Analytics</span>
                 </h1>
                 
                 <p class="hero-description">
-                    Streamlining municipal utility management with real-time water & energy monitoring, automated AI inspection scoring, citizen incident response, and seamless Urban Planning (UPAD) integration.
+                    Streamlining municipal utility management with real-time water & energy monitoring, automated AI inspection, citizen incident response, and seamless integration.
                 </p>
                 
                 <div class="cta-actions">
@@ -1334,7 +1334,7 @@
         <div class="section-header">
             <h2 class="section-title">Featured Modules & Services</h2>
             <p class="section-description">
-                Comprehensive suite of municipal utility management, automated AI scoring, and citizen services.
+                Comprehensive suite of municipal utility management, automated AI and citizen services.
             </p>
         </div>
         
@@ -1390,10 +1390,10 @@
                     Inbound electrical grid inspection requests from Urban Planning with automated background AI scoring, manual review workflows, and signed payload delivery.
                 </p>
                 <ul class="module-features">
-                    <li>Automated AI Score Evaluation</li>
-                    <li>Manual Review (Approve/Reject)</li>
-                    <li>Editable Corrective Recommendations</li>
-                    <li>Signed UPAD Webhook Delivery</li>
+                    <li>Automated Inspection Processing</li>
+                    <li>Authorized Review and Decision Management</li>
+                    <li>Configurable Corrective Action Details</li>
+                    <li>Secure Result Transmission</li>
                 </ul>
             </div>
             
