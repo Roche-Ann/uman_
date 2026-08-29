@@ -395,8 +395,15 @@ try {
 
         .dual-feeds-container {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+            grid-template-columns: repeat(2, minmax(320px, 500px));
             gap: 20px;
+            align-items: start;
+        }
+
+        @media (max-width: 1100px) {
+            .dual-feeds-container {
+                grid-template-columns: 1fr;
+            }
         }
 
         .feed-box-card {
@@ -406,6 +413,8 @@ try {
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
             display: flex;
             flex-direction: column;
+            width: 100%;
+            max-width: 500px;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
 
@@ -463,7 +472,7 @@ try {
         .feed-box-body {
             display: flex;
             justify-content: center;
-            min-height: 700px;
+            height: 700px;
             width: 100%;
             background: #ffffff;
             border-radius: 0 0 14px 14px;
@@ -734,13 +743,19 @@ try {
             background: #ffffff;
             display: flex;
             justify-content: center;
-            min-height: 700px;
+            align-items: stretch;
+            height: 700px;
             width: 100%;
             border-radius: 0 0 14px 14px;
             overflow: hidden;
         }
 
-        .feed-box-body-embed iframe {
+        .feed-box-body-embed .fb-page,
+        .feed-box-body-embed .fb-page span,
+        .feed-box-body-embed .fb-page iframe {
+            width: 100% !important;
+            min-width: 100% !important;
+            height: 700px !important;
             border-radius: 0 0 14px 14px;
         }
 
