@@ -1745,22 +1745,19 @@ try {
                                             <?php
                                                 $reqSpecificCode = trim((string)($req['requested_asset_code'] ?? ''));
                                                 $autoSelectedAssetId = 0;
-                                                if (!empty($avail['matching_assets'])) {
-                                                    if ($reqSpecificCode !== '') {
-                                                        foreach ($avail['matching_assets'] as $a) {
-                                                            $aIdStr = trim((string)($a['asset_id'] ?? ''));
-                                                            if ($aIdStr !== '' && (
-                                                                strcasecmp($reqSpecificCode, $aIdStr) === 0 ||
-                                                                stripos($reqSpecificCode, $aIdStr) === 0 ||
-                                                                stripos($aIdStr, $reqSpecificCode) === 0
-                                                            )) {
-                                                                $autoSelectedAssetId = (int)$a['id'];
-                                                                break;
-                                                            }
+                                                $autoSelectedAssetObj = null;
+                                                if (!empty($avail['matching_assets']) && $reqSpecificCode !== '') {
+                                                    foreach ($avail['matching_assets'] as $a) {
+                                                        $aIdStr = trim((string)($a['asset_id'] ?? ''));
+                                                        if ($aIdStr !== '' && (
+                                                            strcasecmp($reqSpecificCode, $aIdStr) === 0 ||
+                                                            stripos($reqSpecificCode, $aIdStr) === 0 ||
+                                                            stripos($aIdStr, $reqSpecificCode) === 0
+                                                        )) {
+                                                            $autoSelectedAssetId = (int)$a['id'];
+                                                            $autoSelectedAssetObj = $a;
+                                                            break;
                                                         }
-                                                    }
-                                                    if ($autoSelectedAssetId <= 0 && count($avail['matching_assets']) === 1) {
-                                                        $autoSelectedAssetId = (int)$avail['matching_assets'][0]['id'];
                                                     }
                                                 }
                                             ?>
@@ -1768,26 +1765,40 @@ try {
                                                 <form method="POST" onsubmit="event.preventDefault(); openConfirmModal(this, 'Fulfill Request', 'Are you sure you want to mark this request as fulfilled?', 'btn-success');">
                                                     <input type="hidden" name="id" value="<?= (int)$req['id']; ?>">
                                                     <input type="hidden" name="action" value="fulfill">
+                                                    
                                                     <?php if ($reqSpecificCode !== '' && $autoSelectedAssetId > 0): ?>
-                                                        <div style="font-size:11px; color:#0f766e; background:#ccfbf1; border:1px solid #99f6e4; padding:3px 8px; border-radius:4px; margin-bottom:6px; font-weight:600; display:flex; align-items:center; gap:4px;">
-                                                            <i class="fas fa-magic"></i> Auto-selected requested asset
+                                                        <input type="hidden" name="fulfilled_asset_id" value="<?= $autoSelectedAssetId; ?>">
+                                                        <div style="padding:8px 10px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:6px; margin-bottom:8px;">
+                                                            <div style="font-size:11px; color:#166534; font-weight:700; display:flex; align-items:center; gap:5px;">
+                                                                <i class="fas fa-lock"></i> Fixed Specific Asset (Automatic)
+                                                            </div>
+                                                            <div style="font-size:12px; font-weight:700; color:#065f46; margin-top:3px;">
+                                                                <?= htmlspecialchars($autoSelectedAssetObj['asset_id'] . ' — ' . $autoSelectedAssetObj['name']); ?>
+                                                            </div>
+                                                            <div style="font-size:11px; color:#047857; margin-top:2px;">
+                                                                <?= (int)$autoSelectedAssetObj['quantity']; ?> unit<?= ((int)$autoSelectedAssetObj['quantity'] !== 1) ? 's' : ''; ?> available in stock
+                                                            </div>
                                                         </div>
-                                                    <?php endif; ?>
-                                                    <select name="fulfilled_asset_id" required>
-                                                        <?php if ($autoSelectedAssetId <= 0): ?>
+                                                    <?php else: ?>
+                                                        <?php if ($reqSpecificCode !== ''): ?>
+                                                            <div style="padding:6px 8px; background:#fffbe6; border:1px solid #ffe58f; border-radius:6px; margin-bottom:6px; font-size:11px; color:#873800;">
+                                                                <i class="fas fa-exclamation-triangle"></i> Requested unit (<strong><?= htmlspecialchars($reqSpecificCode); ?></strong>) unavailable. Select from stock:
+                                                            </div>
+                                                        <?php endif; ?>
+                                                        <select name="fulfilled_asset_id" required>
                                                             <option value="">Select asset to fulfill…</option>
-                                                        <?php endif; ?>
-                                                        <?php if (!empty($avail['matching_assets'])): ?>
-                                                            <?php foreach ($avail['matching_assets'] as $a): ?>
-                                                                <?php $isSelected = ($autoSelectedAssetId > 0 && (int)$a['id'] === $autoSelectedAssetId); ?>
-                                                                <option value="<?= (int)$a['id']; ?>" <?= $isSelected ? 'selected' : ''; ?>>
-                                                                    <?= htmlspecialchars($a['asset_id'] . ' — ' . $a['name'] . ' (' . $a['quantity'] . ' available)'); ?>
-                                                                </option>
-                                                            <?php endforeach; ?>
-                                                        <?php else: ?>
-                                                            <option value="" disabled>No matching assets available in stock</option>
-                                                        <?php endif; ?>
-                                                    </select>
+                                                            <?php if (!empty($avail['matching_assets'])): ?>
+                                                                <?php foreach ($avail['matching_assets'] as $a): ?>
+                                                                    <option value="<?= (int)$a['id']; ?>">
+                                                                        <?= htmlspecialchars($a['asset_id'] . ' — ' . $a['name'] . ' (' . $a['quantity'] . ' available)'); ?>
+                                                                    </option>
+                                                                <?php endforeach; ?>
+                                                            <?php else: ?>
+                                                                <option value="" disabled>No matching assets available in stock</option>
+                                                            <?php endif; ?>
+                                                        </select>
+                                                    <?php endif; ?>
+                                                    
                                                     <textarea name="review_notes" rows="2" placeholder="Fulfillment notes"></textarea>
                                                     <button class="btn btn-success" type="submit"><i class="fas fa-check-double"></i> Mark Fulfilled</button>
                                                 </form>
