@@ -822,7 +822,28 @@ body {
     scrollbar-color: rgba(148, 163, 184, 0.35) rgba(15, 23, 42, 0.5);
 }
 
+/* ── Universal Desktop Navigation Defaults ───────────────── */
+.mobile-nav-actions {
+    display: none !important;
+}
+
 /* ── Universal Citizen Side & Navigation Responsive Rules ───────────────── */
+@media (max-width: 992px) {
+    .menu-toggle {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    .nav-actions {
+        display: none !important;
+    }
+
+    .nav-links.active .mobile-nav-actions {
+        display: flex !important;
+    }
+}
+
 @media (max-width: 768px) {
     .civic-navigation {
         padding: 1rem 0 !important;

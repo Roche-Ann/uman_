@@ -916,7 +916,7 @@
             text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
         }
         
-        @media (max-width: 768px) {
+        /* ── Base Desktop Navigation & Logo ── */
         .logo-entity {
             display: flex;
             align-items: center;
@@ -929,7 +929,7 @@
         }
 
         .menu-toggle {
-            display: none;
+            display: none !important;
             background: none;
             border: none;
             font-size: 1.5rem;
@@ -946,6 +946,11 @@
 
         .menu-toggle:hover {
             background: rgba(11, 61, 145, 0.06);
+        }
+
+        /* Hide mobile-only buttons on desktop */
+        .mobile-nav-actions {
+            display: none !important;
         }
 
         @media (max-width: 992px) {
