@@ -738,6 +738,117 @@ try {
             color: #94a3b8;
         }
 
+        /* Mobile Quick Emergency Bar */
+        .mobile-quick-emergency-bar {
+            display: none;
+            margin-bottom: 16px;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 10px;
+        }
+
+        .mobile-quick-call-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 11px 14px;
+            background: linear-gradient(135deg, #dc2626, #991b1b);
+            color: #ffffff;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 13px;
+            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+        }
+
+        .mobile-weather-pill-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 11px 12px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            color: #f8fafc;
+            border-radius: 10px;
+            font-size: 12.5px;
+            font-weight: 600;
+        }
+
+        /* Mobile Segmented Switcher */
+        .mobile-feed-switcher {
+            display: none;
+            background: #0f172a;
+            padding: 5px;
+            border-radius: 12px;
+            border: 1px solid #334155;
+            margin-bottom: 16px;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+
+        .mobile-switch-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 10px 10px;
+            border-radius: 8px;
+            border: none;
+            background: transparent;
+            color: #94a3b8;
+            font-size: 12.5px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+
+        .mobile-switch-btn.active.btn-qcgov {
+            background: #1e3a8a;
+            color: #ffffff;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.35);
+        }
+
+        .mobile-switch-btn.active.btn-qcdrrmc {
+            background: #991b1b;
+            color: #ffffff;
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.35);
+        }
+
+        @media (max-width: 1100px) {
+            .mobile-quick-emergency-bar,
+            .mobile-feed-switcher {
+                display: grid;
+            }
+
+            .dual-feeds-container {
+                display: block;
+            }
+
+            .feed-box-card {
+                max-width: 100%;
+            }
+
+            .feed-box-card.mobile-hidden {
+                display: none !important;
+            }
+
+            .feed-box-body-embed {
+                height: 540px !important;
+            }
+
+            .feed-box-body-embed .fb-page,
+            .feed-box-body-embed .fb-page span,
+            .feed-box-body-embed .fb-page iframe {
+                height: 540px !important;
+            }
+
+            .advisories-main-grid {
+                padding-bottom: 80px;
+            }
+        }
+
         /* Live Facebook Embed (Option A - Authentic Colors) */
         .feed-box-body-embed {
             background: #ffffff;
@@ -810,6 +921,27 @@ try {
                 </div>
             </div>
 
+            <!-- Mobile Quick Emergency Bar -->
+            <div class="mobile-quick-emergency-bar">
+                <a href="tel:122" class="mobile-quick-call-btn">
+                    <i class="fas fa-phone-volume"></i> Emergency: Call 122
+                </a>
+                <div class="mobile-weather-pill-btn">
+                    <span id="mobileWeatherIcon">⛈️</span>
+                    <span id="mobileWeatherText">28°C • Rain 96%</span>
+                </div>
+            </div>
+
+            <!-- Mobile Segmented Feed Switcher -->
+            <div class="mobile-feed-switcher">
+                <button type="button" class="mobile-switch-btn active btn-qcgov" id="btnSwitchQCGov" onclick="switchMobileFeed('qcgov')">
+                    <i class="fas fa-landmark"></i> QC Government
+                </button>
+                <button type="button" class="mobile-switch-btn btn-qcdrrmc" id="btnSwitchQCDRRMC" onclick="switchMobileFeed('qcdrrmc')">
+                    <i class="fas fa-shield-halved"></i> QCDRRMC Alerts
+                </button>
+            </div>
+
             <!-- Dual Feeds + Side Command Layout -->
             <div class="advisories-main-grid">
                 
@@ -817,7 +949,7 @@ try {
                 <div class="dual-feeds-container">
                     
                     <!-- 1. Quezon City Government Live Feed Box -->
-                    <div class="feed-box-card feed-box-qcgov">
+                    <div class="feed-box-card feed-box-qcgov" id="cardQCGovFeed">
                         <div class="feed-box-header">
                             <div class="feed-box-header-title">
                                 <i class="fas fa-landmark" style="color: #3b82f6;"></i>
@@ -844,7 +976,7 @@ try {
                     </div>
 
                     <!-- 2. QCDRRMC Disaster Alerts Live Feed Box -->
-                    <div class="feed-box-card feed-box-qcdrrmc">
+                    <div class="feed-box-card feed-box-qcdrrmc mobile-hidden" id="cardQCDRRMCFeed">
                         <div class="feed-box-header">
                             <div class="feed-box-header-title">
                                 <i class="fas fa-shield-halved" style="color: #ef4444;"></i>
@@ -1006,6 +1138,26 @@ function getWeatherDetails(code) {
     }
 }
 
+// Mobile Segmented Feed Switcher function
+function switchMobileFeed(channel) {
+    const cardQC = document.getElementById('cardQCGovFeed');
+    const cardQCDRRMC = document.getElementById('cardQCDRRMCFeed');
+    const btnQC = document.getElementById('btnSwitchQCGov');
+    const btnQCDRRMC = document.getElementById('btnSwitchQCDRRMC');
+
+    if (channel === 'qcgov') {
+        if (cardQC) cardQC.classList.remove('mobile-hidden');
+        if (cardQCDRRMC) cardQCDRRMC.classList.add('mobile-hidden');
+        if (btnQC) btnQC.classList.add('active');
+        if (btnQCDRRMC) btnQCDRRMC.classList.remove('active');
+    } else {
+        if (cardQC) cardQC.classList.add('mobile-hidden');
+        if (cardQCDRRMC) cardQCDRRMC.classList.remove('mobile-hidden');
+        if (btnQC) btnQC.classList.remove('active');
+        if (btnQCDRRMC) btnQCDRRMC.classList.add('active');
+    }
+}
+
 // Live Quezon City Weather API fetch (Open-Meteo)
 async function fetchQCWeather() {
     try {
@@ -1024,12 +1176,19 @@ async function fetchQCWeather() {
                 rainProb = data.hourly.precipitation_probability[currentHourIndex] ?? data.hourly.precipitation_probability[0] ?? 0;
             }
 
+            const tempRounded = Math.round(cur.temperature_2m);
             document.getElementById('weatherIconLarge').textContent = weather.icon;
-            document.getElementById('weatherTempValue').textContent = Math.round(cur.temperature_2m) + '°C';
+            document.getElementById('weatherTempValue').textContent = tempRounded + '°C';
             document.getElementById('weatherDescText').textContent = weather.text;
             document.getElementById('weatherFeelsLike').textContent = Math.round(cur.apparent_temperature) + '°C';
             document.getElementById('weatherRainProb').textContent = rainProb + '%';
             document.getElementById('weatherWindSpeed').textContent = Math.round(cur.wind_speed_10m) + ' km/h';
+
+            // Mobile Weather Pill Sync
+            const mobileIcon = document.getElementById('mobileWeatherIcon');
+            const mobileText = document.getElementById('mobileWeatherText');
+            if (mobileIcon) mobileIcon.textContent = weather.icon;
+            if (mobileText) mobileText.textContent = `${tempRounded}°C • Rain ${rainProb}%`;
 
             const badge = document.getElementById('weatherStatusBadge');
             if (badge) {
