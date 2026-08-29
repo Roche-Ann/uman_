@@ -81,7 +81,7 @@ try {
         .main-content {
             flex: 1;
             margin-left: 280px;
-            padding: 30px 40px;
+            padding: 30px 40px 120px 40px;
             transition: margin-left 0.25s ease;
             z-index: 1;
             position: relative;
@@ -97,10 +97,11 @@ try {
             background: rgba(255, 255, 255, 0.85);
             backdrop-filter: blur(15px);
             border-radius: 18px;
-            padding: 40px;
+            padding: 40px 40px 50px 40px;
             color: #000;
             box-shadow: 0 6px 20px rgba(0,0,0,0.2);
             border: 1px solid rgba(255,255,255,0.25);
+            margin-bottom: 60px;
         }
 
         .dashboard-header {
@@ -212,129 +213,15 @@ try {
             padding-bottom: 10px;
         }
 
-        .item-card {
-            padding: 15px;
-            border-radius: 8px;
-            background: #f8fafc;
-            border: 1px solid #edf2f7;
-            margin-bottom: 12px;
-        }
-
-        .badge {
-            font-size: 9px;
-            font-weight: 700;
-            padding: 2px 6px;
-            border-radius: 99px;
-            text-transform: uppercase;
-        }
-        .badge-partiallyready { background: #fff4e5; color: #b45309; }
-        .badge-notready { background: #fde8e8; color: #bd2130; }
-
-        /* Welcome Modal CSS */
-        .welcome-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 10000;
-            justify-content: center;
-            align-items: center;
-            backdrop-filter: blur(4px);
-        }
-        .welcome-modal.open {
-            display: flex;
-        }
-        .welcome-modal-content {
-            background: #ffffff;
-            border-radius: 16px;
-            width: 500px;
-            max-width: 90%;
-            padding: 30px;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-            animation: welcomeSlideIn 0.3s ease-out;
-            position: relative;
-        }
-        @keyframes welcomeSlideIn {
-            from { transform: translateY(-30px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-        .welcome-header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .welcome-header i {
-            font-size: 50px;
-            color: #3762c8;
-            margin-bottom: 10px;
-        }
-        .welcome-header h2 {
-            font-size: 24px;
-            color: #1e293b;
-            font-weight: 600;
-        }
-        .welcome-body {
-            font-size: 14px;
-            color: #475569;
-            line-height: 1.6;
-        }
-        .welcome-body h4 {
-            color: #1e293b;
-            margin-top: 15px;
-            margin-bottom: 8px;
-            font-weight: 600;
-            border-bottom: 1px solid #e2e8f0;
-            padding-bottom: 4px;
-        }
-        .welcome-updates-list {
-            list-style: none;
-            padding: 0;
-        }
-        .welcome-updates-list li {
-            padding: 10px 0;
-            border-bottom: 1px solid #f1f5f9;
-            display: flex;
-            align-items: flex-start;
-            gap: 10px;
-        }
-        .welcome-updates-list li:last-child {
-            border-bottom: none;
-        }
-        .welcome-updates-list li i {
-            color: #3762c8;
-            margin-top: 4px;
-            font-size: 16px;
-        }
-        .welcome-footer {
-            margin-top: 25px;
-            display: flex;
-            justify-content: center;
-        }
-        .welcome-btn {
-            background: #3762c8;
-            color: #fff;
-            padding: 10px 30px;
-            border-radius: 8px;
-            border: none;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .welcome-btn:hover {
-            background: #2851b0;
-            transform: translateY(-1px);
-        }
-
+        /* Advisories Layout */
         .advisories-layout {
             display: grid;
-            grid-template-columns: 1fr 340px;
-            gap: 24px;
+            grid-template-columns: 500px 1fr;
+            gap: 28px;
             align-items: start;
         }
 
-        @media (max-width: 1024px) {
+        @media (max-width: 1100px) {
             .advisories-layout {
                 grid-template-columns: 1fr;
             }
@@ -344,14 +231,15 @@ try {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 16px;
+            margin-bottom: 20px;
             flex-wrap: wrap;
-            gap: 12px;
+            gap: 14px;
         }
 
         .advisory-tabs {
             display: inline-flex;
-            background: rgba(226, 232, 240, 0.6);
+            background: rgba(226, 232, 240, 0.8);
+            border: 1px solid #cbd5e1;
             border-radius: 12px;
             padding: 4px;
             gap: 4px;
@@ -360,11 +248,11 @@ try {
         .advisory-tab-btn {
             border: none;
             background: transparent;
-            padding: 8px 18px;
+            padding: 9px 20px;
             border-radius: 9px;
             font-size: 13.5px;
             font-weight: 600;
-            color: #64748b;
+            color: #475569;
             cursor: pointer;
             transition: all 0.25s ease;
             display: inline-flex;
@@ -374,12 +262,13 @@ try {
 
         .advisory-tab-btn:hover {
             color: #1e293b;
+            background: rgba(255, 255, 255, 0.4);
         }
 
         .advisory-tab-btn.active {
             background: #3762c8;
-            color: #ffffff;
-            box-shadow: 0 4px 12px rgba(55, 98, 200, 0.25);
+            color: #ffffff !important;
+            box-shadow: 0 4px 12px rgba(55, 98, 200, 0.3);
         }
 
         .feed-container {
@@ -390,7 +279,8 @@ try {
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
             display: flex;
             justify-content: center;
-            min-height: 680px;
+            min-height: 700px;
+            max-width: 500px;
             width: 100%;
             transition: all 0.3s ease;
         }
@@ -410,6 +300,7 @@ try {
             display: flex;
             flex-direction: column;
             gap: 18px;
+            width: 100%;
         }
 
         .emergency-card {
@@ -427,6 +318,12 @@ try {
             margin-bottom: 14px;
             display: flex;
             align-items: center;
+            justify-content: space-between;
+        }
+
+        .emergency-card-title span {
+            display: flex;
+            align-items: center;
             gap: 8px;
         }
 
@@ -434,8 +331,8 @@ try {
             list-style: none;
             padding: 0;
             margin: 0;
-            display: flex;
-            flex-direction: column;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 10px;
         }
 
@@ -443,9 +340,9 @@ try {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 8px 12px;
+            padding: 10px 14px;
             background: #f8fafc;
-            border-radius: 8px;
+            border-radius: 10px;
             border: 1px solid #edf2f7;
             text-decoration: none;
             transition: all 0.2s ease;
@@ -454,7 +351,8 @@ try {
         .hotline-item:hover {
             background: #eff6ff;
             border-color: #bfdbfe;
-            transform: translateX(2px);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.04);
         }
 
         .hotline-info {
@@ -475,35 +373,122 @@ try {
             border-radius: 6px;
         }
 
-        .weather-status-badge {
-            display: inline-flex;
+        /* Live Weather Card */
+        .weather-main-grid {
+            display: flex;
             align-items: center;
-            gap: 6px;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 12px;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: linear-gradient(135deg, rgba(55, 98, 200, 0.06), rgba(2, 132, 199, 0.08));
+            border: 1px solid rgba(55, 98, 200, 0.15);
+            border-radius: 12px;
+            margin-bottom: 14px;
+        }
+
+        .weather-temp-block {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .weather-icon-large {
+            font-size: 36px;
+            line-height: 1;
+        }
+
+        .weather-temp-value {
+            font-size: 26px;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.1;
+        }
+
+        .weather-desc {
+            font-size: 12.5px;
             font-weight: 600;
-            background: #fef3c7;
-            color: #b45309;
-            margin-bottom: 10px;
+            color: #64748b;
+        }
+
+        .weather-details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .weather-stat-box {
+            background: #f8fafc;
+            border: 1px solid #edf2f7;
+            border-radius: 10px;
+            padding: 10px 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .weather-stat-box i {
+            font-size: 18px;
+            color: #0284c7;
+        }
+
+        .weather-stat-label {
+            font-size: 11px;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        .weather-stat-val {
+            font-size: 13.5px;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .weather-live-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 11.5px;
+            color: #64748b;
+            border-top: 1px solid #edf2f7;
+            padding-top: 8px;
+            margin-top: 4px;
+        }
+
+        .weather-live-indicator .pulse-dot {
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #10b981;
+            margin-right: 5px;
+            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+            animation: pulseLive 2s infinite;
+        }
+
+        @keyframes pulseLive {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
         }
 
         /* Dark Theme Support */
         .dark-theme .advisory-tabs {
-            background: rgba(30, 41, 59, 0.8);
+            background: rgba(30, 41, 59, 0.95);
+            border-color: #334155;
         }
 
         .dark-theme .advisory-tab-btn {
-            color: #94a3b8;
+            color: #cbd5e1;
         }
 
         .dark-theme .advisory-tab-btn:hover {
-            color: #f8fafc;
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.08);
         }
 
         .dark-theme .advisory-tab-btn.active {
             background: #3762c8;
-            color: #ffffff;
+            color: #ffffff !important;
         }
 
         .dark-theme .feed-container,
@@ -529,6 +514,37 @@ try {
         .dark-theme .hotline-number {
             color: #60a5fa;
             background: rgba(96, 165, 250, 0.12);
+        }
+
+        .dark-theme .weather-main-grid {
+            background: linear-gradient(135deg, rgba(30, 58, 138, 0.35), rgba(15, 23, 42, 0.5));
+            border-color: #334155;
+        }
+
+        .dark-theme .weather-temp-value {
+            color: #f8fafc;
+        }
+
+        .dark-theme .weather-desc {
+            color: #94a3b8;
+        }
+
+        .dark-theme .weather-stat-box {
+            background: #0f172a;
+            border-color: #334155;
+        }
+
+        .dark-theme .weather-stat-label {
+            color: #94a3b8;
+        }
+
+        .dark-theme .weather-stat-val {
+            color: #f8fafc;
+        }
+
+        .dark-theme .weather-live-indicator {
+            border-color: #334155;
+            color: #94a3b8;
         }
     </style>
 </head>
@@ -557,11 +573,11 @@ try {
         <!-- Main Layout Split -->
         <div class="box" style="padding: 25px;">
             <div class="advisory-tabs-container">
-                <h3 style="font-size: 1.2rem; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                <h3 style="font-size: 1.25rem; color: #1e293b; display: flex; align-items: center; gap: 8px; font-weight: 700;">
                     <i class="fas fa-bullhorn" style="color: #3762c8;"></i> Latest LGU Advisories
                 </h3>
                 
-                <!-- Segmented Tabs -->
+                <!-- Segmented Tabs with improved contrast -->
                 <div class="advisory-tabs">
                     <button type="button" class="advisory-tab-btn active" id="tabBtnQcGov" onclick="switchAdvisoryTab('qcGov')">
                         <i class="fas fa-landmark"></i> Quezon City Government
@@ -572,10 +588,10 @@ try {
                 </div>
             </div>
 
-            <!-- 2-Column Responsive Layout: Feed (Left) + Emergency Command (Right) -->
+            <!-- 2-Column Balanced Layout: 500px Feed (Left) + Expanded Emergency Command (Right) -->
             <div class="advisories-layout">
                 
-                <!-- Left: Active Live Feed -->
+                <!-- Left: Active Live Feed (Cleanly Framed at 500px) -->
                 <div class="feed-container">
                     
                     <!-- QCGov Embedded Feed -->
@@ -583,7 +599,7 @@ try {
                         <div class="fb-page" 
                             data-href="https://www.facebook.com/QCGov" 
                             data-tabs="timeline" 
-                            data-width="650" 
+                            data-width="500" 
                             data-height="700" 
                             data-small-header="false" 
                             data-adapt-container-width="true" 
@@ -599,7 +615,7 @@ try {
                         <div class="fb-page" 
                             data-href="https://www.facebook.com/qcdrrmc" 
                             data-tabs="timeline" 
-                            data-width="650" 
+                            data-width="500" 
                             data-height="700" 
                             data-small-header="false" 
                             data-adapt-container-width="true" 
@@ -612,20 +628,74 @@ try {
 
                 </div>
 
-                <!-- Right: Emergency Command & Quick Response Sidebar -->
+                <!-- Right: Emergency Command & Live Weather Center -->
                 <div class="emergency-sidebar">
                     
-                    <!-- Hotlines Card -->
+                    <!-- Live Weather Card (Auto-updating via Open-Meteo API) -->
                     <div class="emergency-card">
                         <div class="emergency-card-title">
-                            <i class="fas fa-phone-volume" style="color: #dc2626;"></i> 24/7 Emergency Hotlines
+                            <span><i class="fas fa-cloud-sun-rain" style="color: #0284c7;"></i> Quezon City Weather Watch</span>
+                            <span id="weatherStatusBadge" style="font-size: 11.5px; font-weight: 600; background: #fef3c7; color: #b45309; padding: 3px 9px; border-radius: 12px;">
+                                Monitoring
+                            </span>
+                        </div>
+
+                        <div class="weather-main-grid">
+                            <div class="weather-temp-block">
+                                <div class="weather-icon-large" id="weatherIconLarge">⛈️</div>
+                                <div>
+                                    <div class="weather-temp-value" id="weatherTempValue">--°C</div>
+                                    <div class="weather-desc" id="weatherDescText">Loading live forecast...</div>
+                                </div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-size: 11px; color: #64748b; font-weight: 500;">Feels Like</div>
+                                <div style="font-size: 16px; font-weight: 700; color: #0284c7;" id="weatherFeelsLike">--°C</div>
+                            </div>
+                        </div>
+
+                        <div class="weather-details-grid">
+                            <div class="weather-stat-box">
+                                <i class="fas fa-cloud-showers-heavy"></i>
+                                <div>
+                                    <div class="weather-stat-label">Rain Chance</div>
+                                    <div class="weather-stat-val" id="weatherRainProb">--%</div>
+                                </div>
+                            </div>
+                            <div class="weather-stat-box">
+                                <i class="fas fa-droplet"></i>
+                                <div>
+                                    <div class="weather-stat-label">Humidity</div>
+                                    <div class="weather-stat-val" id="weatherHumidity">--%</div>
+                                </div>
+                            </div>
+                            <div class="weather-stat-box">
+                                <i class="fas fa-wind"></i>
+                                <div>
+                                    <div class="weather-stat-label">Wind Speed</div>
+                                    <div class="weather-stat-val" id="weatherWindSpeed">-- km/h</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="weather-live-indicator">
+                            <span><span class="pulse-dot"></span> Live Quezon City Telemetry</span>
+                            <span id="weatherLastUpdated">Auto-refreshing</span>
+                        </div>
+                    </div>
+
+                    <!-- 24/7 Hotlines Card -->
+                    <div class="emergency-card">
+                        <div class="emergency-card-title">
+                            <span><i class="fas fa-phone-volume" style="color: #dc2626;"></i> 24/7 Emergency Hotlines</span>
+                            <span style="font-size: 11px; color: #64748b;">Tap to Call</span>
                         </div>
                         <ul class="hotline-list">
                             <li>
                                 <a href="tel:122" class="hotline-item">
                                     <div class="hotline-info">
                                         <i class="fas fa-building-flag" style="color: #3762c8;"></i>
-                                        <span>QC Emergency Hotline</span>
+                                        <span>QC Emergency</span>
                                     </div>
                                     <span class="hotline-number">122</span>
                                 </a>
@@ -658,19 +728,6 @@ try {
                                 </a>
                             </li>
                         </ul>
-                    </div>
-
-                    <!-- Weather Status Card -->
-                    <div class="emergency-card">
-                        <div class="emergency-card-title">
-                            <i class="fas fa-cloud-sun-rain" style="color: #0284c7;"></i> Weather & Disaster Watch
-                        </div>
-                        <div class="weather-status-badge">
-                            <i class="fas fa-circle-exclamation"></i> Monitored Active
-                        </div>
-                        <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-bottom: 0;">
-                            Official citywide weather and flood advisories are posted in real-time by QCDRRMC.
-                        </p>
                     </div>
 
                 </div>
@@ -713,6 +770,81 @@ setInterval(function() {
         FB.XFBML.parse();
     }
 }, 180000);
+
+// Weather Code mapping for Philippine tropical conditions
+function getWeatherDetails(code) {
+    switch (code) {
+        case 0: return { icon: '☀️', text: 'Clear Skies', badge: 'Normal', badgeBg: '#dcfce7', badgeColor: '#15803d' };
+        case 1:
+        case 2: return { icon: '🌤️', text: 'Partly Cloudy', badge: 'Fair', badgeBg: '#e0f2fe', badgeColor: '#0369a1' };
+        case 3: return { icon: '☁️', text: 'Overcast / Cloudy', badge: 'Cloudy', badgeBg: '#f1f5f9', badgeColor: '#475569' };
+        case 45:
+        case 48: return { icon: '🌫️', text: 'Fog / Low Visibility', badge: 'Caution', badgeBg: '#fef3c7', badgeColor: '#b45309' };
+        case 51:
+        case 53:
+        case 55: return { icon: '🌦️', text: 'Light Drizzle', badge: 'Drizzle', badgeBg: '#e0f2fe', badgeColor: '#0369a1' };
+        case 61:
+        case 63: return { icon: '🌧️', text: 'Moderate Rain', badge: 'Rainy', badgeBg: '#fef3c7', badgeColor: '#b45309' };
+        case 65: return { icon: '🌧️', text: 'Heavy Rainfall', badge: 'Heavy Rain', badgeBg: '#fee2e2', badgeColor: '#b91c1c' };
+        case 80:
+        case 81: return { icon: '🌦️', text: 'Scattered Showers', badge: 'Showers', badgeBg: '#e0f2fe', badgeColor: '#0369a1' };
+        case 82: return { icon: '⛈️', text: 'Violent Rain Showers', badge: 'Severe', badgeBg: '#fee2e2', badgeColor: '#b91c1c' };
+        case 95: return { icon: '⛈️', text: 'Thunderstorms', badge: 'Storm Watch', badgeBg: '#fee2e2', badgeColor: '#b91c1c' };
+        case 96:
+        case 99: return { icon: '⛈️', text: 'Severe Thunderstorms', badge: 'Critical Alert', badgeBg: '#fee2e2', badgeColor: '#b91c1c' };
+        default: return { icon: '🌤️', text: 'Normal Conditions', badge: 'Monitoring', badgeBg: '#fef3c7', badgeColor: '#b45309' };
+    }
+}
+
+// Live Quezon City Weather API fetch (Open-Meteo, 100% free, no key required)
+async function fetchQCWeather() {
+    try {
+        const url = 'https://api.open-meteo.com/v1/forecast?latitude=14.6760&longitude=121.0437&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m&hourly=precipitation_probability&timezone=Asia%2FManila';
+        const response = await fetch(url);
+        if (!response.ok) return;
+        const data = await response.json();
+        
+        if (data && data.current) {
+            const cur = data.current;
+            const weather = getWeatherDetails(cur.weather_code);
+            
+            // Get current hour rain probability
+            let rainProb = 0;
+            if (data.hourly && data.hourly.precipitation_probability && data.hourly.precipitation_probability.length > 0) {
+                const currentHourIndex = new Date().getHours();
+                rainProb = data.hourly.precipitation_probability[currentHourIndex] ?? data.hourly.precipitation_probability[0] ?? 0;
+            }
+
+            // Update UI elements
+            document.getElementById('weatherIconLarge').textContent = weather.icon;
+            document.getElementById('weatherTempValue').textContent = Math.round(cur.temperature_2m) + '°C';
+            document.getElementById('weatherDescText').textContent = weather.text;
+            document.getElementById('weatherFeelsLike').textContent = Math.round(cur.apparent_temperature) + '°C';
+            document.getElementById('weatherRainProb').textContent = rainProb + '%';
+            document.getElementById('weatherHumidity').textContent = cur.relative_humidity_2m + '%';
+            document.getElementById('weatherWindSpeed').textContent = Math.round(cur.wind_speed_10m) + ' km/h';
+
+            const badge = document.getElementById('weatherStatusBadge');
+            if (badge) {
+                badge.textContent = weather.badge;
+                badge.style.background = weather.badgeBg;
+                badge.style.color = weather.badgeColor;
+            }
+
+            const updatedEl = document.getElementById('weatherLastUpdated');
+            if (updatedEl) {
+                const now = new Date();
+                updatedEl.textContent = 'Updated ' + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+        }
+    } catch (err) {
+        console.warn('Weather telemetry unavailable:', err);
+    }
+}
+
+// Initial fetch and 15-minute periodic auto-update
+fetchQCWeather();
+setInterval(fetchQCWeather, 900000);
 </script>
 
 <?php if (isset($_SESSION['show_welcome_modal']) && $_SESSION['show_welcome_modal'] === true): ?>
