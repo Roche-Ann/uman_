@@ -326,6 +326,218 @@ try {
             background: #2851b0;
             transform: translateY(-1px);
         }
+
+        .advisories-layout {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 24px;
+            align-items: start;
+        }
+
+        @media (max-width: 1024px) {
+            .advisories-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .advisory-tabs-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .advisory-tabs {
+            display: inline-flex;
+            background: rgba(226, 232, 240, 0.6);
+            border-radius: 12px;
+            padding: 4px;
+            gap: 4px;
+        }
+
+        .advisory-tab-btn {
+            border: none;
+            background: transparent;
+            padding: 8px 18px;
+            border-radius: 9px;
+            font-size: 13.5px;
+            font-weight: 600;
+            color: #64748b;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .advisory-tab-btn:hover {
+            color: #1e293b;
+        }
+
+        .advisory-tab-btn.active {
+            background: #3762c8;
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(55, 98, 200, 0.25);
+        }
+
+        .feed-container {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            display: flex;
+            justify-content: center;
+            min-height: 680px;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+
+        .feed-pane {
+            display: none;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .feed-pane.active {
+            display: flex;
+        }
+
+        /* Emergency Sidebar */
+        .emergency-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .emergency-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        .emergency-card-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .hotline-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .hotline-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border: 1px solid #edf2f7;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .hotline-item:hover {
+            background: #eff6ff;
+            border-color: #bfdbfe;
+            transform: translateX(2px);
+        }
+
+        .hotline-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #334155;
+        }
+
+        .hotline-number {
+            font-size: 13px;
+            font-weight: 700;
+            color: #3762c8;
+            background: rgba(55, 98, 200, 0.08);
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+
+        .weather-status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            background: #fef3c7;
+            color: #b45309;
+            margin-bottom: 10px;
+        }
+
+        .quick-action-cta {
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            color: #ffffff;
+            border-radius: 14px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Dark Theme Support */
+        .dark-theme .advisory-tabs {
+            background: rgba(30, 41, 59, 0.8);
+        }
+
+        .dark-theme .advisory-tab-btn {
+            color: #94a3b8;
+        }
+
+        .dark-theme .advisory-tab-btn:hover {
+            color: #f8fafc;
+        }
+
+        .dark-theme .advisory-tab-btn.active {
+            background: #3762c8;
+            color: #ffffff;
+        }
+
+        .dark-theme .feed-container,
+        .dark-theme .emergency-card {
+            background: #1e293b;
+            border-color: #334155;
+            color: #f8fafc;
+        }
+
+        .dark-theme .emergency-card-title {
+            color: #f8fafc;
+        }
+
+        .dark-theme .hotline-item {
+            background: #0f172a;
+            border-color: #334155;
+        }
+
+        .dark-theme .hotline-info {
+            color: #e2e8f0;
+        }
+
+        .dark-theme .hotline-number {
+            color: #60a5fa;
+            background: rgba(96, 165, 250, 0.12);
+        }
     </style>
 </head>
 <body>
@@ -346,27 +558,40 @@ try {
             </div>
         </div>
 
-
+        <!-- Facebook SDK -->
+        <div id="fb-root"></div>
+        <script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js#xfbml=1&version=v18.0" nonce="12345678"></script>
 
         <!-- Main Layout Split -->
-        <div class="dashboard-layout" style="grid-template-columns: 1fr;">
-            
-            <!-- Left: Latest Utility Advisories -->
-            <div class="box" style="padding: 25px;">
-                <h3 style="margin-bottom: 20px; font-size: 1.2rem; color: #1e293b;"><i class="fas fa-bullhorn" style="color: #3762c8; margin-right: 8px;"></i> Latest LGU Advisories</h3>
+        <div class="box" style="padding: 25px;">
+            <div class="advisory-tabs-container">
+                <h3 style="font-size: 1.2rem; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-bullhorn" style="color: #3762c8;"></i> Latest LGU Advisories
+                </h3>
                 
-                <!-- Facebook SDK -->
-                <div id="fb-root"></div>
-                <script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js#xfbml=1&version=v18.0" nonce="12345678"></script>
+                <!-- Segmented Tabs -->
+                <div class="advisory-tabs">
+                    <button type="button" class="advisory-tab-btn active" id="tabBtnQcGov" onclick="switchAdvisoryTab('qcGov')">
+                        <i class="fas fa-landmark"></i> Quezon City Government
+                    </button>
+                    <button type="button" class="advisory-tab-btn" id="tabBtnQcdrrmc" onclick="switchAdvisoryTab('qcdrrmc')">
+                        <i class="fas fa-shield-halved"></i> QCDRRMC Disaster Alerts
+                    </button>
+                </div>
+            </div>
 
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; width: 100%;">
+            <!-- 2-Column Responsive Layout: Feed (Left) + Emergency Command (Right) -->
+            <div class="advisories-layout">
+                
+                <!-- Left: Active Live Feed -->
+                <div class="feed-container">
                     
                     <!-- QCGov Embedded Feed -->
-                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); display: flex; justify-content: center; height: 700px; width: 100%;">
+                    <div id="paneQcGov" class="feed-pane active">
                         <div class="fb-page" 
                             data-href="https://www.facebook.com/QCGov" 
                             data-tabs="timeline" 
-                            data-width="500" 
+                            data-width="650" 
                             data-height="700" 
                             data-small-header="false" 
                             data-adapt-container-width="true" 
@@ -378,11 +603,11 @@ try {
                     </div>
 
                     <!-- QCDRRMC Embedded Feed -->
-                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); display: flex; justify-content: center; height: 700px; width: 100%;">
+                    <div id="paneQcdrrmc" class="feed-pane">
                         <div class="fb-page" 
                             data-href="https://www.facebook.com/qcdrrmc" 
                             data-tabs="timeline" 
-                            data-width="500" 
+                            data-width="650" 
                             data-height="700" 
                             data-small-header="false" 
                             data-adapt-container-width="true" 
@@ -394,14 +619,122 @@ try {
                     </div>
 
                 </div>
+
+                <!-- Right: Emergency Command & Quick Response Sidebar -->
+                <div class="emergency-sidebar">
+                    
+                    <!-- Hotlines Card -->
+                    <div class="emergency-card">
+                        <div class="emergency-card-title">
+                            <i class="fas fa-phone-volume" style="color: #dc2626;"></i> 24/7 Emergency Hotlines
+                        </div>
+                        <ul class="hotline-list">
+                            <li>
+                                <a href="tel:122" class="hotline-item">
+                                    <div class="hotline-info">
+                                        <i class="fas fa-building-flag" style="color: #3762c8;"></i>
+                                        <span>QC Emergency Hotline</span>
+                                    </div>
+                                    <span class="hotline-number">122</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="tel:89275914" class="hotline-item">
+                                    <div class="hotline-info">
+                                        <i class="fas fa-kit-medical" style="color: #dc2626;"></i>
+                                        <span>QCDRRMC Rescue</span>
+                                    </div>
+                                    <span class="hotline-number">8927-5914</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="tel:16211" class="hotline-item">
+                                    <div class="hotline-info">
+                                        <i class="fas fa-bolt" style="color: #eab308;"></i>
+                                        <span>Meralco Outage</span>
+                                    </div>
+                                    <span class="hotline-number">16211</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="tel:1626" class="hotline-item">
+                                    <div class="hotline-info">
+                                        <i class="fas fa-droplet" style="color: #0284c7;"></i>
+                                        <span>Maynilad Water</span>
+                                    </div>
+                                    <span class="hotline-number">1626</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Weather Status Card -->
+                    <div class="emergency-card">
+                        <div class="emergency-card-title">
+                            <i class="fas fa-cloud-sun-rain" style="color: #0284c7;"></i> Weather & Disaster Watch
+                        </div>
+                        <div class="weather-status-badge">
+                            <i class="fas fa-circle-exclamation"></i> Monitored Active
+                        </div>
+                        <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-bottom: 10px;">
+                            Official citywide weather and flood advisories are posted in real-time by QCDRRMC.
+                        </p>
+                    </div>
+
+                    <!-- Quick Action Card -->
+                    <div class="quick-action-cta">
+                        <h4 style="font-size: 14px; font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-triangle-exclamation" style="color: #f59e0b;"></i> Notice an Issue?
+                        </h4>
+                        <p style="font-size: 12px; color: #cbd5e1; line-height: 1.4; margin-bottom: 14px;">
+                            Report power outages, clogged drainage, broken streetlights, or fallen trees directly to LGU responders.
+                        </p>
+                        <a href="citizen_submit_report.php" class="btn" style="background: #3762c8; color: #fff; width: 100%; justify-content: center; font-size: 13px;">
+                            <i class="fas fa-flag"></i> Submit Incident Report
+                        </a>
+                    </div>
+
+                </div>
+
             </div>
-
-
-
         </div>
 
     </div>
 </main>
+
+<script>
+// Tab Switching between Quezon City Government and QCDRRMC
+function switchAdvisoryTab(tab) {
+    const paneQcGov = document.getElementById('paneQcGov');
+    const paneQcdrrmc = document.getElementById('paneQcdrrmc');
+    const btnQcGov = document.getElementById('tabBtnQcGov');
+    const btnQcdrrmc = document.getElementById('tabBtnQcdrrmc');
+
+    if (tab === 'qcGov') {
+        paneQcGov.classList.add('active');
+        paneQcdrrmc.classList.remove('active');
+        btnQcGov.classList.add('active');
+        btnQcdrrmc.classList.remove('active');
+    } else {
+        paneQcdrrmc.classList.add('active');
+        paneQcGov.classList.remove('active');
+        btnQcdrrmc.classList.add('active');
+        btnQcGov.classList.remove('active');
+    }
+
+    // Trigger Facebook parser to render when switched
+    if (typeof FB !== 'undefined' && FB.XFBML) {
+        FB.XFBML.parse();
+    }
+}
+
+// Automatically refresh Facebook feed periodically (every 3 minutes)
+setInterval(function() {
+    if (typeof FB !== 'undefined' && FB.XFBML) {
+        FB.XFBML.parse();
+    }
+}, 180000);
+</script>
 
 <?php if (isset($_SESSION['show_welcome_modal']) && $_SESSION['show_welcome_modal'] === true): ?>
 <!-- WELCOME BACK POPUP MODAL -->
@@ -418,7 +751,7 @@ try {
                 <li>
                     <i class="fas fa-broadcast-tower"></i>
                     <div>
-                        <strong>Latest LGU Advisories:</strong> The LGU has published <?php echo count($advisories); ?> new advisories about utility services.
+                        <strong>Latest LGU Advisories:</strong> Official updates and weather advisories are streaming live.
                     </div>
                 </li>
             </ul>
