@@ -729,29 +729,126 @@ try {
             color: #94a3b8;
         }
 
-        /* Live Facebook Embed Dark Mode Matrix */
-        .feed-box-body-embed {
+        /* Native Dark Feed Cards (Option B - Matching Photo 2) */
+        .feed-box-body-native {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 14px;
+            max-height: 680px;
+            overflow-y: auto;
             background: #0f172a;
-            display: flex;
-            justify-content: center;
-            min-height: 700px;
-            width: 100%;
             border-radius: 0 0 14px 14px;
-            overflow: hidden;
         }
 
-        .dark-theme .fb-dark-filter-wrapper {
-            filter: invert(0.88) hue-rotate(180deg) contrast(1.08) brightness(0.92);
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            border-radius: 0 0 14px 14px;
-            overflow: hidden;
-            transition: filter 0.3s ease;
+        .feed-box-body-native::-webkit-scrollbar {
+            width: 6px;
+        }
+        .feed-box-body-native::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        .feed-box-body-native::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
         }
 
-        .dark-theme .fb-dark-filter-wrapper iframe {
-            border-radius: 0 0 14px 14px;
+        .native-feed-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 14px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .native-feed-card:hover {
+            transform: translateY(-2px);
+            border-color: #475569;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+        }
+
+        .native-card-badge-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 2px;
+        }
+
+        .native-badge-blue {
+            background: #0284c7;
+            color: #ffffff;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 5px;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+        }
+
+        .native-badge-red {
+            background: #dc2626;
+            color: #ffffff;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 5px;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+        }
+
+        .native-card-category {
+            font-size: 10.5px;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .native-card-title {
+            font-size: 13.5px;
+            font-weight: 700;
+            color: #f8fafc;
+            line-height: 1.35;
+        }
+
+        .native-card-time {
+            font-size: 11px;
+            color: #94a3b8;
+        }
+
+        .native-card-desc {
+            font-size: 12px;
+            color: #94a3b8;
+            line-height: 1.5;
+        }
+
+        .native-card-img {
+            width: 100%;
+            height: 130px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 1px solid #334155;
+            margin: 4px 0;
+            cursor: pointer;
+        }
+
+        .native-card-more-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #38bdf8;
+            text-decoration: none;
+            margin-top: 4px;
+            transition: color 0.2s ease;
+        }
+
+        .native-card-more-btn:hover {
+            color: #7dd3fc;
+            text-decoration: underline;
         }
 
         .feed-sync-status {
@@ -775,10 +872,6 @@ try {
 
 <?php include 'includes/utilities_sidebar.php'; ?>
 
-<!-- Facebook SDK -->
-<div id="fb-root"></div>
-<script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js#xfbml=1&version=v18.0" nonce="12345678"></script>
-
 <main class="main-content" id="mainContent">
     <div class="card">
         
@@ -801,7 +894,7 @@ try {
                 </h3>
                 <div class="feed-sync-status">
                     <span class="feed-sync-dot"></span>
-                    <span id="feedSyncLabel">Live Real-Time Stream</span>
+                    <span id="feedSyncLabel">Auto-updating every 1 minute</span>
                 </div>
             </div>
 
@@ -811,7 +904,7 @@ try {
                 <!-- Left: Side-by-Side Dual Feeds -->
                 <div class="dual-feeds-container">
                     
-                    <!-- 1. Quezon City Government Live Feed Box -->
+                    <!-- 1. Quezon City Government Native Feed Box (Option B) -->
                     <div class="feed-box-card feed-box-qcgov">
                         <div class="feed-box-header">
                             <div class="feed-box-header-title">
@@ -822,25 +915,14 @@ try {
                                 Open Facebook <i class="fas fa-arrow-up-right-from-square"></i>
                             </a>
                         </div>
-                        <div class="feed-box-body-embed">
-                            <div class="fb-dark-filter-wrapper">
-                                <div class="fb-page" 
-                                    data-href="https://www.facebook.com/QCGov" 
-                                    data-tabs="timeline" 
-                                    data-width="500" 
-                                    data-height="700" 
-                                    data-small-header="false" 
-                                    data-adapt-container-width="true" 
-                                    data-hide-cover="false" 
-                                    data-show-facepile="false"
-                                    style="width: 100%;">
-                                    <blockquote cite="https://www.facebook.com/QCGov" class="fb-xfbml-parse-ignore"><a href="https://www.facebook.com/QCGov">Quezon City Government</a></blockquote>
-                                </div>
+                        <div class="feed-box-body-native" id="qcGovFeedBody">
+                            <div style="text-align: center; padding: 30px; color: #64748b; font-size: 13px;">
+                                <i class="fas fa-spinner fa-spin"></i> Loading live municipal feed...
                             </div>
                         </div>
                     </div>
 
-                    <!-- 2. QCDRRMC Disaster Alerts Live Feed Box -->
+                    <!-- 2. QCDRRMC Disaster Alerts Native Feed Box (Option B) -->
                     <div class="feed-box-card feed-box-qcdrrmc">
                         <div class="feed-box-header">
                             <div class="feed-box-header-title">
@@ -854,20 +936,9 @@ try {
                                 Open Facebook <i class="fas fa-arrow-up-right-from-square"></i>
                             </a>
                         </div>
-                        <div class="feed-box-body-embed">
-                            <div class="fb-dark-filter-wrapper">
-                                <div class="fb-page" 
-                                    data-href="https://www.facebook.com/qcdrrmc" 
-                                    data-tabs="timeline" 
-                                    data-width="500" 
-                                    data-height="700" 
-                                    data-small-header="false" 
-                                    data-adapt-container-width="true" 
-                                    data-hide-cover="false" 
-                                    data-show-facepile="false"
-                                    style="width: 100%;">
-                                    <blockquote cite="https://www.facebook.com/qcdrrmc" class="fb-xfbml-parse-ignore"><a href="https://www.facebook.com/qcdrrmc">Quezon City Disaster Risk Reduction and Management Council</a></blockquote>
-                                </div>
+                        <div class="feed-box-body-native" id="qcdrrmcFeedBody">
+                            <div style="text-align: center; padding: 30px; color: #64748b; font-size: 13px;">
+                                <i class="fas fa-spinner fa-spin"></i> Loading live disaster feed...
                             </div>
                         </div>
                     </div>
@@ -973,14 +1044,77 @@ try {
 </main>
 
 <script>
-// Automatically refresh Facebook live feeds every 60 seconds (1 minute)
-setInterval(function() {
-    if (typeof FB !== 'undefined' && FB.XFBML) {
-        FB.XFBML.parse();
+// 1. Render Native Dark Cards (Option B - Matching Photo 2)
+function renderNativeCards(posts, isAlert = false) {
+    if (!posts || posts.length === 0) {
+        return '<div style="padding: 20px; text-align: center; color: #64748b; font-size: 13px;">No active announcements.</div>';
     }
-}, 60000);
 
-// Weather Code mapping for Philippine tropical conditions
+    return posts.map(post => {
+        const badgeClass = isAlert ? 'native-badge-red' : 'native-badge-blue';
+        const fallbackUrl = isAlert ? 'https://www.facebook.com/qcdrrmc' : 'https://www.facebook.com/QCGov';
+        const targetUrl = (post.url && post.url.startsWith('http')) ? post.url : fallbackUrl;
+        const imgTag = post.image ? `
+            <a href="${targetUrl}" target="_blank" rel="noopener noreferrer">
+                <img src="${post.image}" alt="Advisory Graphic" class="native-card-img" onerror="this.style.display='none'">
+            </a>
+        ` : '';
+
+        return `
+            <div class="native-feed-card">
+                <div class="native-card-badge-row">
+                    <span class="${badgeClass}">${post.badge || (isAlert ? 'ALERT FEED' : 'LIVE FEED')}</span>
+                    <span class="native-card-category">${isAlert ? 'DISASTER ALERTS' : 'LATEST NEWS'}</span>
+                </div>
+                <div class="native-card-title">${post.title}</div>
+                <div class="native-card-time">${post.time}</div>
+                ${imgTag}
+                <div class="native-card-desc">${post.content}</div>
+                <div>
+                    <a href="${targetUrl}" target="_blank" rel="noopener noreferrer" class="native-card-more-btn">
+                        More <i class="fas fa-chevron-right" style="font-size: 10px;"></i>
+                    </a>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// 2. Fetch Live Advisories from API every 1 minute (60 seconds)
+async function fetchLiveAdvisories() {
+    try {
+        const res = await fetch('api/live_advisories.php?t=' + Date.now());
+        if (!res.ok) return;
+        const data = await res.json();
+
+        if (data && data.channels) {
+            const qcGovBody = document.getElementById('qcGovFeedBody');
+            const qcdrrmcBody = document.getElementById('qcdrrmcFeedBody');
+
+            if (qcGovBody && data.channels.qcgov) {
+                qcGovBody.innerHTML = renderNativeCards(data.channels.qcgov.posts, false);
+            }
+
+            if (qcdrrmcBody && data.channels.qcdrrmc) {
+                qcdrrmcBody.innerHTML = renderNativeCards(data.channels.qcdrrmc.posts, true);
+            }
+
+            const syncLabel = document.getElementById('feedSyncLabel');
+            if (syncLabel) {
+                const now = new Date();
+                syncLabel.textContent = 'Live • Updated ' + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+        }
+    } catch (err) {
+        console.warn('Advisories API sync failed:', err);
+    }
+}
+
+// Initial fetch and 60-second background polling
+fetchLiveAdvisories();
+setInterval(fetchLiveAdvisories, 60000);
+
+// 3. Weather Code mapping for Philippine tropical conditions
 function getWeatherDetails(code) {
     switch (code) {
         case 0: return { icon: '☀️', text: 'Clear Skies', badge: 'Normal', badgeBg: '#dcfce7', badgeColor: '#15803d' };
@@ -1005,7 +1139,7 @@ function getWeatherDetails(code) {
     }
 }
 
-// Live Quezon City Weather API fetch (Open-Meteo)
+// 4. Live Quezon City Weather API fetch (Open-Meteo)
 async function fetchQCWeather() {
     try {
         const url = 'https://api.open-meteo.com/v1/forecast?latitude=14.6760&longitude=121.0437&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m&hourly=precipitation_probability&timezone=Asia%2FManila';

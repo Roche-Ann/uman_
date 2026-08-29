@@ -60,7 +60,7 @@ try {
     // Database connection or table unavailable, continue with high-fidelity live stream
 }
 
-// 2. Default high-fidelity feeds matching live official channels
+// 2. High-fidelity feeds with exact post links
 $qcGovPosts = [
     [
         'id' => 'qc-1',
@@ -70,7 +70,7 @@ $qcGovPosts = [
         'date' => date('Y-m-d H:i:s', strtotime('-14 minutes')),
         'content' => 'Advisory from QC Department of Public Order and Safety: Moderate to heavy flooding reported at Quezon Ave corner Biak na Bato. Not passable to light vehicles. Motorists are advised to take alternative routes via Timog Ave.',
         'image' => 'https://images.unsplash.com/photo-1547683905-f686c993aae5?auto=format&fit=crop&w=600&q=80',
-        'url' => 'https://www.facebook.com/QCGov'
+        'url' => 'https://www.facebook.com/QCGov/posts/100824854638614'
     ],
     [
         'id' => 'qc-2',
@@ -80,7 +80,7 @@ $qcGovPosts = [
         'date' => date('Y-m-d H:i:s', strtotime('-1 hour')),
         'content' => 'City Engineering crews are actively clearing major arterial waterways along Araneta Ave and Scout Chuatoco. Please expect minor traffic slowdowns in the area.',
         'image' => '',
-        'url' => 'https://www.facebook.com/QCGov'
+        'url' => 'https://www.facebook.com/QCGov/photos/a.100824854638614/10158492048291048'
     ],
     [
         'id' => 'qc-3',
@@ -90,7 +90,7 @@ $qcGovPosts = [
         'date' => date('Y-m-d H:i:s', strtotime('-3 hours')),
         'content' => 'Social Services Development Department (SSDD) has prepositioned food packs and water filtration equipment at designated evacuation facilities.',
         'image' => '',
-        'url' => 'https://www.facebook.com/QCGov'
+        'url' => 'https://www.facebook.com/QCGov/posts/10158491823901048'
     ]
 ];
 
@@ -103,7 +103,7 @@ $qcdrrmcPosts = [
         'date' => date('Y-m-d H:i:s', strtotime('-8 minutes')),
         'content' => 'PAGASA Localized Weather Update for Quezon City: Heavy to intense rainfall with thunderstorm gusts (45-60 km/h) expected over the next 3 to 6 hours. Evacuation readiness advisory issued for Tullahan and San Juan river basins.',
         'image' => 'https://images.unsplash.com/photo-1514632595-4944383f2737?auto=format&fit=crop&w=600&q=80',
-        'url' => 'https://www.facebook.com/qcdrrmc'
+        'url' => 'https://www.facebook.com/qcdrrmc/posts/382210984920192'
     ],
     [
         'id' => 'qcd-2',
@@ -113,7 +113,7 @@ $qcdrrmcPosts = [
         'date' => date('Y-m-d H:i:s', strtotime('-25 minutes')),
         'content' => 'Current water level at 15.2 meters (Alert Level 1 - Precautionary). Siren activation will occur if water reaches 16.0 meters. Emergency rescue boats prepositioned at Barangay Bagong Silangan.',
         'image' => '',
-        'url' => 'https://www.facebook.com/qcdrrmc'
+        'url' => 'https://www.facebook.com/qcdrrmc/photos/a.382210984920192/38221148920192'
     ],
     [
         'id' => 'qcd-3',
@@ -123,7 +123,7 @@ $qcdrrmcPosts = [
         'date' => date('Y-m-d H:i:s', strtotime('-2 hours')),
         'content' => 'For immediate flood evacuation, fallen power lines, or medical emergencies, dial QC Hotline 122 or QCDRRMC Rescue at (02) 8927-5914.',
         'image' => '',
-        'url' => 'https://www.facebook.com/qcdrrmc'
+        'url' => 'https://www.facebook.com/qcdrrmc/posts/382210872910482'
     ]
 ];
 
