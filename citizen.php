@@ -332,8 +332,14 @@ try {
             padding: 0;
             margin: 0;
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 10px;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        @media (max-width: 600px) {
+            .hotline-list {
+                grid-template-columns: 1fr;
+            }
         }
 
         .hotline-item {
@@ -373,102 +379,78 @@ try {
             border-radius: 6px;
         }
 
-        /* Live Weather Card */
-        .weather-main-grid {
-            display: flex;
+        /* Tab Active Alert Badge */
+        .tab-alert-badge {
+            display: inline-flex;
             align-items: center;
-            justify-content: space-between;
-            padding: 12px 16px;
-            background: linear-gradient(135deg, rgba(55, 98, 200, 0.06), rgba(2, 132, 199, 0.08));
-            border: 1px solid rgba(55, 98, 200, 0.15);
-            border-radius: 12px;
-            margin-bottom: 14px;
-        }
-
-        .weather-temp-block {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .weather-icon-large {
-            font-size: 36px;
-            line-height: 1;
-        }
-
-        .weather-temp-value {
-            font-size: 26px;
+            gap: 4px;
+            background: rgba(239, 68, 68, 0.15);
+            color: #dc2626;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            font-size: 10.5px;
             font-weight: 700;
-            color: #1e293b;
-            line-height: 1.1;
+            padding: 2px 7px;
+            border-radius: 99px;
+            margin-left: 6px;
+            letter-spacing: 0.3px;
         }
 
-        .weather-desc {
-            font-size: 12.5px;
-            font-weight: 600;
-            color: #64748b;
+        .pulse-dot-red {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #ef4444;
+            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.25);
+            animation: pulseRed 1.8s infinite;
         }
 
-        .weather-details-grid {
+        @keyframes pulseRed {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
+            70% { transform: scale(1.1); box-shadow: 0 0 0 5px rgba(239, 68, 68, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        /* 3-Day Forecast Strip */
+        .forecast-strip {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-            gap: 10px;
-            margin-bottom: 12px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #edf2f7;
         }
 
-        .weather-stat-box {
+        .forecast-item {
             background: #f8fafc;
             border: 1px solid #edf2f7;
-            border-radius: 10px;
-            padding: 10px 12px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+            border-radius: 9px;
+            padding: 8px;
+            text-align: center;
         }
 
-        .weather-stat-box i {
-            font-size: 18px;
-            color: #0284c7;
-        }
-
-        .weather-stat-label {
+        .forecast-day {
             font-size: 11px;
+            font-weight: 600;
             color: #64748b;
-            font-weight: 500;
+            margin-bottom: 2px;
         }
 
-        .weather-stat-val {
-            font-size: 13.5px;
+        .forecast-icon {
+            font-size: 18px;
+            line-height: 1.2;
+        }
+
+        .forecast-temp {
+            font-size: 12px;
             font-weight: 700;
             color: #1e293b;
         }
 
-        .weather-live-indicator {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            font-size: 11.5px;
-            color: #64748b;
-            border-top: 1px solid #edf2f7;
-            padding-top: 8px;
-            margin-top: 4px;
-        }
-
-        .weather-live-indicator .pulse-dot {
-            display: inline-block;
-            width: 7px;
-            height: 7px;
-            border-radius: 50%;
-            background: #10b981;
-            margin-right: 5px;
-            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
-            animation: pulseLive 2s infinite;
-        }
-
-        @keyframes pulseLive {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6); }
-            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        .forecast-rain {
+            font-size: 10.5px;
+            color: #0284c7;
+            font-weight: 600;
         }
 
         /* Dark Theme Support */
@@ -489,6 +471,12 @@ try {
         .dark-theme .advisory-tab-btn.active {
             background: #3762c8;
             color: #ffffff !important;
+        }
+
+        .dark-theme .tab-alert-badge {
+            background: rgba(239, 68, 68, 0.25);
+            color: #fca5a5;
+            border-color: rgba(239, 68, 68, 0.4);
         }
 
         .dark-theme .feed-container,
@@ -546,6 +534,27 @@ try {
             border-color: #334155;
             color: #94a3b8;
         }
+
+        .dark-theme .forecast-strip {
+            border-color: #334155;
+        }
+
+        .dark-theme .forecast-item {
+            background: #0f172a;
+            border-color: #334155;
+        }
+
+        .dark-theme .forecast-day {
+            color: #94a3b8;
+        }
+
+        .dark-theme .forecast-temp {
+            color: #f8fafc;
+        }
+
+        .dark-theme .forecast-rain {
+            color: #38bdf8;
+        }
     </style>
 </head>
 <body>
@@ -577,13 +586,16 @@ try {
                     <i class="fas fa-bullhorn" style="color: #3762c8;"></i> Latest LGU Advisories
                 </h3>
                 
-                <!-- Segmented Tabs with improved contrast -->
+                <!-- Segmented Tabs with dynamic alert badge -->
                 <div class="advisory-tabs">
                     <button type="button" class="advisory-tab-btn active" id="tabBtnQcGov" onclick="switchAdvisoryTab('qcGov')">
                         <i class="fas fa-landmark"></i> Quezon City Government
                     </button>
                     <button type="button" class="advisory-tab-btn" id="tabBtnQcdrrmc" onclick="switchAdvisoryTab('qcdrrmc')">
                         <i class="fas fa-shield-halved"></i> QCDRRMC Disaster Alerts
+                        <span id="tabAlertBadge" class="tab-alert-badge" style="display: none;">
+                            <span class="pulse-dot-red"></span> Alert Active
+                        </span>
                     </button>
                 </div>
             </div>
@@ -631,7 +643,7 @@ try {
                 <!-- Right: Emergency Command & Live Weather Center -->
                 <div class="emergency-sidebar">
                     
-                    <!-- Live Weather Card (Auto-updating via Open-Meteo API) -->
+                    <!-- Live Weather Card (Auto-updating via Open-Meteo API + 3-Day Forecast) -->
                     <div class="emergency-card">
                         <div class="emergency-card-title">
                             <span><i class="fas fa-cloud-sun-rain" style="color: #0284c7;"></i> Quezon City Weather Watch</span>
@@ -678,13 +690,35 @@ try {
                             </div>
                         </div>
 
+                        <!-- 3-Day Forecast Strip -->
+                        <div class="forecast-strip" id="forecastStrip">
+                            <div class="forecast-item">
+                                <div class="forecast-day">Today</div>
+                                <div class="forecast-icon" id="fcIcon0">🌧️</div>
+                                <div class="forecast-temp" id="fcTemp0">--° / --°</div>
+                                <div class="forecast-rain" id="fcRain0">--% rain</div>
+                            </div>
+                            <div class="forecast-item">
+                                <div class="forecast-day" id="fcDayLabel1">Tomorrow</div>
+                                <div class="forecast-icon" id="fcIcon1">⛅</div>
+                                <div class="forecast-temp" id="fcTemp1">--° / --°</div>
+                                <div class="forecast-rain" id="fcRain1">--% rain</div>
+                            </div>
+                            <div class="forecast-item">
+                                <div class="forecast-day" id="fcDayLabel2">Day 3</div>
+                                <div class="forecast-icon" id="fcIcon2">⛈️</div>
+                                <div class="forecast-temp" id="fcTemp2">--° / --°</div>
+                                <div class="forecast-rain" id="fcRain2">--% rain</div>
+                            </div>
+                        </div>
+
                         <div class="weather-live-indicator">
                             <span><span class="pulse-dot"></span> Live Quezon City Telemetry</span>
                             <span id="weatherLastUpdated">Auto-refreshing</span>
                         </div>
                     </div>
 
-                    <!-- 24/7 Hotlines Card -->
+                    <!-- 24/7 Hotlines Card (2x2 Grid) -->
                     <div class="emergency-card">
                         <div class="emergency-card-title">
                             <span><i class="fas fa-phone-volume" style="color: #dc2626;"></i> 24/7 Emergency Hotlines</span>
@@ -739,8 +773,13 @@ try {
 </main>
 
 <script>
+window.userManuallySwitchedTab = false;
+
 // Tab Switching between Quezon City Government and QCDRRMC
-function switchAdvisoryTab(tab) {
+function switchAdvisoryTab(tab, fromUser = true) {
+    if (fromUser) {
+        window.userManuallySwitchedTab = true;
+    }
     const paneQcGov = document.getElementById('paneQcGov');
     const paneQcdrrmc = document.getElementById('paneQcdrrmc');
     const btnQcGov = document.getElementById('tabBtnQcGov');
@@ -796,10 +835,10 @@ function getWeatherDetails(code) {
     }
 }
 
-// Live Quezon City Weather API fetch (Open-Meteo, 100% free, no key required)
+// Live Quezon City Weather API fetch (Open-Meteo with current + daily forecast)
 async function fetchQCWeather() {
     try {
-        const url = 'https://api.open-meteo.com/v1/forecast?latitude=14.6760&longitude=121.0437&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m&hourly=precipitation_probability&timezone=Asia%2FManila';
+        const url = 'https://api.open-meteo.com/v1/forecast?latitude=14.6760&longitude=121.0437&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m&hourly=precipitation_probability&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia%2FManila&forecast_days=3';
         const response = await fetch(url);
         if (!response.ok) return;
         const data = await response.json();
@@ -815,7 +854,7 @@ async function fetchQCWeather() {
                 rainProb = data.hourly.precipitation_probability[currentHourIndex] ?? data.hourly.precipitation_probability[0] ?? 0;
             }
 
-            // Update UI elements
+            // Update Current Weather UI
             document.getElementById('weatherIconLarge').textContent = weather.icon;
             document.getElementById('weatherTempValue').textContent = Math.round(cur.temperature_2m) + '°C';
             document.getElementById('weatherDescText').textContent = weather.text;
@@ -829,6 +868,44 @@ async function fetchQCWeather() {
                 badge.textContent = weather.badge;
                 badge.style.background = weather.badgeBg;
                 badge.style.color = weather.badgeColor;
+            }
+
+            // Severe/Rainy weather detection for Alert Badge & Smart Default Tab
+            const isStormOrRain = [61, 63, 65, 80, 81, 82, 95, 96, 99].includes(cur.weather_code) || rainProb >= 70;
+            const tabAlertBadge = document.getElementById('tabAlertBadge');
+            if (tabAlertBadge) {
+                tabAlertBadge.style.display = isStormOrRain ? 'inline-flex' : 'none';
+            }
+
+            // Smart Auto-Selection: if severe weather and user hasn't manually chosen yet, default to QCDRRMC
+            if (!window.userManuallySwitchedTab && isStormOrRain) {
+                switchAdvisoryTab('qcdrrmc', false);
+            }
+
+            // Update 3-Day Forecast Strip
+            if (data.daily && data.daily.time && data.daily.time.length >= 3) {
+                const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                
+                for (let i = 0; i < 3; i++) {
+                    const dateObj = new Date(data.daily.time[i]);
+                    const dayName = i === 0 ? 'Today' : (i === 1 ? 'Tomorrow' : days[dateObj.getDay()]);
+                    const code = data.daily.weather_code[i];
+                    const icon = getWeatherDetails(code).icon;
+                    const maxT = Math.round(data.daily.temperature_2m_max[i]);
+                    const minT = Math.round(data.daily.temperature_2m_min[i]);
+                    const pMax = data.daily.precipitation_probability_max[i] ?? 0;
+
+                    if (i > 0) {
+                        const lbl = document.getElementById(`fcDayLabel${i}`);
+                        if (lbl) lbl.textContent = dayName;
+                    }
+                    const iconEl = document.getElementById(`fcIcon${i}`);
+                    if (iconEl) iconEl.textContent = icon;
+                    const tempEl = document.getElementById(`fcTemp${i}`);
+                    if (tempEl) tempEl.textContent = `${maxT}° / ${minT}°`;
+                    const rainEl = document.getElementById(`fcRain${i}`);
+                    if (rainEl) rainEl.textContent = `${pMax}% rain`;
+                }
             }
 
             const updatedEl = document.getElementById('weatherLastUpdated');
