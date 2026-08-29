@@ -1058,7 +1058,7 @@ function renderNativeCards(posts, isAlert = false) {
         const badgeClass = isAlert ? 'native-badge-red' : 'native-badge-blue';
         const imgTag = post.image ? `<img src="${post.image}" alt="Advisory Graphic" class="native-card-img" onerror="this.style.display='none'">` : '';
         const fallbackUrl = isAlert ? 'https://www.facebook.com/qcdrrmc' : 'https://www.facebook.com/QCGov';
-        const targetUrl = post.url || fallbackUrl;
+        const targetUrl = (post.url && post.url.startsWith('http')) ? post.url : fallbackUrl;
 
         return `
             <div class="native-feed-card">

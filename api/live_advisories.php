@@ -127,28 +127,8 @@ $qcdrrmcPosts = [
     ]
 ];
 
-// Merge any database entries into the feeds
-if (!empty($dbAdvisories)) {
-    foreach ($dbAdvisories as $adv) {
-        $item = [
-            'id' => 'db-' . $adv['id'],
-            'badge' => strtoupper($adv['severity'] ?? 'LGU NOTICE'),
-            'title' => $adv['title'],
-            'time' => date('M d, g:i A', strtotime($adv['published_date'] ?? 'now')),
-            'date' => $adv['published_date'] ?? date('Y-m-d H:i:s'),
-            'content' => $adv['content'] ?? '',
-            'image' => '',
-            'url' => 'citizen_advisories.php'
-        ];
-        if (stripos($adv['title'], 'disaster') !== false || stripos($adv['title'], 'typhoon') !== false || ($adv['severity'] ?? '') === 'emergency') {
-            array_unshift($qcdrrmcPosts, $item);
-        } else {
-            array_unshift($qcGovPosts, $item);
-        }
-    }
-}
-
 $response['channels']['qcgov']['posts'] = array_slice($qcGovPosts, 0, 6);
 $response['channels']['qcdrrmc']['posts'] = array_slice($qcdrrmcPosts, 0, 6);
 
 echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
