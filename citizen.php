@@ -488,14 +488,6 @@ try {
             margin-bottom: 10px;
         }
 
-        .quick-action-cta {
-            background: linear-gradient(135deg, #1e293b, #0f172a);
-            color: #ffffff;
-            border-radius: 14px;
-            padding: 20px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        }
-
         /* Dark Theme Support */
         .dark-theme .advisory-tabs {
             background: rgba(30, 41, 59, 0.8);
@@ -676,22 +668,9 @@ try {
                         <div class="weather-status-badge">
                             <i class="fas fa-circle-exclamation"></i> Monitored Active
                         </div>
-                        <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-bottom: 10px;">
+                        <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-bottom: 0;">
                             Official citywide weather and flood advisories are posted in real-time by QCDRRMC.
                         </p>
-                    </div>
-
-                    <!-- Quick Action Card -->
-                    <div class="quick-action-cta">
-                        <h4 style="font-size: 14px; font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
-                            <i class="fas fa-triangle-exclamation" style="color: #f59e0b;"></i> Notice an Issue?
-                        </h4>
-                        <p style="font-size: 12px; color: #cbd5e1; line-height: 1.4; margin-bottom: 14px;">
-                            Report power outages, clogged drainage, broken streetlights, or fallen trees directly to LGU responders.
-                        </p>
-                        <a href="citizen_submit_report.php" class="btn" style="background: #3762c8; color: #fff; width: 100%; justify-content: center; font-size: 13px;">
-                            <i class="fas fa-flag"></i> Submit Incident Report
-                        </a>
                     </div>
 
                 </div>
