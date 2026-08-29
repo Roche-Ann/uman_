@@ -379,78 +379,73 @@ try {
             border-radius: 6px;
         }
 
-        /* Tab Active Alert Badge */
-        .tab-alert-badge {
+        /* Slim Compact Weather Strip */
+        .weather-compact-strip {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 16px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 13px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .weather-compact-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .weather-compact-icon {
+            font-size: 20px;
+            line-height: 1;
+        }
+
+        .weather-compact-temp {
+            font-weight: 700;
+            color: #1e293b;
+            font-size: 14.5px;
+        }
+
+        .weather-compact-desc {
+            color: #64748b;
+            font-weight: 500;
+            font-size: 13px;
+        }
+
+        .weather-compact-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .weather-compact-stat {
             display: inline-flex;
             align-items: center;
             gap: 4px;
-            background: rgba(239, 68, 68, 0.15);
-            color: #dc2626;
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            font-size: 10.5px;
-            font-weight: 700;
-            padding: 2px 7px;
-            border-radius: 99px;
-            margin-left: 6px;
-            letter-spacing: 0.3px;
         }
 
-        .pulse-dot-red {
-            display: inline-block;
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: #ef4444;
-            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.25);
-            animation: pulseRed 1.8s infinite;
-        }
-
-        @keyframes pulseRed {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
-            70% { transform: scale(1.1); box-shadow: 0 0 0 5px rgba(239, 68, 68, 0); }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-        }
-
-        /* 3-Day Forecast Strip */
-        .forecast-strip {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-            margin-top: 12px;
-            padding-top: 12px;
-            border-top: 1px solid #edf2f7;
-        }
-
-        .forecast-item {
-            background: #f8fafc;
-            border: 1px solid #edf2f7;
-            border-radius: 9px;
-            padding: 8px;
-            text-align: center;
-        }
-
-        .forecast-day {
-            font-size: 11px;
-            font-weight: 600;
-            color: #64748b;
-            margin-bottom: 2px;
-        }
-
-        .forecast-icon {
-            font-size: 18px;
-            line-height: 1.2;
-        }
-
-        .forecast-temp {
-            font-size: 12px;
-            font-weight: 700;
-            color: #1e293b;
-        }
-
-        .forecast-rain {
-            font-size: 10.5px;
+        .weather-compact-stat i {
             color: #0284c7;
-            font-weight: 600;
+        }
+
+        .weather-compact-divider {
+            color: #cbd5e1;
+        }
+
+        .weather-compact-badge {
+            font-size: 10.5px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 99px;
+            background: #fef3c7;
+            color: #b45309;
         }
 
         /* Dark Theme Support */
@@ -504,56 +499,23 @@ try {
             background: rgba(96, 165, 250, 0.12);
         }
 
-        .dark-theme .weather-main-grid {
-            background: linear-gradient(135deg, rgba(30, 58, 138, 0.35), rgba(15, 23, 42, 0.5));
+        .dark-theme .weather-compact-strip {
+            background: #1e293b;
             border-color: #334155;
-        }
-
-        .dark-theme .weather-temp-value {
             color: #f8fafc;
         }
 
-        .dark-theme .weather-desc {
-            color: #94a3b8;
-        }
-
-        .dark-theme .weather-stat-box {
-            background: #0f172a;
-            border-color: #334155;
-        }
-
-        .dark-theme .weather-stat-label {
-            color: #94a3b8;
-        }
-
-        .dark-theme .weather-stat-val {
+        .dark-theme .weather-compact-temp {
             color: #f8fafc;
         }
 
-        .dark-theme .weather-live-indicator {
-            border-color: #334155;
+        .dark-theme .weather-compact-desc,
+        .dark-theme .weather-compact-right {
             color: #94a3b8;
         }
 
-        .dark-theme .forecast-strip {
-            border-color: #334155;
-        }
-
-        .dark-theme .forecast-item {
-            background: #0f172a;
-            border-color: #334155;
-        }
-
-        .dark-theme .forecast-day {
-            color: #94a3b8;
-        }
-
-        .dark-theme .forecast-temp {
-            color: #f8fafc;
-        }
-
-        .dark-theme .forecast-rain {
-            color: #38bdf8;
+        .dark-theme .weather-compact-divider {
+            color: #475569;
         }
     </style>
 </head>
@@ -643,78 +605,18 @@ try {
                 <!-- Right: Emergency Command & Live Weather Center -->
                 <div class="emergency-sidebar">
                     
-                    <!-- Live Weather Card (Auto-updating via Open-Meteo API + 3-Day Forecast) -->
-                    <div class="emergency-card">
-                        <div class="emergency-card-title">
-                            <span><i class="fas fa-cloud-sun-rain" style="color: #0284c7;"></i> Quezon City Weather Watch</span>
-                            <span id="weatherStatusBadge" style="font-size: 11.5px; font-weight: 600; background: #fef3c7; color: #b45309; padding: 3px 9px; border-radius: 12px;">
-                                Monitoring
-                            </span>
+                    <!-- Slim Compact Weather Strip (Non-distracting) -->
+                    <div class="weather-compact-strip">
+                        <div class="weather-compact-left">
+                            <span class="weather-compact-icon" id="weatherIconLarge">⛈️</span>
+                            <span class="weather-compact-temp" id="weatherTempValue">--°C</span>
+                            <span class="weather-compact-desc" id="weatherDescText">Loading...</span>
                         </div>
-
-                        <div class="weather-main-grid">
-                            <div class="weather-temp-block">
-                                <div class="weather-icon-large" id="weatherIconLarge">⛈️</div>
-                                <div>
-                                    <div class="weather-temp-value" id="weatherTempValue">--°C</div>
-                                    <div class="weather-desc" id="weatherDescText">Loading live forecast...</div>
-                                </div>
-                            </div>
-                            <div style="text-align: right;">
-                                <div style="font-size: 11px; color: #64748b; font-weight: 500;">Feels Like</div>
-                                <div style="font-size: 16px; font-weight: 700; color: #0284c7;" id="weatherFeelsLike">--°C</div>
-                            </div>
-                        </div>
-
-                        <div class="weather-details-grid">
-                            <div class="weather-stat-box">
-                                <i class="fas fa-cloud-showers-heavy"></i>
-                                <div>
-                                    <div class="weather-stat-label">Rain Chance</div>
-                                    <div class="weather-stat-val" id="weatherRainProb">--%</div>
-                                </div>
-                            </div>
-                            <div class="weather-stat-box">
-                                <i class="fas fa-droplet"></i>
-                                <div>
-                                    <div class="weather-stat-label">Humidity</div>
-                                    <div class="weather-stat-val" id="weatherHumidity">--%</div>
-                                </div>
-                            </div>
-                            <div class="weather-stat-box">
-                                <i class="fas fa-wind"></i>
-                                <div>
-                                    <div class="weather-stat-label">Wind Speed</div>
-                                    <div class="weather-stat-val" id="weatherWindSpeed">-- km/h</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 3-Day Forecast Strip -->
-                        <div class="forecast-strip" id="forecastStrip">
-                            <div class="forecast-item">
-                                <div class="forecast-day">Today</div>
-                                <div class="forecast-icon" id="fcIcon0">🌧️</div>
-                                <div class="forecast-temp" id="fcTemp0">--° / --°</div>
-                                <div class="forecast-rain" id="fcRain0">--% rain</div>
-                            </div>
-                            <div class="forecast-item">
-                                <div class="forecast-day" id="fcDayLabel1">Tomorrow</div>
-                                <div class="forecast-icon" id="fcIcon1">⛅</div>
-                                <div class="forecast-temp" id="fcTemp1">--° / --°</div>
-                                <div class="forecast-rain" id="fcRain1">--% rain</div>
-                            </div>
-                            <div class="forecast-item">
-                                <div class="forecast-day" id="fcDayLabel2">Day 3</div>
-                                <div class="forecast-icon" id="fcIcon2">⛈️</div>
-                                <div class="forecast-temp" id="fcTemp2">--° / --°</div>
-                                <div class="forecast-rain" id="fcRain2">--% rain</div>
-                            </div>
-                        </div>
-
-                        <div class="weather-live-indicator">
-                            <span><span class="pulse-dot"></span> Live Quezon City Telemetry</span>
-                            <span id="weatherLastUpdated">Auto-refreshing</span>
+                        <div class="weather-compact-right">
+                            <span class="weather-compact-stat"><i class="fas fa-cloud-showers-heavy"></i> <span id="weatherRainProb">--%</span> rain</span>
+                            <span class="weather-compact-divider">•</span>
+                            <span class="weather-compact-stat"><i class="fas fa-wind"></i> <span id="weatherWindSpeed">-- km/h</span></span>
+                            <span id="weatherStatusBadge" class="weather-compact-badge">Monitoring</span>
                         </div>
                     </div>
 
