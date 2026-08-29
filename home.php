@@ -787,58 +787,40 @@
         }
         
         @media (max-width: 992px) {
-        @media (max-width: 1024px) {
-            .hero-grid,
-            .analytics-grid {
-                grid-template-columns: 1fr;
-                gap: 3rem;
-            }
-            
-            .hero-title {
-                font-size: 2.75rem;
-            }
-            
-            .section-title {
-                font-size: 2rem;
-            }
-        }
-        
-        @media (max-width: 992px) {
             .footer-grid {
                 grid-template-columns: repeat(2, 1fr);
             }
         }
 
-        /* ── History methodology cards base styling ── */
+        /* ── History methodology cards base styling (Desktop & Mobile) ── */
         .methodology-container {
-            max-width: 1280px;
+            max-width: 850px;
             margin: 0 auto;
-            padding: 0 2rem;
+            padding: 0 1.5rem;
         }
 
-        /* Our History — full-width stacked cards (desktop & mobile) */
         .methodology-stack {
-            display: flex !important;
-            flex-direction: column !important;
-            gap: 1.25rem !important;
-            width: 100% !important;
-            margin-top: 2.5rem !important;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            width: 100%;
+            margin-top: 2.5rem;
         }
 
         .method-card {
             position: relative;
             width: 100%;
-            min-height: 400px;
-            height: 400px;
+            min-height: 380px;
+            height: 380px;
             background-size: cover;
             background-position: center;
-            border-radius: 16px;
-            color: white;
+            border-radius: 20px;
+            color: #ffffff;
             display: flex;
             flex-direction: column;
             justify-content: flex-end;
             overflow: hidden;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
             border: 1px solid rgba(255, 255, 255, 0.15);
             transition: var(--transition-smooth);
         }
@@ -846,7 +828,7 @@
         .method-card-overlay {
             position: absolute;
             inset: 0;
-            background: linear-gradient(to top, rgba(5, 10, 25, 0.98) 0%, rgba(5, 10, 25, 0.85) 50%, rgba(5, 10, 25, 0.45) 100%);
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.7) 45%, rgba(0, 0, 0, 0.15) 100%);
             z-index: 1;
             pointer-events: none;
         }
@@ -854,7 +836,7 @@
         .method-card-content {
             position: relative;
             z-index: 2;
-            padding: clamp(1rem, 3.5vw, 1.75rem);
+            padding: 1.75rem;
             display: flex;
             flex-direction: column;
             justify-content: flex-end;
@@ -862,20 +844,20 @@
 
         .method-card-title {
             margin: 0 0 0.5rem 0;
-            font-size: clamp(1.15rem, 3.5vw, 1.55rem);
+            font-size: 1.4rem;
             font-weight: 700;
             font-family: var(--font-heading);
             color: #ffffff !important;
-            text-shadow: 0 2px 12px rgba(0, 0, 0, 0.9), 0 0 20px rgba(0, 0, 0, 0.6);
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9);
             line-height: 1.25;
         }
 
         .method-card-text {
             margin: 0;
-            font-size: clamp(0.85rem, 2.2vw, 0.96rem);
+            font-size: 0.95rem;
             color: rgba(255, 255, 255, 0.95) !important;
             line-height: 1.55;
-            text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9), 0 0 12px rgba(0, 0, 0, 0.7);
+            text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9);
         }
         
         /* ── Base Desktop Navigation & Logo ── */
