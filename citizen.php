@@ -738,43 +738,6 @@ try {
             color: #94a3b8;
         }
 
-        /* Mobile Quick Emergency Bar */
-        .mobile-quick-emergency-bar {
-            display: none;
-            margin-bottom: 16px;
-            grid-template-columns: 1.2fr 1fr;
-            gap: 10px;
-        }
-
-        .mobile-quick-call-btn {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            padding: 11px 14px;
-            background: linear-gradient(135deg, #dc2626, #991b1b);
-            color: #ffffff;
-            border-radius: 10px;
-            text-decoration: none;
-            font-weight: 700;
-            font-size: 13px;
-            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
-        }
-
-        .mobile-weather-pill-btn {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            padding: 11px 12px;
-            background: #0f172a;
-            border: 1px solid #334155;
-            color: #f8fafc;
-            border-radius: 10px;
-            font-size: 12.5px;
-            font-weight: 600;
-        }
-
         /* Mobile Segmented Switcher */
         .mobile-feed-switcher {
             display: none;
@@ -817,7 +780,6 @@ try {
         }
 
         @media (max-width: 1100px) {
-            .mobile-quick-emergency-bar,
             .mobile-feed-switcher {
                 display: grid;
             }
@@ -918,17 +880,6 @@ try {
                 <div class="feed-sync-status">
                     <span class="feed-sync-dot"></span>
                     <span id="feedSyncLabel">Live Real-Time Stream</span>
-                </div>
-            </div>
-
-            <!-- Mobile Quick Emergency Bar -->
-            <div class="mobile-quick-emergency-bar">
-                <a href="tel:122" class="mobile-quick-call-btn">
-                    <i class="fas fa-phone-volume"></i> Emergency: Call 122
-                </a>
-                <div class="mobile-weather-pill-btn">
-                    <span id="mobileWeatherIcon">⛈️</span>
-                    <span id="mobileWeatherText">28°C • Rain 96%</span>
                 </div>
             </div>
 
