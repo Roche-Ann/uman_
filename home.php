@@ -436,6 +436,11 @@
             grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
             gap: 2rem;
         }
+
+        /* Hide mobile carousel on desktop by default */
+        .modules-carousel-wrapper {
+            display: none;
+        }
         
         .module-card {
             background: white;
@@ -533,52 +538,7 @@
             padding: 0 2rem;
         }
         
-        .methodology-stack {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
-            margin-top: 3rem;
-        }
-        
-        .method-card {
-            background: white;
-            border-radius: var(--radius-modern);
-            padding: 2.5rem;
-            box-shadow: var(--shadow-gentle);
-            transition: var(--transition-smooth);
-            border-left: 4px solid var(--civic-sapphire);
-        }
-        
-        .method-card:hover {
-            transform: translateY(-4px);
-            box-shadow: var(--shadow-elevated);
-        }
-        
-        .method-icon {
-            width: 64px;
-            height: 64px;
-            border-radius: 20px;
-            background: linear-gradient(135deg, var(--civic-sapphire), var(--utility-teal));
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 1.5rem;
-            font-size: 1.75rem;
-            color: white;
-        }
-        
-        .method-title {
-            font-family: var(--font-heading);
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--municipal-slate);
-            margin-bottom: 1rem;
-        }
-        
-        .method-description {
-            color: rgba(47, 72, 88, 0.8);
-            line-height: 1.7;
-        }
+        /* Legacy methodology selectors removed — see image-card system below */
         
         .analytics-showcase {
             padding: 6rem 0;
@@ -856,17 +816,19 @@
             padding: 0 2rem;
         }
 
+        /* Desktop: 3-column horizontal grid */
         .methodology-stack {
-            display: flex;
-            flex-direction: column;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
             gap: 1.5rem;
             width: 100%;
+            margin-top: 2.5rem;
         }
 
         .method-card {
             position: relative;
             width: 100%;
-            min-height: 250px;
+            min-height: 320px;
             height: auto;
             background-size: cover;
             background-position: center;
@@ -876,7 +838,7 @@
             flex-direction: column;
             justify-content: flex-end;
             overflow: hidden;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
             border: 1px solid rgba(255, 255, 255, 0.15);
             transition: var(--transition-smooth);
         }
@@ -884,7 +846,7 @@
         .method-card-overlay {
             position: absolute;
             inset: 0;
-            background: linear-gradient(to top, rgba(15, 23, 42, 0.95) 0%, rgba(15, 23, 42, 0.72) 55%, rgba(15, 23, 42, 0.3) 100%);
+            background: linear-gradient(to top, rgba(5, 10, 25, 0.98) 0%, rgba(5, 10, 25, 0.85) 50%, rgba(5, 10, 25, 0.45) 100%);
             z-index: 1;
             pointer-events: none;
         }
@@ -899,21 +861,21 @@
         }
 
         .method-card-title {
-            margin: 0 0 0.4rem 0;
+            margin: 0 0 0.5rem 0;
             font-size: clamp(1.15rem, 3.5vw, 1.55rem);
             font-weight: 700;
             font-family: var(--font-heading);
-            color: #ffffff;
-            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+            color: #ffffff !important;
+            text-shadow: 0 2px 12px rgba(0, 0, 0, 0.9), 0 0 20px rgba(0, 0, 0, 0.6);
             line-height: 1.25;
         }
 
         .method-card-text {
             margin: 0;
             font-size: clamp(0.85rem, 2.2vw, 0.96rem);
-            color: rgba(255, 255, 255, 0.92);
+            color: rgba(255, 255, 255, 0.95) !important;
             line-height: 1.55;
-            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+            text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9), 0 0 12px rgba(0, 0, 0, 0.7);
         }
         
         /* ── Base Desktop Navigation & Logo ── */
@@ -928,8 +890,23 @@
             pointer-events: none;
         }
 
+        /* Hamburger — hidden on ALL screens ≥ 993px no matter what */
+        @media (min-width: 993px) {
+            .menu-toggle,
+            button.menu-toggle,
+            #mobileMenuBtn {
+                display: none !important;
+                visibility: hidden !important;
+                pointer-events: none !important;
+                width: 0 !important;
+                height: 0 !important;
+                overflow: hidden !important;
+                opacity: 0 !important;
+            }
+        }
+
         .menu-toggle {
-            display: none !important;
+            display: none;
             background: none;
             border: none;
             font-size: 1.5rem;
@@ -1323,6 +1300,7 @@
             }
 
             .methodology-stack {
+                grid-template-columns: 1fr !important;
                 gap: 1.25rem !important;
             }
 
