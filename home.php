@@ -816,20 +816,20 @@
             padding: 0 2rem;
         }
 
-        /* Desktop: 3-column horizontal grid */
+        /* Desktop: 3-column horizontal grid for Our History */
         .methodology-stack {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 1.5rem;
-            width: 100%;
-            margin-top: 2.5rem;
+            display: grid !important;
+            grid-template-columns: repeat(3, 1fr) !important;
+            gap: 1.5rem !important;
+            width: 100% !important;
+            margin-top: 2.5rem !important;
         }
 
         .method-card {
             position: relative;
             width: 100%;
             min-height: 320px;
-            height: auto;
+            height: 320px;
             background-size: cover;
             background-position: center;
             border-radius: 16px;
@@ -1435,7 +1435,7 @@
                 </div>
             </div>
 
-            <button class="menu-toggle" id="mobileMenuBtn" aria-label="Toggle navigation">
+            <button class="menu-toggle" id="mobileMenuBtn" aria-label="Toggle navigation" style="display:none;">
                 <i class="fas fa-bars"></i>
             </button>
             
@@ -2191,11 +2191,31 @@
             }
         })();
 
-        // Mobile Hamburger Menu Toggle
+        // Mobile Hamburger Menu Toggle — controlled entirely via JS
         document.addEventListener('DOMContentLoaded', function() {
             const menuBtn = document.getElementById('mobileMenuBtn');
             const navLinks = document.getElementById('navLinksList');
             const mobileActions = navLinks ? navLinks.querySelector('.mobile-nav-actions') : null;
+
+            function isMobile() { return window.innerWidth <= 992; }
+
+            function applyMenuVisibility() {
+                if (!menuBtn) return;
+                if (isMobile()) {
+                    menuBtn.style.removeProperty('display');
+                    menuBtn.style.display = 'flex';
+                } else {
+                    menuBtn.style.display = 'none';
+                    // Close menu if open
+                    if (navLinks) navLinks.classList.remove('active');
+                    if (mobileActions) mobileActions.style.display = 'none';
+                    const icon = menuBtn.querySelector('i');
+                    if (icon) { icon.classList.remove('fa-times'); icon.classList.add('fa-bars'); }
+                }
+            }
+
+            applyMenuVisibility();
+            window.addEventListener('resize', applyMenuVisibility);
 
             if (menuBtn && navLinks) {
                 menuBtn.addEventListener('click', function(e) {
@@ -2206,9 +2226,7 @@
                         if (navLinks.classList.contains('active')) {
                             icon.classList.remove('fa-bars');
                             icon.classList.add('fa-times');
-                            if (window.innerWidth <= 992 && mobileActions) {
-                                mobileActions.style.display = 'flex';
-                            }
+                            if (mobileActions) mobileActions.style.display = 'flex';
                         } else {
                             icon.classList.remove('fa-times');
                             icon.classList.add('fa-bars');
@@ -2217,41 +2235,20 @@
                     }
                 });
 
-                // Close menu when clicking on any nav link
                 navLinks.querySelectorAll('a').forEach(link => {
                     link.addEventListener('click', function() {
                         navLinks.classList.remove('active');
                         const icon = menuBtn.querySelector('i');
-                        if (icon) {
-                            icon.classList.remove('fa-times');
-                            icon.classList.add('fa-bars');
-                        }
+                        if (icon) { icon.classList.remove('fa-times'); icon.classList.add('fa-bars'); }
                         if (mobileActions) mobileActions.style.display = 'none';
                     });
                 });
 
-                // Close menu when clicking outside
                 document.addEventListener('click', function(e) {
                     if (navLinks.classList.contains('active') && !navLinks.contains(e.target) && !menuBtn.contains(e.target)) {
                         navLinks.classList.remove('active');
                         const icon = menuBtn.querySelector('i');
-                        if (icon) {
-                            icon.classList.remove('fa-times');
-                            icon.classList.add('fa-bars');
-                        }
-                        if (mobileActions) mobileActions.style.display = 'none';
-                    }
-                });
-
-                // Reset on resize
-                window.addEventListener('resize', function() {
-                    if (window.innerWidth > 992) {
-                        navLinks.classList.remove('active');
-                        const icon = menuBtn.querySelector('i');
-                        if (icon) {
-                            icon.classList.remove('fa-times');
-                            icon.classList.add('fa-bars');
-                        }
+                        if (icon) { icon.classList.remove('fa-times'); icon.classList.add('fa-bars'); }
                         if (mobileActions) mobileActions.style.display = 'none';
                     }
                 });
