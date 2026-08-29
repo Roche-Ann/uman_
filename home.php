@@ -1299,11 +1299,11 @@
                 
                 <h1 class="hero-title">
                     A Web-based Utilities Management System<br>
-                    <span class="title-gradient">with resident portal and AI Analytics</span>
+                    <span class="title-gradient">with resident portal, AI Analytics, and UPAD Integration</span>
                 </h1>
                 
                 <p class="hero-description">
-                    We Streamline utility management with easy access to utility operations with real-time monitoring, automated workflows, and AI-powered insights.
+                    Streamlining municipal utility management with real-time water & energy monitoring, automated AI inspection scoring, citizen incident response, and seamless Urban Planning (UPAD) integration.
                 </p>
                 
                 <div class="cta-actions">
@@ -1332,9 +1332,9 @@
     <!-- Modules Showcase (Accurate to your System) -->
      <section class="modules-section" id="modules">
         <div class="section-header">
-            <h2 class="section-title">Featured Services</h2>
+            <h2 class="section-title">Featured Modules & Services</h2>
             <p class="section-description">
-                Explore and Manage utility operations.
+                Comprehensive suite of municipal utility management, automated AI scoring, and citizen services.
             </p>
         </div>
         
@@ -1349,17 +1349,17 @@
                     <h3 class="module-title">Asset Inventory</h3>
                 </div>
                 <p class="module-description">
-                    Comprehensive database of all LGU-owned utility assets with GPS mapping, condition tracking, and full lifecycle management.
+                    Comprehensive database of all LGU-owned utility assets with GIS mapping, condition tracking (Good/Fair/Poor/Critical), and full lifecycle history.
                 </p>
                 <ul class="module-features">
                     <li>GIS Mapping & Geotagging</li>
                     <li>Condition Monitoring</li>
-                    <li>Lifecycle Tracking</li>
+                    <li>Lifecycle History Logs</li>
                     <li>Automated Health Alerts</li>
                 </ul>
             </div>
             
-            <!-- 2. Incident Reporting -->
+            <!-- 2. Incident Response -->
             <div class="module-card hover-lift">
                 <div class="module-header">
                     <div class="module-icon icon-complaint">
@@ -1368,89 +1368,89 @@
                     <h3 class="module-title">Incident Response</h3>
                 </div>
                 <p class="module-description">
-                    Citizen-facing portal for reporting outages or leaks. Incidents are automatically categorized, prioritized, and routed to the right team.
+                    Citizen-facing portal and admin command center for reporting power outages or water leaks with automatic triage, priority, and LGU routing.
                 </p>
                 <ul class="module-features">
-                    <li>Geo-tagged Resident Reports</li>
-                    <li>Automatic Triage & Priority</li>
+                    <li>Geotagged Resident Reports</li>
+                    <li>Automatic Priority Assignment</li>
                     <li>Real-time Status Tracking</li>
-                    <li>Direct LGU Routing</li>
+                    <li>Direct LGU Team Routing</li>
                 </ul>
             </div>
             
-            <!-- 3. Maintenance Dispatch -->
+            <!-- 3. UPAD Inspection Hub -->
             <div class="module-card hover-lift">
                 <div class="module-header">
                     <div class="module-icon icon-billing">
-                        <i class="fas fa-tools"></i>
+                        <i class="fas fa-city"></i>
                     </div>
-                    <h3 class="module-title">Maintenance Dispatch</h3>
+                    <h3 class="module-title">UPAD Inspection Hub</h3>
                 </div>
                 <p class="module-description">
-                    Seamless coordination with external maintenance systems to dispatch work orders and track repair progress in real-time.
+                    Inbound electrical grid inspection requests from Urban Planning with automated background AI scoring, manual review workflows, and signed payload delivery.
                 </p>
                 <ul class="module-features">
-                    <li>External Work Order Sync</li>
-                    <li>Technician Dispatching</li>
-                    <li>Progress Milestone Tracking</li>
-                    <li>Service Level Auditing</li>
+                    <li>Automated AI Score Evaluation</li>
+                    <li>Manual Review (Approve/Reject)</li>
+                    <li>Editable Corrective Recommendations</li>
+                    <li>Signed UPAD Webhook Delivery</li>
                 </ul>
             </div>
             
-            <!-- 4. Energy Efficiency -->
+            <!-- 4. Water & Energy Management -->
             <div class="module-card hover-lift">
                 <div class="module-header">
                     <div class="module-icon icon-payment">
                         <i class="fas fa-bolt"></i>
                     </div>
-                    <h3 class="module-title">Energy Efficiency</h3>
+                    <h3 class="module-title">Water & Energy Management</h3>
                 </div>
                 <p class="module-description">
-                    Monitor electricity consumption across municipal facilities, identify anomalies, and sync data with external energy advisory systems.
+                    Monitor electricity consumption and water pressure & storage tank levels across municipal facilities with automated AI efficiency recommendations.
                 </p>
                 <ul class="module-features">
-                    <li>Real-time Consumption Logs</li>
-                    <li>Anomaly Detection</li>
-                    <li>Cost Analysis</li>
-                    <li>External System Sync</li>
+                    <li>Water Pressure & Flow Logs</li>
+                    <li>Energy Consumption Monitoring</li>
+                    <li>AI Efficiency Recommendations</li>
+                    <li>Automated Anomaly Alerts</li>
                 </ul>
             </div>
             
-            <!-- 5. Facility Management -->
+            <!-- 5. Maintenance & Asset Sync -->
             <div class="module-card hover-lift">
                 <div class="module-header">
                     <div class="module-icon icon-reading">
-                        <i class="fas fa-warehouse"></i>
+                        <i class="fas fa-tools"></i>
                     </div>
-                    <h3 class="module-title">Facility Management</h3>
+                    <h3 class="module-title">Maintenance & Asset Sync</h3>
                 </div>
                 <p class="module-description">
-                    Track the utility readiness of public venues (gyms, parks, evacuation centers) to ensure they are operational when needed.
+                    Coordinate work order dispatching for field technicians, track repair progress, and synchronize asset requests with external maintenance systems.
                 </p>
                 <ul class="module-features">
-                    <li>Readiness Status Dashboard</li>
-                    <li>Utility Checklist (Water/Elec)</li>
-                    <li>Booking & Event Overlay</li>
-                    <li>Incident Linking</li>
+                    <li>External Asset Request Sync</li>
+                    <li>Technician Work Order Dispatch</li>
+                    <li>Progress Milestone Tracking</li>
+                    <li>Maintenance History Logs</li>
                 </ul>
             </div>
             
-            <!-- 6. Planning & Expansion -->
+            <!-- 6. Resident Citizen Portal -->
             <div class="module-card hover-lift">
                 <div class="module-header">
                     <div class="module-icon icon-planning">
-                        <i class="fas fa-map-marked-alt"></i>
+                        <i class="fas fa-user-shield"></i>
                     </div>
-                    <h3 class="module-title">Planning & Expansion</h3>
+                    <h3 class="module-title">Resident Citizen Portal</h3>
                 </div>
                 <p class="module-description">
-                    Analyze utility coverage, manage expansion requests, and integrate with urban development projects to plan for future growth.
+                    Dedicated resident portal for submitting utility outage reports, tracking service requests, receiving public advisories, and managing citizen profiles.
                 </p>
                 <ul class="module-features">
-                    <li>GIS Coverage Mapping</li>
-                    <li>Expansion Request Tracking</li>
-                    <li>Capacity Planning</li>
-                    <li>Project Integration</li>
+                    <li>Service Request Submission</li>
+                    <li>Geotagged Incident Reporting</li>
+                    <li>Public Outage Advisories</li>
+                    <li>Verified Citizen Profiles</li>
                 </ul>
             </div>
         </div>
@@ -1460,33 +1460,33 @@
             <div class="modules-carousel-track" id="modulesTrack">
                 <div class="module-card">
                     <div class="module-header"><div class="module-icon icon-service"><i class="fas fa-boxes"></i></div><h3 class="module-title">Asset Inventory</h3></div>
-                    <p class="module-description">Comprehensive database of all LGU-owned utility assets with GPS mapping, condition tracking, and full lifecycle management.</p>
-                    <ul class="module-features"><li>GIS Mapping &amp; Geotagging</li><li>Condition Monitoring</li><li>Lifecycle Tracking</li><li>Automated Health Alerts</li></ul>
+                    <p class="module-description">Comprehensive database of all LGU-owned utility assets with GIS mapping, condition tracking (Good/Fair/Poor/Critical), and full lifecycle history.</p>
+                    <ul class="module-features"><li>GIS Mapping &amp; Geotagging</li><li>Condition Monitoring</li><li>Lifecycle History Logs</li><li>Automated Health Alerts</li></ul>
                 </div>
                 <div class="module-card">
                     <div class="module-header"><div class="module-icon icon-complaint"><i class="fas fa-exclamation-triangle"></i></div><h3 class="module-title">Incident Response</h3></div>
-                    <p class="module-description">Citizen-facing portal for reporting outages or leaks. Incidents are automatically categorized, prioritized, and routed to the right team.</p>
-                    <ul class="module-features"><li>Geo-tagged Resident Reports</li><li>Automatic Triage &amp; Priority</li><li>Real-time Status Tracking</li><li>Direct LGU Routing</li></ul>
+                    <p class="module-description">Citizen-facing portal and admin command center for reporting power outages or water leaks with automatic triage, priority, and LGU routing.</p>
+                    <ul class="module-features"><li>Geotagged Resident Reports</li><li>Automatic Priority Assignment</li><li>Real-time Status Tracking</li><li>Direct LGU Team Routing</li></ul>
                 </div>
                 <div class="module-card">
-                    <div class="module-header"><div class="module-icon icon-billing"><i class="fas fa-tools"></i></div><h3 class="module-title">Maintenance Dispatch</h3></div>
-                    <p class="module-description">Seamless coordination with external maintenance systems to dispatch work orders and track repair progress in real-time.</p>
-                    <ul class="module-features"><li>External Work Order Sync</li><li>Technician Dispatching</li><li>Progress Milestone Tracking</li><li>Service Level Auditing</li></ul>
+                    <div class="module-header"><div class="module-icon icon-billing"><i class="fas fa-city"></i></div><h3 class="module-title">UPAD Inspection Hub</h3></div>
+                    <p class="module-description">Inbound electrical grid inspection requests from Urban Planning with automated background AI scoring, manual review workflows, and signed payload delivery.</p>
+                    <ul class="module-features"><li>Automated AI Score Evaluation</li><li>Manual Review (Approve/Reject)</li><li>Editable Corrective Recommendations</li><li>Signed UPAD Webhook Delivery</li></ul>
                 </div>
                 <div class="module-card">
-                    <div class="module-header"><div class="module-icon icon-payment"><i class="fas fa-bolt"></i></div><h3 class="module-title">Energy Efficiency</h3></div>
-                    <p class="module-description">Monitor electricity consumption across municipal facilities, identify anomalies, and sync data with external energy advisory systems.</p>
-                    <ul class="module-features"><li>Real-time Consumption Logs</li><li>Anomaly Detection</li><li>Cost Analysis</li><li>External System Sync</li></ul>
+                    <div class="module-header"><div class="module-icon icon-payment"><i class="fas fa-bolt"></i></div><h3 class="module-title">Water &amp; Energy Management</h3></div>
+                    <p class="module-description">Monitor electricity consumption and water pressure &amp; storage tank levels across municipal facilities with automated AI efficiency recommendations.</p>
+                    <ul class="module-features"><li>Water Pressure &amp; Flow Logs</li><li>Energy Consumption Monitoring</li><li>AI Efficiency Recommendations</li><li>Automated Anomaly Alerts</li></ul>
                 </div>
                 <div class="module-card">
-                    <div class="module-header"><div class="module-icon icon-reading"><i class="fas fa-warehouse"></i></div><h3 class="module-title">Facility Management</h3></div>
-                    <p class="module-description">Track the utility readiness of public venues (gyms, parks, evacuation centers) to ensure they are operational when needed.</p>
-                    <ul class="module-features"><li>Readiness Status Dashboard</li><li>Utility Checklist (Water/Elec)</li><li>Booking &amp; Event Overlay</li><li>Incident Linking</li></ul>
+                    <div class="module-header"><div class="module-icon icon-reading"><i class="fas fa-tools"></i></div><h3 class="module-title">Maintenance &amp; Asset Sync</h3></div>
+                    <p class="module-description">Coordinate work order dispatching for field technicians, track repair progress, and synchronize asset requests with external maintenance systems.</p>
+                    <ul class="module-features"><li>External Asset Request Sync</li><li>Technician Work Order Dispatch</li><li>Progress Milestone Tracking</li><li>Maintenance History Logs</li></ul>
                 </div>
                 <div class="module-card">
-                    <div class="module-header"><div class="module-icon icon-planning"><i class="fas fa-map-marked-alt"></i></div><h3 class="module-title">Planning &amp; Expansion</h3></div>
-                    <p class="module-description">Analyze utility coverage, manage expansion requests, and integrate with urban development projects to plan for future growth.</p>
-                    <ul class="module-features"><li>GIS Coverage Mapping</li><li>Expansion Request Tracking</li><li>Capacity Planning</li><li>Project Integration</li></ul>
+                    <div class="module-header"><div class="module-icon icon-planning"><i class="fas fa-user-shield"></i></div><h3 class="module-title">Resident Citizen Portal</h3></div>
+                    <p class="module-description">Dedicated resident portal for submitting utility outage reports, tracking service requests, receiving public advisories, and managing citizen profiles.</p>
+                    <ul class="module-features"><li>Service Request Submission</li><li>Geotagged Incident Reporting</li><li>Public Outage Advisories</li><li>Verified Citizen Profiles</li></ul>
                 </div>
             </div>
             <!-- Dot indicators -->
