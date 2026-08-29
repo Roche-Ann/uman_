@@ -303,7 +303,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             <div class="register-header">
                 <img src="assets/images/logocityhall.png" alt="LGU Logo" class="logo-only">
                 <h2>Create Account</h2>
-                <p>Register to access the LGU maintenance system.</p>
+                <p>Register your account to access UMAN municipal utility services and portal features.</p>
             </div>
 
             <?php if ($error): ?>
@@ -375,7 +375,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <span class="footer-logo-text">Quezon City<br><small>Web-Based Utilities Management</small></span>
                 </div>
                 <p class="footer-description">
-                    We streamline utility operations and provide easy access to monitor your consumption and service requests.
+                    UMAN is a comprehensive municipal utility management system for Quezon City, streamlining water and energy monitoring, asset inventory, incident response, maintenance dispatch, and connected city integrations.
                 </p>
             </div>
             <div>

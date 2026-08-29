@@ -737,7 +737,7 @@ if ($status === 'sent') {
         <div class="login-header">
             <img src="assets/images/logocityhall.png" alt="LGU Logo" class="logo-only">
             <h2>Reset Password</h2>
-            <p>Enter your email to receive reset instructions.</p>
+            <p>Enter your registered email address to securely recover or reset your account password.</p>
         </div>
 
         <?php if ($msg): ?>
@@ -772,7 +772,7 @@ if ($status === 'sent') {
                 <span class="footer-logo-text">Quezon City<br><small>Web-Based Utilities Management</small></span>
             </div>
             <p class="footer-description">
-                We streamline utility operations and provide easy access to monitor your consumption and service requests.
+                UMAN is a comprehensive municipal utility management system for Quezon City, streamlining water and energy monitoring, asset inventory, incident response, maintenance dispatch, and connected city integrations.
             </p>
         </div>
         <div>
