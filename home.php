@@ -1423,9 +1423,9 @@
             
             <ul class="nav-links" id="navLinksList">
                 <li class="nav-link-item"><a href="#hero" class="nav-link">Home</a></li>
-                <li class="nav-link-item"><a href="#modules" class="nav-link">Modules</a></li>
+                <li class="nav-link-item"><a href="#modules" class="nav-link">Citizen Hub</a></li>
                 <li class="nav-link-item"><a href="#methodology" class="nav-link">History</a></li>
-                <li class="nav-link-item"><a href="#analytics" class="nav-link">Contact</a></li>
+                <li class="nav-link-item"><a href="#analytics" class="nav-link">Contacts</a></li>
                 <li class="mobile-nav-actions" style="display: none;">
                     <a href="create.php" class="civic-button button-secondary" style="width:100%; justify-content:center;">Register</a>
                     <a href="login.php" class="civic-button button-primary" style="width:100%; justify-content:center;">Login</a>
@@ -1481,7 +1481,7 @@
     </section>
 
     <!-- Modules Showcase (Accurate to your System) -->
-     <section class="modules-section" id="modules">
+     <div id="hub"></div><section class="modules-section" id="modules">
         <div class="section-header">
             <h2 class="section-title">Featured Modules & Services</h2>
             <p class="section-description">
@@ -1692,7 +1692,7 @@
 </section>
 
     <!-- Contact Section -->
-    <section class="analytics-showcase" id="analytics">
+    <div id="contacts"></div><div id="contact"></div><section class="analytics-showcase" id="analytics">
         <div class="analytics-grid" style="grid-template-columns: 1fr; max-width: 900px; margin: 0 auto; padding: 0 2rem; text-align: center;">
             <div class="analytics-content" style="width: 100%;">
                 <div class="section-preface" style="color: var(--insight-amber); text-align: center;">Contact Us</div>

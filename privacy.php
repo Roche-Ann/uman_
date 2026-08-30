@@ -511,9 +511,9 @@
 
             <ul class="nav-links" id="navLinksList">
                 <li class="nav-link-item"><a href="home.php" class="nav-link">Home</a></li>
-                <li class="nav-link-item"><a href="home.php#modules" class="nav-link">Modules</a></li>
-                <li class="nav-link-item"><a href="home.php#about" class="nav-link">About</a></li>
-                <li class="nav-link-item"><a href="home.php#contacts" class="nav-link">Contact</a></li>
+                <li class="nav-link-item"><a href="home.php#modules" class="nav-link">Citizen Hub</a></li>
+                <li class="nav-link-item"><a href="home.php#methodology" class="nav-link">History</a></li>
+                <li class="nav-link-item"><a href="home.php#analytics" class="nav-link">Contacts</a></li>
                 <li class="mobile-nav-actions" style="display: none;">
                     <a href="create.php" class="civic-button button-secondary" style="width:100%; justify-content:center;">Register</a>
                     <a href="login.php" class="civic-button button-primary" style="width:100%; justify-content:center;">Login</a>

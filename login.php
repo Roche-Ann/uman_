@@ -805,7 +805,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <!--  NAVIGATION  -->
     <nav class="civic-navigation" id="mainNav">
         <div class="nav-container">
-            <div class="logo-entity">
+            <a href="home.php" class="logo-entity">
                 <div class="logo-marker">
                     <img src="assets/images/logocityhall.png" alt="LGU Logo" class="logo-only">
                 </div>
@@ -813,7 +813,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <span class="logo-primary">Utilities Management System</span>
                     <span class="logo-secondary"><span class="title-gradient">uMAN</span></span>
                 </div>
-            </div>
+            </a>
 
             <button class="menu-toggle" id="mobileMenuBtn">
                 <i class="fas fa-bars"></i>
@@ -821,10 +821,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             <ul class="nav-links" id="navLinksList">
                 <li class="nav-link-item"><a href="home.php" class="nav-link">Home</a></li>
-                <li class="nav-link-item"><a href="#hub" class="nav-link">Citizen Hub</a></li>
-                <li class="nav-link-item"><a href="#modules" class="nav-link">Utilities</a></li>
-                <li class="nav-link-item"><a href="#methodology" class="nav-link">History</a></li>
-                <li class="nav-link-item"><a href="#analytics" class="nav-link">Contacts</a></li>
+                <li class="nav-link-item"><a href="home.php#modules" class="nav-link">Citizen Hub</a></li>
+                <li class="nav-link-item"><a href="home.php#methodology" class="nav-link">History</a></li>
+                <li class="nav-link-item"><a href="home.php#analytics" class="nav-link">Contacts</a></li>
                 <!-- Mobile actions (shown only in mobile menu) -->
                 <li class="mobile-nav-actions" style="display: none;">
                     <a href="create.php" class="civic-button button-secondary" style="width:100%; justify-content:center;">Register</a>
@@ -908,18 +907,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <h4 class="footer-heading">Quick Links</h4>
                 <ul class="footer-links">
                     <li><a href="home.php">Home</a></li>
-                    <li><a href="#modules">Utilities</a></li>
-                    <li><a href="#methodology">History</a></li>
-                    <li><a href="#analytics">Contacts</a></li>
+                    <li><a href="home.php#modules">Citizen Hub</a></li>
+                    <li><a href="home.php#methodology">History</a></li>
+                    <li><a href="home.php#analytics">Contacts</a></li>
                 </ul>
             </div>
             <div>
                 <h4 class="footer-heading">Core Services</h4>
                 <ul class="footer-links">
-                    <li><a href="#modules">Asset Inventory</a></li>
-                    <li><a href="#modules">Incident Reporting</a></li>
-                    <li><a href="#modules">Maintenance Dispatch</a></li>
-                    <li><a href="#modules">Energy Monitoring</a></li>
+                    <li><a href="home.php#modules">Asset Inventory</a></li>
+                    <li><a href="home.php#modules">Incident Reporting</a></li>
+                    <li><a href="home.php#modules">Maintenance Dispatch</a></li>
+                    <li><a href="home.php#modules">Energy Monitoring</a></li>
                 </ul>
             </div>
             <div>
