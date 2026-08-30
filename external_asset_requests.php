@@ -1198,20 +1198,69 @@ try {
             margin-bottom: 30px;
         }
         .stat-card {
-            background: white; border-radius: 12px; padding: 20px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-            border-left: 5px solid #cbd5e1;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            border-radius: 16px;
+            padding: 20px 18px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+            color: #fff;
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(135deg, #1a3e7a, #2a5fc2);
         }
-        .stat-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
-        .stat-card.stat-pending   { border-left-color: #f59e0b; }
-        .stat-card.stat-approved  { border-left-color: #3762c8; }
-        .stat-card.stat-fulfilled { border-left-color: #10b981; }
-        .stat-card.stat-rejected  { border-left-color: #ef4444; }
-        .stat-card h3 { font-size: 28px; font-weight: 700; color: #2c3e50; margin-bottom: 4px; }
-        .stat-card p {
-            font-size: 11px; color: #64748b; text-transform: uppercase;
-            font-weight: 600; letter-spacing: 0.5px;
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: -20px; right: -20px;
+            width: 90px; height: 90px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.08);
+            pointer-events: none;
+        }
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 14px 32px rgba(0,0,0,0.25);
+        }
+        .stat-card.stat-pending, .stat-card.pending     { background: linear-gradient(135deg, #7a5c0d, #c4920e); }
+        .stat-card.stat-approved, .stat-card.approved   { background: linear-gradient(135deg, #1a3e7a, #2a5fc2); }
+        .stat-card.stat-fulfilled, .stat-card.fulfilled { background: linear-gradient(135deg, #1a6b38, #25a259); }
+        .stat-card.stat-rejected, .stat-card.rejected   { background: linear-gradient(135deg, #7a1a1a, #c22a2a); }
+
+        .stat-card-icon, .stat-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 14px;
+            background: rgba(255,255,255,0.18) !important;
+            display: grid;
+            place-items: center;
+            font-size: 22px;
+            flex-shrink: 0;
+            color: #fff !important;
+        }
+
+        .stat-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stat-info h3, .stat-card h3 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #fff;
+            line-height: 1;
+            margin: 0;
+        }
+
+        .stat-info p, .stat-card p {
+            font-size: 11px;
+            color: rgba(255,255,255,0.85);
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-top: 4px;
+            letter-spacing: 0.6px;
+            margin-bottom: 0;
         }
         .filter-bar {
             display: flex; align-items: center; gap: 15px;
@@ -1536,21 +1585,33 @@ try {
 
             <?php if (!$showArchived): ?>
             <div class="stats-grid">
-                <div class="stat-card stat-pending">
-                    <h3><?= $countPending; ?></h3>
-                    <p><i class="fas fa-clock"></i> Pending</p>
+                <div class="stat-card pending">
+                    <div class="stat-card-icon"><i class="fas fa-clock"></i></div>
+                    <div class="stat-info">
+                        <h3><?= $countPending; ?></h3>
+                        <p>Pending</p>
+                    </div>
                 </div>
-                <div class="stat-card stat-approved">
-                    <h3><?= $countApproved; ?></h3>
-                    <p><i class="fas fa-thumbs-up"></i> Approved</p>
+                <div class="stat-card approved">
+                    <div class="stat-card-icon"><i class="fas fa-thumbs-up"></i></div>
+                    <div class="stat-info">
+                        <h3><?= $countApproved; ?></h3>
+                        <p>Approved</p>
+                    </div>
                 </div>
-                <div class="stat-card stat-fulfilled">
-                    <h3><?= $countFulfilled; ?></h3>
-                    <p><i class="fas fa-check-double"></i> Fulfilled</p>
+                <div class="stat-card fulfilled">
+                    <div class="stat-card-icon"><i class="fas fa-check-double"></i></div>
+                    <div class="stat-info">
+                        <h3><?= $countFulfilled; ?></h3>
+                        <p>Fulfilled</p>
+                    </div>
                 </div>
-                <div class="stat-card stat-rejected">
-                    <h3><?= $countRejected; ?></h3>
-                    <p><i class="fas fa-times-circle"></i> Rejected</p>
+                <div class="stat-card rejected">
+                    <div class="stat-card-icon"><i class="fas fa-times-circle"></i></div>
+                    <div class="stat-info">
+                        <h3><?= $countRejected; ?></h3>
+                        <p>Rejected</p>
+                    </div>
                 </div>
             </div>
             <?php endif; ?>

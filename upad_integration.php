@@ -445,48 +445,77 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
             margin-bottom: 30px;
         }
         .stat-card {
-            background: #ffffff;
-            border-radius: 14px;
-            padding: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+            border-radius: 16px;
+            padding: 20px 18px;
             display: flex;
             align-items: center;
-            gap: 15px;
-            border-left: 5px solid #3b82f6;
+            gap: 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+            color: #fff;
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(135deg, #1a3e7a, #2a5fc2);
             cursor: pointer;
-            transition: all 0.2s ease;
             user-select: none;
         }
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: -20px; right: -20px;
+            width: 90px; height: 90px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.08);
+            pointer-events: none;
+        }
         .stat-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+            transform: translateY(-4px);
+            box-shadow: 0 14px 32px rgba(0,0,0,0.25);
         }
         .stat-card.active-filter {
-            box-shadow: 0 0 0 2px #3b82f6, 0 8px 20px rgba(59, 130, 246, 0.2);
+            box-shadow: 0 0 0 3px #ffffff, 0 14px 32px rgba(0,0,0,0.35);
+            transform: translateY(-4px);
         }
-        .stat-card.pending { border-left-color: #f59e0b; }
-        .stat-card.pending.active-filter { box-shadow: 0 0 0 2px #f59e0b, 0 8px 20px rgba(245, 158, 11, 0.2); }
-        .stat-card.completed { border-left-color: #10b981; }
-        .stat-card.completed.active-filter { box-shadow: 0 0 0 2px #10b981, 0 8px 20px rgba(16, 185, 129, 0.2); }
-        .stat-card.failed { border-left-color: #ef4444; }
-        .stat-card.failed.active-filter { box-shadow: 0 0 0 2px #ef4444, 0 8px 20px rgba(239, 68, 68, 0.2); }
-        
-        .stat-icon {
-            width: 50px;
-            height: 50px;
-            border-radius: 12px;
-            background: rgba(59, 130, 246, 0.1);
-            color: #3b82f6;
+
+        .stat-card.total, .stat-card:not(.pending):not(.completed):not(.failed) { background: linear-gradient(135deg, #1a3e7a, #2a5fc2); }
+        .stat-card.pending   { background: linear-gradient(135deg, #7a5c0d, #c4920e); }
+        .stat-card.completed { background: linear-gradient(135deg, #1a6b38, #25a259); }
+        .stat-card.failed    { background: linear-gradient(135deg, #7a1a1a, #c22a2a); }
+
+        .stat-card-icon, .stat-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 14px;
+            background: rgba(255,255,255,0.18) !important;
             display: grid;
             place-items: center;
-            font-size: 20px;
+            font-size: 22px;
+            flex-shrink: 0;
+            color: #fff !important;
         }
-        .stat-card.pending .stat-icon { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
-        .stat-card.completed .stat-icon { background: rgba(16, 185, 129, 0.1); color: #10b981; }
-        .stat-card.failed .stat-icon { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
 
-        .stat-info h3 { font-size: 24px; font-weight: 700; color: #0f172a; }
-        .stat-info p { font-size: 12px; color: #64748b; font-weight: 500; }
+        .stat-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stat-info h3 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #fff;
+            line-height: 1;
+            margin: 0;
+        }
+
+        .stat-info p {
+            font-size: 11px;
+            color: rgba(255,255,255,0.85);
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-top: 4px;
+            letter-spacing: 0.6px;
+            margin-bottom: 0;
+        }
 
         .card {
             background: #ffffff;
@@ -726,29 +755,29 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             <!-- Stats Overview -->
             <div class="stats-grid">
-                <div class="stat-card" data-filter="all" onclick="filterRequests('all', document.querySelector('.filter-tab[data-filter=\'all\']'))" title="Click to view all requests">
-                    <div class="stat-icon"><i class="fas fa-clipboard-list"></i></div>
+                <div class="stat-card total" data-filter="all" onclick="filterRequests('all', document.querySelector('.filter-tab[data-filter=\'all\']'))" title="Click to view all requests">
+                    <div class="stat-card-icon"><i class="fas fa-clipboard-list"></i></div>
                     <div class="stat-info">
                         <h3><?php echo $totalCount; ?></h3>
                         <p>Total UPAD Requests</p>
                     </div>
                 </div>
                 <div class="stat-card pending" data-filter="pending" onclick="filterRequests('pending', document.querySelector('.filter-tab[data-filter=\'pending\']'))" title="Click to view awaiting inspection">
-                    <div class="stat-icon"><i class="fas fa-hourglass-half"></i></div>
+                    <div class="stat-card-icon"><i class="fas fa-hourglass-half"></i></div>
                     <div class="stat-info">
                         <h3><?php echo $pendingCount; ?></h3>
                         <p>Awaiting Inspection</p>
                     </div>
                 </div>
                 <div class="stat-card completed" data-filter="completed" onclick="filterRequests('completed', document.querySelector('.filter-tab[data-filter=\'completed\']'))" title="Click to view inspected requests">
-                    <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+                    <div class="stat-card-icon"><i class="fas fa-check-circle"></i></div>
                     <div class="stat-info">
                         <h3><?php echo $completedCount; ?></h3>
                         <p>Inspected Requests</p>
                     </div>
                 </div>
                 <div class="stat-card failed" data-filter="failed" onclick="filterRequests('failed', document.querySelector('.filter-tab[data-filter=\'failed\']'))" title="Click to view failed deliveries">
-                    <div class="stat-icon"><i class="fas fa-times-circle"></i></div>
+                    <div class="stat-card-icon"><i class="fas fa-times-circle"></i></div>
                     <div class="stat-info">
                         <h3><?php echo $failedCount; ?></h3>
                         <p>Delivery Failed</p>
