@@ -442,15 +442,12 @@ body {
         min-width: 0 !important;
     }
 
-    .dark-theme .stat-card,
     .dark-theme .kpi-card {
         background: #1e293b !important;
         border-color: #334155 !important;
     }
 
-    .stat-card h3,
-    .kpi-card h3,
-    .stat-info h3 {
+    .kpi-card h3 {
         font-size: 22px !important;
         font-weight: 800 !important;
         color: #0f172a !important;
@@ -458,13 +455,31 @@ body {
         line-height: 1 !important;
     }
 
-    .dark-theme .stat-card h3,
-    .dark-theme .kpi-card h3,
-    .dark-theme .stat-info h3 {
+    .dark-theme .kpi-card h3 {
         color: #f8fafc !important;
     }
 
+    .stat-card h3,
+    .stat-info h3 {
+        color: #ffffff !important;
+        line-height: 1 !important;
+    }
+
+    .dark-theme .stat-card h3,
+    .dark-theme .stat-info h3 {
+        color: #ffffff !important;
+    }
+
     .stat-card p,
+    .stat-card .stat-info p {
+        color: rgba(255, 255, 255, 0.85) !important;
+    }
+
+    .dark-theme .stat-card p,
+    .dark-theme .stat-card .stat-info p {
+        color: rgba(255, 255, 255, 0.85) !important;
+    }
+
     .kpi-card p,
     .stat-footer,
     .stat-label {

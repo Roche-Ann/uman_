@@ -433,39 +433,52 @@ $locationsAvail = $pdo->query("
         @media (max-width: 700px)  { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
 
         .stat-card {
-            background: #fff;
-            border-radius: 14px;
-            padding: 22px 20px;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-            border-left: 5px solid #cbd5e1;
+            border-radius: 16px;
+            padding: 20px 18px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.18);
             display: flex;
             align-items: center;
             gap: 16px;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            color: #fff;
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(135deg, #1a3e7a, #2a5fc2);
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
         }
-        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.1); }
-        .stat-card.blue   { border-left-color: #3762c8; }
-        .stat-card.green  { border-left-color: #22c55e; }
-        .stat-card.amber  { border-left-color: #f59e0b; }
-        .stat-card.purple { border-left-color: #a855f7; }
-        .stat-card.teal   { border-left-color: #14b8a6; }
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: -20px; right: -20px;
+            width: 90px; height: 90px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.08);
+            pointer-events: none;
+        }
+        .stat-card:hover { transform: translateY(-4px); box-shadow: 0 14px 32px rgba(0,0,0,0.25); }
+        .stat-card.blue   { background: linear-gradient(135deg, #1a3e7a, #2a5fc2); }
+        .stat-card.green  { background: linear-gradient(135deg, #1a6b38, #25a259); }
+        .stat-card.amber  { background: linear-gradient(135deg, #7a5c0d, #c4920e); }
+        .stat-card.purple { background: linear-gradient(135deg, #4c1d7a, #7c3dbf); }
+        .stat-card.teal   { background: linear-gradient(135deg, #0d4a7a, #1580cc); }
 
         .stat-icon-wrap {
-            width: 50px; height: 50px;
-            border-radius: 12px;
+            width: 52px; height: 52px;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.18) !important;
             display: grid; place-items: center;
-            font-size: 20px;
+            font-size: 22px;
             flex-shrink: 0;
+            color: #fff !important;
         }
-        .stat-card.blue   .stat-icon-wrap { background: #eff4ff; color: #3762c8; }
-        .stat-card.green  .stat-icon-wrap { background: #f0fdf4; color: #22c55e; }
-        .stat-card.amber  .stat-icon-wrap { background: #fffbeb; color: #f59e0b; }
-        .stat-card.purple .stat-icon-wrap { background: #faf5ff; color: #a855f7; }
-        .stat-card.teal   .stat-icon-wrap { background: #f0fdfa; color: #14b8a6; }
+        .stat-card.blue   .stat-icon-wrap,
+        .stat-card.green  .stat-icon-wrap,
+        .stat-card.amber  .stat-icon-wrap,
+        .stat-card.purple .stat-icon-wrap,
+        .stat-card.teal   .stat-icon-wrap { background: rgba(255,255,255,0.18) !important; color: #fff !important; }
 
-        .stat-info h3 { font-size: 22px; font-weight: 700; color: #1e293b; line-height: 1.2; }
-        .stat-info h3 .unit { font-size: 12px; font-weight: 500; color: #94a3b8; }
-        .stat-info p { font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+        .stat-info h3 { font-size: 26px; font-weight: 700; color: #fff !important; line-height: 1.2; margin: 0; }
+        .stat-info h3 .unit { font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.85); }
+        .stat-info p { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.85) !important; text-transform: uppercase; letter-spacing: 0.6px; margin-top: 4px; margin-bottom: 0; }
 
         /* ── Filter Bar ── */
         .filter-bar {
@@ -733,14 +746,12 @@ $locationsAvail = $pdo->query("
         /* ── Dark theme overrides (inherited from sidebar) ── */
         .dark-theme .card { background: rgba(15,23,42,0.95) !important; }
         .dark-theme .box,
-        .dark-theme .stat-card,
         .dark-theme .table-section,
         .dark-theme .advisory-card,
         .dark-theme .top-item,
         .dark-theme .filter-bar { background: #1e293b !important; border-color: #334155 !important; }
         .dark-theme .box-title,
-        .dark-theme .dashboard-header h1,
-        .dark-theme .stat-info h3 { color: #f8fafc !important; }
+        .dark-theme .dashboard-header h1 { color: #f8fafc !important; }
         .dark-theme .box-header { border-bottom-color: #334155 !important; }
         .dark-theme thead th { background: #0f172a !important; color: #94a3b8 !important; border-bottom-color: #334155 !important; }
         .dark-theme tbody td { color: #cbd5e1 !important; border-bottom-color: #334155 !important; }

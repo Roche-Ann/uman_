@@ -997,17 +997,7 @@ $pipelineData = json_encode([
         .dark-theme .dashboard-header h1 {
             color: #f8fafc !important;
         }
-        .dark-theme .stat-card {
-            background: #1e293b !important;
-            border-color: #334155 !important;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
-        }
-        .dark-theme .stat-info h3 {
-            color: #f8fafc !important;
-        }
-        .dark-theme .stat-info p {
-            color: #94a3b8 !important;
-        }
+
         .dark-theme .box {
             background: #1e293b !important;
             border: 1px solid #334155 !important;

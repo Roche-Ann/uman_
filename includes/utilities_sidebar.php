@@ -968,18 +968,54 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
         color: #cbd5e1 !important;
     }
 
-    /* Cards and Grids (Stats Cards) */
+    /* Cards and Grids (Stats Cards - Keep colorful gradients in dark mode) */
     .dark-theme .stat-card {
-        background: #1e293b !important;
-        color: #f8fafc !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
-        border-left-width: 5px !important;
+        color: #ffffff !important;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
     }
-    .dark-theme .stat-info h3 {
-        color: #f8fafc !important;
+    .dark-theme .stat-card.assets,
+    .dark-theme .stat-card.completed,
+    .dark-theme .stat-card.fulfilled,
+    .dark-theme .stat-card.green         { background: linear-gradient(135deg, #1a6b38, #25a259) !important; }
+
+    .dark-theme .stat-card.incidents     { background: linear-gradient(135deg, #7a2f0d, #c0440f) !important; }
+
+    .dark-theme .stat-card.maintenance,
+    .dark-theme .stat-card.total,
+    .dark-theme .stat-card.approved,
+    .dark-theme .stat-card.blue          { background: linear-gradient(135deg, #1a3e7a, #2a5fc2) !important; }
+
+    .dark-theme .stat-card.energy,
+    .dark-theme .stat-card.forwarded,
+    .dark-theme .stat-card.purple        { background: linear-gradient(135deg, #4c1d7a, #7c3dbf) !important; }
+
+    .dark-theme .stat-card.pending,
+    .dark-theme .stat-card.amber         { background: linear-gradient(135deg, #7a5c0d, #c4920e) !important; }
+
+    .dark-theme .stat-card.progress,
+    .dark-theme .stat-card.teal          { background: linear-gradient(135deg, #0d4a7a, #1580cc) !important; }
+
+    .dark-theme .stat-card.emergency,
+    .dark-theme .stat-card.failed,
+    .dark-theme .stat-card.rejected,
+    .dark-theme .stat-card.damaged       { background: linear-gradient(135deg, #7a1a1a, #c22a2a) !important; }
+
+    .dark-theme .stat-card-icon,
+    .dark-theme .stat-card .stat-icon,
+    .dark-theme .stat-card .stat-card-icon,
+    .dark-theme .stat-card .stat-icon-wrap {
+        background: rgba(255, 255, 255, 0.18) !important;
+        color: #ffffff !important;
     }
-    .dark-theme .stat-info p {
-        color: #94a3b8 !important;
+
+    .dark-theme .stat-card h3,
+    .dark-theme .stat-card .stat-info h3 {
+        color: #ffffff !important;
+    }
+
+    .dark-theme .stat-card p,
+    .dark-theme .stat-card .stat-info p {
+        color: rgba(255, 255, 255, 0.85) !important;
     }
 
     /* Tables */
@@ -1339,30 +1375,7 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
         color: #cbd5e1 !important;
     }
 
-    /* ── Stat cards (CPRF Hub & other pages) ── */
-    .dark-theme .stat-card {
-        background: #1e293b !important;
-        border-color: #334155 !important;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
-    }
-    .dark-theme .stat-card .stat-info h3 {
-        color: #f8fafc !important;
-    }
-    .dark-theme .stat-card h3 {
-        color: #f8fafc !important;
-    }
-    .dark-theme .stat-card p {
-        color: #94a3b8 !important;
-    }
-    /* Preserve the colored left-border accent — just intensify it slightly */
-    .dark-theme .stat-card                    { border-left-color: #3762c8 !important; }
-    .dark-theme .stat-card.operational        { border-left-color: #27ae60 !important; }
-    .dark-theme .stat-card.needs-inspection   { border-left-color: #f39c12 !important; }
-    .dark-theme .stat-card.damaged            { border-left-color: #e74c3c !important; }
-    .dark-theme .stat-card.maintenance        { border-left-color: #9b59b6 !important; }
-    /* stat-footer labels keep their colors in dark mode */
-    .dark-theme .stat-card .stat-footer .stat-icon,
-    .dark-theme .stat-card .stat-footer .stat-label { opacity: 0.9; }
+
 
 
     /* ── Page header / subtitle text ── */

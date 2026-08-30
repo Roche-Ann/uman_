@@ -716,8 +716,6 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
         .dark-theme body { color: #f1f5f9 !important; }
         .dark-theme .page-header h1 { color: #f8fafc !important; }
         .dark-theme .page-wrapper { background: rgba(10, 18, 35, 0.92) !important; border-color: rgba(255,255,255,0.08) !important; }
-        .dark-theme .stat-card { background: rgba(30, 41, 59, 0.95) !important; }
-        .dark-theme .stat-info h3 { color: #f8fafc !important; }
         .dark-theme .card { background: rgba(15, 23, 42, 0.85) !important; border-color: #334155 !important; }
         .dark-theme th { background: #151f32 !important; color: #94a3b8 !important; border-bottom-color: #334155 !important; }
         .dark-theme td { color: #cbd5e1 !important; border-bottom-color: #334155 !important; }

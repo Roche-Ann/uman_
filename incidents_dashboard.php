@@ -261,39 +261,72 @@ $mapIncidents = $pdo->query("
         }
 
         .stat-card {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            border-radius: 16px;
+            padding: 20px 18px;
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            border-left: 5px solid #cbd5e1;
+            gap: 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+            color: #fff;
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(135deg, #1a3e7a, #2a5fc2);
         }
 
-        .stat-card.total { border-left-color: #3762c8; }
-        .stat-card.pending { border-left-color: #f1c40f; }
-        .stat-card.reviewing { border-left-color: #d97706; }
-        .stat-card.forwarded { border-left-color: #a55eea; }
-        .stat-card.resolved { border-left-color: #2ecc71; }
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: -20px; right: -20px;
+            width: 90px; height: 90px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.08);
+            pointer-events: none;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 14px 32px rgba(0,0,0,0.25);
+        }
+
+        .stat-card.total      { background: linear-gradient(135deg, #1a3e7a, #2a5fc2); }
+        .stat-card.pending    { background: linear-gradient(135deg, #7a5c0d, #c4920e); }
+        .stat-card.reviewing  { background: linear-gradient(135deg, #7a2f0d, #c0440f); }
+        .stat-card.forwarded  { background: linear-gradient(135deg, #4c1d7a, #7c3dbf); }
+        .stat-card.resolved   { background: linear-gradient(135deg, #1a6b38, #25a259); }
+
+        .stat-card-icon, .stat-icon {
+            width: 52px; height: 52px;
+            border-radius: 14px;
+            background: rgba(255,255,255,0.18) !important;
+            display: grid;
+            place-items: center;
+            font-size: 22px;
+            flex-shrink: 0;
+            color: #fff !important;
+        }
+
+        .stat-info {
+            display: flex;
+            flex-direction: column;
+        }
 
         .stat-info h3 {
-            font-size: 26px;
+            font-size: 28px;
             font-weight: 700;
-            color: #2c3e50;
+            color: #fff !important;
+            line-height: 1;
+            margin: 0;
         }
 
         .stat-info p {
-            font-size: 12px;
-            color: #64748b;
+            font-size: 11px;
+            color: rgba(255,255,255,0.85) !important;
             text-transform: uppercase;
             font-weight: 600;
-            margin-top: 3px;
-        }
-
-        .stat-icon {
-            font-size: 28px;
-            color: #cbd5e1;
+            margin-top: 4px;
+            letter-spacing: 0.6px;
+            margin-bottom: 0;
         }
 
         .dashboard-layout {
@@ -451,17 +484,7 @@ $mapIncidents = $pdo->query("
         .dark-theme .dashboard-header h1 {
             color: #f8fafc !important;
         }
-        .dark-theme .stat-card {
-            background: #1e293b !important;
-            border-color: #334155 !important;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
-        }
-        .dark-theme .stat-info h3 {
-            color: #f8fafc !important;
-        }
-        .dark-theme .stat-info p {
-            color: #94a3b8 !important;
-        }
+
         .dark-theme .box {
             background: #1e293b !important;
             border: 1px solid #334155 !important;
