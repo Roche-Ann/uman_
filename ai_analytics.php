@@ -646,35 +646,64 @@ $pipelineData = json_encode([
         }
 
         .stat-card {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-            border-left: 5px solid #cbd5e1;
+            border-radius: 16px;
+            padding: 22px 20px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            gap: 16px;
             transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: -30px; right: -30px;
+            width: 100px; height: 100px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.08);
         }
 
         .stat-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            transform: translateY(-4px);
+            box-shadow: 0 14px 32px rgba(0,0,0,0.22);
         }
 
-        .stat-card.assets { border-left-color: #3762c8; }
-        .stat-card.incidents { border-left-color: #f1c40f; }
-        .stat-card.maintenance { border-left-color: #e74c3c; }
-        .stat-card.energy { border-left-color: #a55eea; }
-        .stat-card.risk { border-left-color: <?php echo $riskColor; ?>; }
-        .stat-card.score { border-left-color: #27ae60; }
+        .stat-card.assets      { background: linear-gradient(135deg, #3762c8 0%, #6490f5 100%); }
+        .stat-card.incidents   { background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%); }
+        .stat-card.maintenance { background: linear-gradient(135deg, #ef4444 0%, #f87171 100%); }
+        .stat-card.energy      { background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%); }
+        .stat-card.risk        { background: linear-gradient(135deg, #f97316 0%, #fb923c 100%); }
+        .stat-card.score       { background: linear-gradient(135deg, #10b981 0%, #34d399 100%); }
+
+        .stat-card-icon {
+            background: rgba(255,255,255,0.18);
+            border-radius: 12px;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .stat-card-icon i {
+            font-size: 20px;
+            color: #fff;
+        }
 
         .stat-info h3 {
-            font-size: 24px;
+            font-size: 26px;
             font-weight: 700;
-            color: #2c3e50;
+            color: #fff !important;
+            margin: 0;
         }
 
         .stat-info p {
             font-size: 11px;
-            color: #64748b;
+            color: rgba(255,255,255,0.85) !important;
             text-transform: uppercase;
             font-weight: 600;
             margin-top: 3px;
@@ -682,7 +711,7 @@ $pipelineData = json_encode([
 
         .stat-info .stat-sub {
             font-size: 11px;
-            color: #94a3b8;
+            color: rgba(255,255,255,0.7) !important;
             margin-top: 2px;
             text-transform: none;
             font-weight: 400;
@@ -1093,6 +1122,7 @@ $pipelineData = json_encode([
 
             <div class="stats-grid">
                 <div class="stat-card assets">
+                    <div class="stat-card-icon"><i class="fas fa-warehouse"></i></div>
                     <div class="stat-info">
                         <h3><?php echo $assetHealthScore; ?>%</h3>
                         <p>Asset Health</p>
@@ -1100,6 +1130,7 @@ $pipelineData = json_encode([
                     </div>
                 </div>
                 <div class="stat-card incidents">
+                    <div class="stat-card-icon"><i class="fas fa-bullhorn"></i></div>
                     <div class="stat-info">
                         <h3><?php echo $incidentResolutionRate; ?>%</h3>
                         <p>Resolution Rate</p>
@@ -1107,6 +1138,7 @@ $pipelineData = json_encode([
                     </div>
                 </div>
                 <div class="stat-card maintenance">
+                    <div class="stat-card-icon"><i class="fas fa-tools"></i></div>
                     <div class="stat-info">
                         <h3><?php echo $maintCompletionRate; ?>%</h3>
                         <p>Maint. Completion</p>
@@ -1114,6 +1146,7 @@ $pipelineData = json_encode([
                     </div>
                 </div>
                 <div class="stat-card energy">
+                    <div class="stat-card-icon"><i class="fas fa-bolt"></i></div>
                     <div class="stat-info">
                         <h3><?php echo $energyScore; ?>%</h3>
                         <p>Energy Efficiency</p>
@@ -1121,13 +1154,15 @@ $pipelineData = json_encode([
                     </div>
                 </div>
                 <div class="stat-card risk">
+                    <div class="stat-card-icon"><i class="fas fa-exclamation-triangle"></i></div>
                     <div class="stat-info">
-                        <h3 style="color: <?php echo $riskColor; ?>;"><?php echo $riskAlerts; ?></h3>
+                        <h3><?php echo $riskAlerts; ?></h3>
                         <p>Risk Alerts</p>
                         <div class="stat-sub"><?php echo $riskLevel; ?> threat level</div>
                     </div>
                 </div>
                 <div class="stat-card score">
+                    <div class="stat-card-icon"><i class="fas fa-sync-alt"></i></div>
                     <div class="stat-info">
                         <h3><?php echo $successfulSyncs; ?></h3>
                         <p>Data Syncs</p>
