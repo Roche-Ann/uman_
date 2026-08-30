@@ -75,6 +75,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $stmt = $pdo->prepare("UPDATE users SET last_login = NOW() WHERE id = ?");
                     $stmt->execute([$userId]);
 
+                    registerUserSession((int)$userId);
+
                     // Redirect based on user_type (role)
                     if ($userType === 'employee') {
                         header('Location: utilities_dashboard.php');

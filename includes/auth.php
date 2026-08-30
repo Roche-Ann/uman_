@@ -49,7 +49,264 @@ try {
 
 function isLoggedIn() {
     // Check for logged_in flag to ensure OTP was passed
-    return isset($_SESSION['user_id']) && isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true;
+    if (!isset($_SESSION['user_id']) || !isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
+        return false;
+    }
+    return validateUserSession();
+}
+
+/**
+ * Validate that the current session token has not been revoked.
+ */
+function validateUserSession(): bool {
+    global $pdo;
+    if (!isset($_SESSION['user_id'])) {
+        return false;
+    }
+
+    $userId = (int)$_SESSION['user_id'];
+
+    // Lazily register session token if missing
+    if (empty($_SESSION['auth_session_token'])) {
+        registerUserSession($userId);
+        return true;
+    }
+
+    try {
+        ensureAuthSchema();
+        $token = $_SESSION['auth_session_token'];
+        $stmt = $pdo->prepare("SELECT id FROM user_sessions WHERE user_id = ? AND session_token = ? LIMIT 1");
+        $stmt->execute([$userId, $token]);
+        $exists = $stmt->fetchColumn();
+
+        if (!$exists) {
+            // Session was revoked remotely (e.g. from password change or device logout)
+            session_unset();
+            session_destroy();
+            return false;
+        }
+
+        // Periodically update last_activity timestamp (at most once every 60 seconds)
+        $now = time();
+        if (!isset($_SESSION['last_activity_sync']) || ($now - (int)$_SESSION['last_activity_sync']) > 60) {
+            $_SESSION['last_activity_sync'] = $now;
+            $upd = $pdo->prepare("UPDATE user_sessions SET last_activity = NOW() WHERE user_id = ? AND session_token = ?");
+            $upd->execute([$userId, $token]);
+        }
+
+        return true;
+    } catch (Throwable $e) {
+        return true;
+    }
+}
+
+/**
+ * Extract clean client IP address.
+ */
+function getClientIpAddress(): string {
+    if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
+        return trim($_SERVER['HTTP_CF_CONNECTING_IP']);
+    }
+    if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        $parts = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
+        return trim($parts[0]);
+    }
+    return $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+}
+
+/**
+ * Parse user agent into device type, browser name, and operating system platform.
+ */
+function parseUserAgent(?string $ua): array {
+    $deviceType = 'Desktop';
+    $browser = 'Web Browser';
+    $platform = 'Unknown OS';
+
+    if (!$ua) {
+        return ['device_type' => $deviceType, 'browser' => $browser, 'platform' => $platform];
+    }
+
+    // Platform detection
+    if (stripos($ua, 'windows nt 10') !== false) {
+        $platform = 'Windows 10/11';
+    } elseif (stripos($ua, 'windows nt 6.3') !== false) {
+        $platform = 'Windows 8.1';
+    } elseif (stripos($ua, 'windows nt 6.1') !== false) {
+        $platform = 'Windows 7';
+    } elseif (stripos($ua, 'windows') !== false) {
+        $platform = 'Windows';
+    } elseif (stripos($ua, 'android') !== false) {
+        $platform = 'Android';
+        $deviceType = 'Mobile';
+    } elseif (stripos($ua, 'iphone') !== false) {
+        $platform = 'iOS (iPhone)';
+        $deviceType = 'Mobile';
+    } elseif (stripos($ua, 'ipad') !== false) {
+        $platform = 'iPadOS (iPad)';
+        $deviceType = 'Tablet';
+    } elseif (stripos($ua, 'macintosh') !== false || stripos($ua, 'mac os x') !== false) {
+        $platform = 'macOS';
+    } elseif (stripos($ua, 'linux') !== false) {
+        $platform = 'Linux';
+    }
+
+    // Device Type refinement
+    if (stripos($ua, 'tablet') !== false || stripos($ua, 'ipad') !== false) {
+        $deviceType = 'Tablet';
+    } elseif ((stripos($ua, 'mobile') !== false || stripos($ua, 'phone') !== false) && $deviceType !== 'Tablet') {
+        $deviceType = 'Mobile';
+    }
+
+    // Browser detection
+    if (preg_match('/edg\/([\d\.]+)/i', $ua)) {
+        $browser = 'Microsoft Edge';
+    } elseif (preg_match('/opr\/([\d\.]+)/i', $ua) || stripos($ua, 'opera') !== false) {
+        $browser = 'Opera';
+    } elseif (preg_match('/chrome\/([\d\.]+)/i', $ua)) {
+        $browser = 'Google Chrome';
+    } elseif (preg_match('/firefox\/([\d\.]+)/i', $ua)) {
+        $browser = 'Mozilla Firefox';
+    } elseif (preg_match('/safari\/([\d\.]+)/i', $ua) && stripos($ua, 'chrome') === false) {
+        $browser = 'Apple Safari';
+    }
+
+    return [
+        'device_type' => $deviceType,
+        'browser' => $browser,
+        'platform' => $platform
+    ];
+}
+
+/**
+ * Register a new active device session for a user.
+ */
+function registerUserSession(int $userId): string {
+    global $pdo;
+    ensureAuthSchema();
+
+    try {
+        $token = bin2hex(random_bytes(32));
+    } catch (Throwable $e) {
+        $token = bin2hex(openssl_random_pseudo_bytes(32));
+    }
+
+    $_SESSION['auth_session_token'] = $token;
+    $_SESSION['last_activity_sync'] = time();
+
+    $sessId = session_id() ?: $token;
+    $ua = $_SERVER['HTTP_USER_AGENT'] ?? null;
+    $ip = getClientIpAddress();
+    $deviceInfo = parseUserAgent($ua);
+
+    $location = 'Quezon City, Philippines';
+    if ($ip === '127.0.0.1' || $ip === '::1' || str_starts_with($ip, '192.168.') || str_starts_with($ip, '10.')) {
+        $location = 'Local Network · Quezon City';
+    }
+
+    try {
+        $stmt = $pdo->prepare("
+            INSERT INTO user_sessions (user_id, session_token, session_id, ip_address, user_agent, device_type, browser, platform, location, last_activity, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+        ");
+        $stmt->execute([
+            $userId,
+            $token,
+            substr($sessId, 0, 128),
+            substr($ip, 0, 45),
+            $ua ? substr($ua, 0, 500) : null,
+            $deviceInfo['device_type'],
+            $deviceInfo['browser'],
+            $deviceInfo['platform'],
+            $location
+        ]);
+    } catch (Throwable $e) {
+        error_log('registerUserSession error: ' . $e->getMessage());
+    }
+
+    return $token;
+}
+
+/**
+ * Fetch all active logged-in device sessions for a user.
+ */
+function getUserActiveSessions(int $userId): array {
+    global $pdo;
+    ensureAuthSchema();
+
+    $currentToken = $_SESSION['auth_session_token'] ?? '';
+    try {
+        $stmt = $pdo->prepare("SELECT * FROM user_sessions WHERE user_id = ? ORDER BY last_activity DESC");
+        $stmt->execute([$userId]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $sessions = [];
+        foreach ($rows as $row) {
+            $isCurrent = ($currentToken !== '' && $row['session_token'] === $currentToken);
+            $row['is_current'] = $isCurrent;
+            $sessions[] = $row;
+        }
+
+        // Sort with current session pinned first
+        usort($sessions, function($a, $b) {
+            if ($a['is_current'] && !$b['is_current']) return -1;
+            if (!$a['is_current'] && $b['is_current']) return 1;
+            return strtotime($b['last_activity']) <=> strtotime($a['last_activity']);
+        });
+
+        return $sessions;
+    } catch (Throwable $e) {
+        error_log('getUserActiveSessions error: ' . $e->getMessage());
+        return [];
+    }
+}
+
+/**
+ * Revoke a single active device session by session ID.
+ */
+function revokeUserSession(int $userId, int $sessionId): bool {
+    global $pdo;
+    ensureAuthSchema();
+    try {
+        $stmt = $pdo->prepare("DELETE FROM user_sessions WHERE id = ? AND user_id = ?");
+        $stmt->execute([$sessionId, $userId]);
+        return $stmt->rowCount() > 0;
+    } catch (Throwable $e) {
+        error_log('revokeUserSession error: ' . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Revoke all other active device sessions for a user except the current one.
+ * Also invalidates trusted devices tokens.
+ */
+function revokeAllUserSessionsExceptCurrent(int $userId, ?string $currentToken = null): int {
+    global $pdo;
+    ensureAuthSchema();
+    if ($currentToken === null) {
+        $currentToken = $_SESSION['auth_session_token'] ?? '';
+    }
+
+    try {
+        if ($currentToken !== '') {
+            $stmt = $pdo->prepare("DELETE FROM user_sessions WHERE user_id = ? AND session_token != ?");
+            $stmt->execute([$userId, $currentToken]);
+        } else {
+            $stmt = $pdo->prepare("DELETE FROM user_sessions WHERE user_id = ?");
+            $stmt->execute([$userId]);
+        }
+        $count = $stmt->rowCount();
+
+        // Invalidate trusted devices so old devices must verify OTP again
+        try {
+            $pdo->prepare("DELETE FROM trusted_devices WHERE user_id = ?")->execute([$userId]);
+        } catch (Throwable $e) {}
+
+        return $count;
+    } catch (Throwable $e) {
+        error_log('revokeAllUserSessionsExceptCurrent error: ' . $e->getMessage());
+        return 0;
+    }
 }
 
 function isEmployee() {
@@ -204,6 +461,27 @@ function ensureAuthSchema(): void
             INDEX idx_trusted_devices_user (user_id),
             INDEX idx_trusted_devices_token (device_token)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+    ");
+
+    // Active User Sessions & Device Tracker table
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS user_sessions (
+            id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            session_token VARCHAR(64) NOT NULL,
+            session_id VARCHAR(128) NOT NULL,
+            ip_address VARCHAR(45) DEFAULT NULL,
+            user_agent VARCHAR(500) DEFAULT NULL,
+            device_type VARCHAR(50) DEFAULT 'Desktop',
+            browser VARCHAR(100) DEFAULT NULL,
+            platform VARCHAR(100) DEFAULT NULL,
+            location VARCHAR(150) DEFAULT NULL,
+            last_activity DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_user_sessions_user (user_id),
+            INDEX idx_user_sessions_token (session_token),
+            INDEX idx_user_sessions_activity (last_activity)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
 
     $done = true;

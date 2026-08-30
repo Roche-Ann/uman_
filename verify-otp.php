@@ -110,6 +110,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['otp'])) {
 
             $stmt = $pdo->prepare("UPDATE users SET last_login = NOW() WHERE id = ?");
             $stmt->execute([$pendingUser['id']]);
+
+            registerUserSession((int)$pendingUser['id']);
             
             unset($_SESSION['pending_login']);
             
