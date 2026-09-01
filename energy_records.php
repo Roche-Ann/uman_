@@ -428,6 +428,7 @@ $assetsList = $pdo->query("SELECT id, name, asset_id FROM utility_assets ORDER B
                             <th>Facility / Linked Asset</th>
                             <th>Period</th>
                             <th>Consumption (kWh)</th>
+                            <th>Water (m&sup3;)</th>
                             <th>Cost (PHP)</th>
                             <th>Data Source</th>
                             <th>Location</th>
@@ -436,7 +437,7 @@ $assetsList = $pdo->query("SELECT id, name, asset_id FROM utility_assets ORDER B
                     </thead>
                     <tbody>
                         <?php if (empty($recordsList)): ?>
-                            <tr><td colspan="9" style="text-align:center; padding:30px; color:#64748b;">No energy consumption logs logged.</td></tr>
+                            <tr><td colspan="10" style="text-align:center; padding:30px; color:#64748b;">No energy consumption logs logged.</td></tr>
                         <?php else: ?>
                             <?php foreach ($recordsList as $rec): 
                                 $sourceBadge = ($rec['data_source'] === 'Imported') ? 'imported' : 'manual';
@@ -457,6 +458,7 @@ $assetsList = $pdo->query("SELECT id, name, asset_id FROM utility_assets ORDER B
                                 </td>
                                 <td><?php echo htmlspecialchars($rec['month_year']); ?></td>
                                 <td><?php echo number_format($rec['consumption_kwh'], 2); ?> kWh</td>
+                                <td><?php echo ($rec['consumption_water_cbm'] ?? null) !== null ? number_format($rec['consumption_water_cbm'], 2) . ' m&sup3;' : '—'; ?></td>
                                 <td><?php echo $rec['cost'] ? '₱' . number_format($rec['cost'], 2) : '—'; ?></td>
                                 <td><span class="badge badge-<?php echo $sourceBadge; ?>"><?php echo htmlspecialchars($rec['data_source']); ?></span></td>
                                 <td><?php echo htmlspecialchars($rec['location']); ?></td>

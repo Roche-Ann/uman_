@@ -1192,6 +1192,7 @@ $locationsAvail = $pdo->query("
                         <th>Location</th>
                         <th>Period</th>
                         <th>Consumption (kWh)</th>
+                        <th>Water (m&sup3;)</th>
                         <th>Estimated Cost</th>
                         <th>Date Recorded</th>
                         <th>Source</th>
@@ -1200,7 +1201,7 @@ $locationsAvail = $pdo->query("
                 <tbody>
                     <?php if (empty($recordsList)): ?>
                     <tr>
-                        <td colspan="9">
+                        <td colspan="10">
                             <div class="empty-state">
                                 <i class="fas fa-search"></i>
                                 <p>No consumption records found for the selected filters.</p>
@@ -1228,6 +1229,7 @@ $locationsAvail = $pdo->query("
                         </td>
                         <td><?php echo htmlspecialchars($rec['month_year']); ?></td>
                         <td class="td-kwh"><?php echo number_format($rec['consumption_kwh'], 2); ?> kWh</td>
+                        <td><?php echo ($rec['consumption_water_cbm'] ?? null) !== null ? number_format($rec['consumption_water_cbm'], 2) . ' m&sup3;' : '<span style="color:#94a3b8;">—</span>'; ?></td>
                         <td class="td-cost"><?php echo $rec['cost'] ? '₱' . number_format($rec['cost'], 2) : '<span style="color:#94a3b8;">—</span>'; ?></td>
                         <td><?php echo !empty($rec['date_recorded']) ? date('M d, Y', strtotime($rec['date_recorded'])) : '—'; ?></td>
                         <td><span class="badge badge-<?php echo $srcClass; ?>"><?php echo htmlspecialchars($rec['data_source']); ?></span></td>
