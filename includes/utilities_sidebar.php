@@ -23,6 +23,48 @@ function sidebarActive(string $page, string $current): string {
     return $page === $current ? ' active' : '';
 }
 
+// Helper to render Day/Night Toggle Switch (skeuomorphic animated mode toggle)
+if (!function_exists('renderDayNightToggle')) {
+    function renderDayNightToggle(string $extraClass = '', string $id = ''): string {
+        $idAttr = $id !== '' ? ' id="' . htmlspecialchars($id, ENT_QUOTES, 'UTF-8') . '"' : '';
+        return '<div class="day-night-toggle ' . htmlspecialchars($extraClass, ENT_QUOTES, 'UTF-8') . '"' . $idAttr . ' role="switch" aria-checked="false" aria-label="Toggle Dark and Light Mode">
+            <div class="dnt-halos">
+                <span class="dnt-halo dnt-halo-1"></span>
+                <span class="dnt-halo dnt-halo-2"></span>
+                <span class="dnt-halo dnt-halo-3"></span>
+            </div>
+            <div class="dnt-stars">
+                <svg class="dnt-star dnt-star-1" viewBox="0 0 24 24"><path d="M12 0 C12 6.6 6.6 12 0 12 C6.6 12 12 17.4 12 24 C12 17.4 17.4 12 24 12 C17.4 12 12 6.6 12 0 Z"/></svg>
+                <svg class="dnt-star dnt-star-2" viewBox="0 0 24 24"><path d="M12 0 C12 6.6 6.6 12 0 12 C6.6 12 12 17.4 12 24 C12 17.4 17.4 12 24 12 C17.4 12 12 6.6 12 0 Z"/></svg>
+                <svg class="dnt-star dnt-star-3" viewBox="0 0 24 24"><path d="M12 0 C12 6.6 6.6 12 0 12 C6.6 12 12 17.4 12 24 C12 17.4 17.4 12 24 12 C17.4 12 12 6.6 12 0 Z"/></svg>
+                <span class="dnt-dot dnt-dot-1"></span>
+                <span class="dnt-dot dnt-dot-2"></span>
+                <span class="dnt-dot dnt-dot-3"></span>
+            </div>
+            <div class="dnt-clouds">
+                <div class="dnt-cloud-back">
+                    <span class="dnt-puff puff-b1"></span>
+                    <span class="dnt-puff puff-b2"></span>
+                    <span class="dnt-puff puff-b3"></span>
+                </div>
+                <div class="dnt-cloud-front">
+                    <span class="dnt-puff puff-f1"></span>
+                    <span class="dnt-puff puff-f2"></span>
+                    <span class="dnt-puff puff-f3"></span>
+                    <span class="dnt-puff puff-f4"></span>
+                </div>
+            </div>
+            <div class="dnt-knob">
+                <div class="dnt-craters">
+                    <span class="dnt-crater crater-1"></span>
+                    <span class="dnt-crater crater-2"></span>
+                    <span class="dnt-crater crater-3"></span>
+                </div>
+            </div>
+        </div>';
+    }
+}
+
 // Fetch badge counts for citizen navigation
 $activeReportCount = 0;
 $unreadNotifCount = 0;
@@ -698,8 +740,9 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
     .sidebar-nav.collapsed .link-label,
     .sidebar-nav.collapsed .user-welcome,
     .sidebar-nav.collapsed .theme-toggle-btn span,
+    .sidebar-nav.collapsed .theme-toggle-meta,
     .sidebar-nav.collapsed .logout-btn .logout-text,
-    .sidebar-nav.collapsed .back-link { display: none; }
+    .sidebar-nav.collapsed .back-link { display: none !important; }
     .sidebar-nav.collapsed .nav-link {
         justify-content: center;
         padding: 12px 0;
@@ -707,6 +750,18 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
     .sidebar-nav.collapsed .nav-link i { margin-right: 0; width: auto; }
     .sidebar-nav.collapsed .user-info {
         padding: 10px 0 16px;
+    }
+    .sidebar-nav.collapsed .theme-toggle-container {
+        width: 52px;
+        height: 44px;
+        padding: 0;
+        justify-content: center;
+        border-radius: 10px;
+        margin: 0 auto 8px auto;
+    }
+    .sidebar-nav.collapsed .day-night-toggle {
+        transform: scale(0.66);
+        transform-origin: center center;
     }
     .sidebar-nav.collapsed .theme-toggle-btn,
     .sidebar-nav.collapsed .logout-btn {
@@ -874,34 +929,385 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
         to { transform: scale(1); opacity: 1; }
     }
 
-    /* Theme Toggle Button Style */
-    .theme-toggle-btn {
-        background: rgba(0, 0, 0, 0.05);
-        color: #1e293b;
-        padding: 9px 14px;
-        border-radius: 7px;
-        cursor: pointer;
-        transition: all 0.3s ease;
+    /* ===== THEME TOGGLE CONTAINER & SKEUOMORPHIC DAY/NIGHT SWITCH ===== */
+    .theme-toggle-container {
         width: 88%;
-        border: 1px solid rgba(0, 0, 0, 0.1);
-        font-weight: 600;
-        font-size: 13px;
-        font-family: 'Poppins', sans-serif;
         display: flex;
         align-items: center;
-        justify-content: center;
-        gap: 8px;
+        justify-content: space-between;
+        padding: 6px 12px;
+        border-radius: 12px;
+        background: rgba(0, 0, 0, 0.04);
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        margin: 0 auto 10px auto;
+        user-select: none;
+        outline: none;
     }
-    .theme-toggle-btn:hover {
-        background: rgba(0, 0, 0, 0.1);
-        transform: translateY(-2px);
+    .theme-toggle-container:hover {
+        background: rgba(0, 0, 0, 0.08);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
     }
-    .sidebar-nav.collapsed .theme-toggle-btn span {
+    .theme-toggle-container:focus-visible {
+        box-shadow: 0 0 0 3px rgba(55, 98, 200, 0.3);
+    }
+    .theme-toggle-meta {
+        display: flex;
+        flex-direction: column;
+        text-align: left;
+    }
+    .theme-toggle-title {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.8px;
+        text-transform: uppercase;
+        color: #64748b;
+        line-height: 1.2;
+    }
+    .theme-toggle-status {
+        font-size: 13px;
+        font-weight: 600;
+        color: #1e293b;
+        line-height: 1.3;
+    }
+
+    /* Standard Day/Night Switch Variables */
+    :root {
+        --dnt-w: 86px;
+        --dnt-h: 36px;
+        --dnt-knob: 28px;
+        --dnt-pad: 4px;
+    }
+
+    .day-night-toggle {
+        position: relative;
+        width: var(--dnt-w);
+        height: var(--dnt-h);
+        border-radius: 999px;
+        cursor: pointer;
+        overflow: hidden;
+        border: 2px solid rgba(255, 255, 255, 0.9);
+        background: linear-gradient(180deg, #2b9dff 0%, #4facfe 50%, #6ec2ff 100%);
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18),
+                    inset 0 3px 8px rgba(0, 0, 0, 0.38),
+                    inset 0 1px 2px rgba(0, 0, 0, 0.4),
+                    inset 0 -1px 3px rgba(255, 255, 255, 0.6);
+        transition: background 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+                    border-color 0.45s ease,
+                    box-shadow 0.45s ease;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+        padding: 0;
+        display: inline-block;
+        flex-shrink: 0;
+        outline: none;
+        vertical-align: middle;
+    }
+
+    .dark-theme .day-night-toggle {
+        background: linear-gradient(180deg, #18202c 0%, #202836 50%, #151c27 100%);
+        border-color: rgba(255, 255, 255, 0.18);
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5),
+                    inset 0 4px 9px rgba(0, 0, 0, 0.8),
+                    inset 0 1px 3px rgba(0, 0, 0, 0.95),
+                    inset 0 -1px 2px rgba(255, 255, 255, 0.1);
+    }
+
+    /* Concentric Halos / Ripples */
+    .dnt-halos {
+        position: absolute;
+        top: 50%;
+        left: calc(var(--dnt-pad) + var(--dnt-knob) / 2);
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+        transition: left 0.5s cubic-bezier(0.68, -0.15, 0.265, 1.2);
+        z-index: 1;
+    }
+
+    .dark-theme .dnt-halos {
+        left: calc(var(--dnt-w) - var(--dnt-pad) - var(--dnt-knob) / 2);
+    }
+
+    .dnt-halo {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        border-radius: 50%;
+        pointer-events: none;
+        transition: background 0.45s ease;
+    }
+
+    .dnt-halo-1 {
+        width: 52px;
+        height: 52px;
+        background: rgba(255, 255, 255, 0.22);
+    }
+    .dnt-halo-2 {
+        width: 82px;
+        height: 82px;
+        background: rgba(255, 255, 255, 0.13);
+    }
+    .dnt-halo-3 {
+        width: 116px;
+        height: 116px;
+        background: rgba(255, 255, 255, 0.07);
+    }
+
+    .dark-theme .dnt-halo-1 {
+        background: rgba(255, 255, 255, 0.08);
+    }
+    .dark-theme .dnt-halo-2 {
+        background: rgba(255, 255, 255, 0.045);
+    }
+    .dark-theme .dnt-halo-3 {
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    /* Night Sky Stars */
+    .dnt-stars {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 2;
+        opacity: 0;
+        transform: scale(0.3) rotate(-25deg);
+        transition: opacity 0.3s ease, transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .dark-theme .dnt-stars {
+        opacity: 1;
+        transform: scale(1) rotate(0deg);
+        transition: opacity 0.4s ease 0.06s, transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.06s;
+    }
+
+    .dnt-star {
+        position: absolute;
+        fill: #ffffff;
+        filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.9));
+        animation: dntTwinkle 3s infinite ease-in-out;
+    }
+
+    .dnt-star-1 {
+        width: 13px;
+        height: 13px;
+        top: 4px;
+        left: 28px;
+        animation-delay: 0.1s;
+    }
+
+    .dnt-star-2 {
+        width: 9px;
+        height: 9px;
+        top: 15px;
+        left: 10px;
+        animation-delay: 0.8s;
+    }
+
+    .dnt-star-3 {
+        width: 10px;
+        height: 10px;
+        bottom: 4px;
+        left: 24px;
+        animation-delay: 1.6s;
+    }
+
+    .dnt-dot {
+        position: absolute;
+        background: #ffffff;
+        border-radius: 50%;
+        box-shadow: 0 0 2.5px rgba(255, 255, 255, 0.95);
+        animation: dntTwinkle 2.4s infinite ease-in-out;
+    }
+
+    .dnt-dot-1 {
+        width: 2.5px;
+        height: 2.5px;
+        top: 8px;
+        left: 17px;
+        animation-delay: 0.4s;
+    }
+
+    .dnt-dot-2 {
+        width: 3px;
+        height: 3px;
+        bottom: 10px;
+        left: 12px;
+        animation-delay: 1.3s;
+    }
+
+    .dnt-dot-3 {
+        width: 2px;
+        height: 2px;
+        top: 16px;
+        left: 42px;
+        animation-delay: 2s;
+    }
+
+    @keyframes dntTwinkle {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.4; transform: scale(0.72); }
+    }
+
+    /* Day Sky Clouds */
+    .dnt-clouds {
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        width: 58px;
+        height: 34px;
+        pointer-events: none;
+        z-index: 2;
+        transform: translateY(0);
+        opacity: 1;
+        transition: transform 0.45s cubic-bezier(0.34, 1.35, 0.64, 1), opacity 0.35s ease;
+    }
+
+    .dark-theme .dnt-clouds {
+        transform: translateY(125%);
+        opacity: 0;
+        transition: transform 0.4s cubic-bezier(0.55, 0, 0.1, 1), opacity 0.25s ease;
+    }
+
+    .dnt-cloud-back {
+        position: absolute;
+        right: -2px;
+        bottom: -3px;
+        width: 100%;
+        height: 100%;
+    }
+
+    .dnt-cloud-back .dnt-puff {
+        background: rgba(200, 230, 255, 0.72);
+    }
+
+    .dnt-cloud-front {
+        position: absolute;
+        right: 0;
+        bottom: -3px;
+        width: 100%;
+        height: 100%;
+    }
+
+    .dnt-cloud-front .dnt-puff {
+        background: #ffffff;
+        box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.08);
+    }
+
+    .dnt-puff {
+        position: absolute;
+        border-radius: 50%;
+    }
+
+    .puff-b1 { width: 28px; height: 28px; right: 0px; bottom: 8px; }
+    .puff-b2 { width: 22px; height: 22px; right: 18px; bottom: 10px; }
+    .puff-b3 { width: 18px; height: 18px; right: 33px; bottom: 3px; }
+
+    .puff-f1 { width: 32px; height: 32px; right: -5px; bottom: 2px; }
+    .puff-f2 { width: 25px; height: 25px; right: 14px; bottom: 4px; }
+    .puff-f3 { width: 20px; height: 20px; right: 29px; bottom: 0px; }
+    .puff-f4 { width: 16px; height: 16px; right: 41px; bottom: -2px; }
+
+    /* The Sliding Knob (Sun / Moon) */
+    .dnt-knob {
+        position: absolute;
+        top: var(--dnt-pad);
+        left: var(--dnt-pad);
+        width: var(--dnt-knob);
+        height: var(--dnt-knob);
+        border-radius: 50%;
+        background: linear-gradient(135deg, #ffd738 0%, #f5a623 100%);
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35),
+                    inset 0 1.5px 2px rgba(255, 255, 255, 0.85),
+                    inset 0 -2px 3px rgba(180, 100, 0, 0.3),
+                    0 0 12px rgba(245, 166, 35, 0.5);
+        transition: transform 0.5s cubic-bezier(0.68, -0.15, 0.265, 1.2),
+                    background 0.4s ease,
+                    box-shadow 0.4s ease;
+        z-index: 5;
+        transform: translateX(0);
+    }
+
+    .dark-theme .dnt-knob {
+        transform: translateX(calc(var(--dnt-w) - var(--dnt-knob) - (var(--dnt-pad) * 2)));
+        background: linear-gradient(135deg, #eaeff5 0%, #cfd8e3 100%);
+        box-shadow: 0 3px 9px rgba(0, 0, 0, 0.55),
+                    inset 0 1.5px 2px rgba(255, 255, 255, 0.95),
+                    inset 0 -2px 3px rgba(80, 95, 115, 0.4),
+                    0 0 8px rgba(234, 239, 245, 0.25);
+    }
+
+    /* Moon Craters */
+    .dnt-craters {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        overflow: hidden;
+        pointer-events: none;
+    }
+
+    .dnt-crater {
+        position: absolute;
+        border-radius: 50%;
+        background: #90a1b3;
+        box-shadow: inset 0 1.5px 2px rgba(0, 0, 0, 0.45),
+                    0 0.5px 1px rgba(255, 255, 255, 0.4);
+        opacity: 0;
+        transform: scale(0.2);
+        transition: opacity 0.25s ease, transform 0.3s ease;
+    }
+
+    .dark-theme .dnt-crater {
+        opacity: 1;
+        transform: scale(1);
+        transition: opacity 0.35s ease 0.08s, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.12s;
+    }
+
+    .crater-1 {
+        width: 6.5px;
+        height: 6.5px;
+        top: 5px;
+        right: 7px;
+    }
+
+    .crater-2 {
+        width: 10px;
+        height: 10px;
+        bottom: 4px;
+        left: 5px;
+    }
+
+    .crater-3 {
+        width: 7px;
+        height: 7px;
+        bottom: 6px;
+        right: 4px;
+    }
+
+    /* Compact Switch Variant (For Mobile & Citizen Drawer) */
+    .day-night-toggle.compact {
+        --dnt-w: 62px;
+        --dnt-h: 28px;
+        --dnt-knob: 22px;
+        --dnt-pad: 3px;
+    }
+    .day-night-toggle.compact .crater-1 { width: 5px; height: 5px; top: 4px; right: 5px; }
+    .day-night-toggle.compact .crater-2 { width: 7.5px; height: 7.5px; bottom: 3px; left: 4px; }
+    .day-night-toggle.compact .crater-3 { width: 5.5px; height: 5.5px; bottom: 4px; right: 3px; }
+    .day-night-toggle.compact .dnt-star-1 { width: 10px; height: 10px; top: 3px; left: 19px; }
+    .day-night-toggle.compact .dnt-star-2 { width: 7px; height: 7px; top: 11px; left: 8px; }
+    .day-night-toggle.compact .dnt-star-3 { width: 8px; height: 8px; bottom: 3px; left: 17px; }
+    .day-night-toggle.compact .dnt-clouds { width: 44px; height: 26px; }
+
+    /* Legacy theme toggle fallback button */
+    .theme-toggle-btn {
         display: none;
-    }
-    .sidebar-nav.collapsed .theme-toggle-btn {
-        width: auto;
-        padding: 9px;
     }
 
     /* ===== DARK THEME SYSTEM ===== */
@@ -942,6 +1348,20 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
     }
     .dark-theme .sidebar-divider {
         border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+    }
+    .dark-theme .theme-toggle-container {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: rgba(255, 255, 255, 0.12);
+    }
+    .dark-theme .theme-toggle-container:hover {
+        background: rgba(255, 255, 255, 0.1);
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+    }
+    .dark-theme .theme-toggle-title {
+        color: #94a3b8;
+    }
+    .dark-theme .theme-toggle-status {
+        color: #f8fafc;
     }
     .dark-theme .theme-toggle-btn {
         background: rgba(255, 255, 255, 0.1);
@@ -1931,8 +2351,8 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
         </a>
     </div>
     <div class="mobile-topbar-right">
-        <button type="button" class="mobile-theme-toggle" onclick="toggleTheme()" aria-label="Toggle Dark Mode">
-            <i class="fas fa-moon" id="mobile-theme-icon"></i>
+        <button type="button" class="mobile-theme-toggle" onclick="toggleTheme()" aria-label="Toggle Dark/Light Mode" title="Toggle Dark/Light Mode">
+            <?php echo renderDayNightToggle('compact', 'mobile-theme-switch'); ?>
         </button>
     </div>
 </div>
@@ -2112,9 +2532,13 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
         <div class="sidebar-divider"></div>
         <div class="user-info">
             <div class="user-welcome"><i class="fas fa-user-circle" style="margin-right:6px; color:#6384d2;"></i><?php echo $userName; ?></div>
-            <button class="theme-toggle-btn" onclick="toggleTheme()" style="margin-bottom: 8px;" title="Toggle Dark/Light Mode">
-                <i class="fas fa-moon" id="theme-toggle-icon"></i> <span id="theme-toggle-text">Dark Mode</span>
-            </button>
+            <div class="theme-toggle-container" onclick="toggleTheme()" title="Toggle Dark/Light Mode" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' ')toggleTheme()">
+                <div class="theme-toggle-meta">
+                    <span class="theme-toggle-title">Theme</span>
+                    <span class="theme-toggle-status" id="theme-toggle-text">Light Mode</span>
+                </div>
+                <?php echo renderDayNightToggle('', 'sidebar-theme-switch'); ?>
+            </div>
             <button class="logout-btn" onclick="confirmLogout()" title="Logout">
                 <i class="fas fa-sign-out-alt"></i> <span class="logout-text">Logout</span>
             </button>
@@ -2160,8 +2584,8 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
             </a>
             <button type="button" class="citizen-panel-item" onclick="toggleTheme()">
                 <div class="citizen-panel-item-left">
-                    <i class="fas fa-moon" id="citizen-sheet-theme-icon"></i>
-                    <span id="citizen-sheet-theme-text">Dark Mode</span>
+                    <?php echo renderDayNightToggle('compact', 'citizen-sheet-theme-switch'); ?>
+                    <span id="citizen-sheet-theme-text" style="margin-left: 10px;">Dark Mode</span>
                 </div>
                 <span style="font-size:12px; color:#94a3b8; font-weight:500;">Toggle</span>
             </button>
@@ -2279,22 +2703,27 @@ function applyTheme(theme) {
     const text = document.getElementById('theme-toggle-text');
     const sheetIcon = document.getElementById('citizen-sheet-theme-icon');
     const sheetText = document.getElementById('citizen-sheet-theme-text');
-    if (theme === 'dark') {
+    const dntToggles = document.querySelectorAll('.day-night-toggle');
+    const isDark = (theme === 'dark');
+
+    if (isDark) {
         document.body.classList.add('dark-theme');
         document.documentElement.classList.add('dark-theme');
         if (icon) icon.className = 'fas fa-sun';
         if (mobIcon) mobIcon.className = 'fas fa-sun';
-        if (text) text.textContent = 'Light Mode';
+        if (text) text.textContent = 'Dark Mode';
         if (sheetIcon) sheetIcon.className = 'fas fa-sun';
-        if (sheetText) sheetText.textContent = 'Light Mode';
+        if (sheetText) sheetText.textContent = 'Dark Mode';
+        dntToggles.forEach(t => t.setAttribute('aria-checked', 'true'));
     } else {
         document.body.classList.remove('dark-theme');
         document.documentElement.classList.remove('dark-theme');
         if (icon) icon.className = 'fas fa-moon';
         if (mobIcon) mobIcon.className = 'fas fa-moon';
-        if (text) text.textContent = 'Dark Mode';
+        if (text) text.textContent = 'Light Mode';
         if (sheetIcon) sheetIcon.className = 'fas fa-moon';
-        if (sheetText) sheetText.textContent = 'Dark Mode';
+        if (sheetText) sheetText.textContent = 'Light Mode';
+        dntToggles.forEach(t => t.setAttribute('aria-checked', 'false'));
     }
 }
 

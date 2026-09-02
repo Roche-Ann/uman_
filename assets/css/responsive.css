@@ -130,23 +130,24 @@ body {
 }
 
 .mobile-theme-toggle {
-    width: 36px;
-    height: 36px;
-    border-radius: 9px;
-    border: 1px solid #e2e8f0;
-    background: #f8fafc;
-    color: #64748b;
-    font-size: 14px;
-    display: grid;
-    place-items: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    padding: 0;
     cursor: pointer;
-    transition: all 0.2s ease;
+    outline: none;
+    transition: transform 0.2s ease;
+}
+
+.mobile-theme-toggle:hover {
+    transform: scale(1.04);
 }
 
 .dark-theme .mobile-theme-toggle {
-    background: #1e293b;
-    border-color: #334155;
-    color: #fbbf24;
+    background: transparent;
+    border: none;
 }
 
 /* Sidebar Backdrop Overlay */
