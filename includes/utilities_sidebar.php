@@ -944,9 +944,28 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
     }
 
     /* Sync main-content margin with sidebar */
-    .main-content { margin-left: 280px; margin-top: var(--topbar-height); transition: margin-left 0.25s ease; min-height: calc(100vh - var(--topbar-height)); display: flex; flex-direction: column; }
+    .main-content {
+        margin-left: 280px;
+        margin-top: var(--topbar-height);
+        transition: margin-left 0.25s ease, width 0.25s ease;
+        min-height: calc(100vh - var(--topbar-height));
+        display: flex;
+        flex-direction: column;
+        box-sizing: border-box;
+    }
     .main-content > .card { flex: 1; }
-    .main-content.collapsed { margin-left: 78px; }
+
+    /* Collapsed: shrink left margin, content stays full-width of remaining area */
+    .main-content.collapsed {
+        margin-left: 78px;
+    }
+
+    /* Suppress all layout transitions on first paint when restoring saved state */
+    :root[style*="--sidebar-no-transition"] .app-topbar,
+    :root[style*="--sidebar-no-transition"] .sidebar-nav,
+    :root[style*="--sidebar-no-transition"] .main-content {
+        transition: none !important;
+    }
 
     /* Hide topbar on mobile (uses mobile-topbar instead) */
     @media (max-width: 992px) {
@@ -3340,34 +3359,56 @@ window.addEventListener('click', function(event) {
     const collapseBtn = document.getElementById('collapse-btn');
     const mobileToggle = document.getElementById('mobile-nav-toggle');
     const backdrop    = document.getElementById('sidebar-backdrop');
-    const mainContent = document.querySelector('.main-content');
     const isCitizen   = <?php echo ($userType !== 'employee') ? 'true' : 'false'; ?>;
 
     // Desktop collapse toggle
     const appTopbar = document.getElementById('app-topbar');
 
-    // ── Restore saved sidebar collapsed state on every page load ──
-    (function restoreCollapsedState() {
-        const savedCollapsed = localStorage.getItem('sidebar_collapsed') === 'true';
-        if (savedCollapsed && sidebar) {
-            sidebar.classList.add('collapsed');
-            if (mainContent) mainContent.classList.add('collapsed');
-            if (appTopbar)   appTopbar.classList.add('collapsed');
-            if (collapseBtn) {
-                collapseBtn.innerHTML = '&#8250;';
-                collapseBtn.setAttribute('aria-pressed', 'true');
-            }
+    // ── Helper: apply collapsed state to ALL layout elements ──────────────────
+    function applyCollapsedState(isCollapsed) {
+        // Re-query .main-content here — it's always available at call time
+        const mc = document.querySelector('.main-content');
+        if (sidebar)    sidebar.classList.toggle('collapsed', isCollapsed);
+        if (mc)         mc.classList.toggle('collapsed', isCollapsed);
+        if (appTopbar)  appTopbar.classList.toggle('collapsed', isCollapsed);
+        if (collapseBtn) {
+            collapseBtn.innerHTML = isCollapsed ? '&#8250;' : '&#8249;';
+            collapseBtn.setAttribute('aria-pressed', String(isCollapsed));
         }
-    })();
+    }
 
+    // ── Immediate pre-render collapse (no flash) ───────────────────────────────
+    // sidebar & app-topbar exist NOW (parsed before this script).
+    // We apply their collapsed class instantly — before browser paints a frame.
+    // .main-content comes AFTER in the HTML, so it waits for DOMContentLoaded.
+    const savedCollapsed = localStorage.getItem('sidebar_collapsed') === 'true';
+    if (savedCollapsed) {
+        if (sidebar)    sidebar.classList.add('collapsed');
+        if (appTopbar)  appTopbar.classList.add('collapsed');
+        if (collapseBtn) {
+            collapseBtn.innerHTML = '&#8250;';
+            collapseBtn.setAttribute('aria-pressed', 'true');
+        }
+        // Suppress transition flash: disable transitions for first paint, then re-enable
+        document.documentElement.style.setProperty('--sidebar-no-transition', 'none');
+        requestAnimationFrame(() => {
+            document.documentElement.style.removeProperty('--sidebar-no-transition');
+        });
+    }
+
+    // ── Restore .main-content collapsed AFTER DOM is ready ────────────────────
+    document.addEventListener('DOMContentLoaded', function () {
+        if (savedCollapsed) {
+            const mc = document.querySelector('.main-content');
+            if (mc) mc.classList.add('collapsed');
+        }
+    });
+
+    // ── Sidebar collapse/expand click ─────────────────────────────────────────
     if (collapseBtn && sidebar) {
         collapseBtn.addEventListener('click', () => {
             const isCollapsed = sidebar.classList.toggle('collapsed');
-            if (mainContent) mainContent.classList.toggle('collapsed', isCollapsed);
-            if (appTopbar) appTopbar.classList.toggle('collapsed', isCollapsed);
-            collapseBtn.innerHTML = isCollapsed ? '&#8250;' : '&#8249;';
-            collapseBtn.setAttribute('aria-pressed', isCollapsed);
-            // Persist state so it survives page navigation
+            applyCollapsedState(isCollapsed);
             localStorage.setItem('sidebar_collapsed', isCollapsed);
         });
     }
