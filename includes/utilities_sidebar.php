@@ -106,6 +106,7 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
     }
     .main-content {
         margin-left: 0 !important;
+        margin-top: 0 !important;
         padding-top: 80px !important;
         padding-bottom: 95px !important;
         width: 100% !important;
@@ -114,6 +115,7 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
     }
     .main-content.collapsed {
         margin-left: 0 !important;
+        margin-top: 0 !important;
     }
     .mobile-topbar {
         display: flex !important;
@@ -775,10 +777,187 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
         margin: 0 auto 8px auto;
     }
 
+    /* ===== TOP HEADER BAR (Employee Desktop) ===== */
+    :root {
+        --topbar-height: 62px;
+    }
+
+    .app-topbar {
+        position: fixed;
+        top: 0;
+        left: 280px;
+        right: 0;
+        height: var(--topbar-height);
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+        box-shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
+        z-index: 900;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 24px;
+        transition: left 0.25s ease;
+        font-family: 'Poppins', sans-serif;
+    }
+
+    .app-topbar.collapsed {
+        left: 90px;
+    }
+
+    .dark-theme .app-topbar {
+        background: rgba(13, 19, 33, 0.95);
+        border-bottom-color: rgba(255, 255, 255, 0.08);
+        box-shadow: 0 2px 16px rgba(0, 0, 0, 0.35);
+    }
+
+    /* Left side: page breadcrumb / greeting */
+    .topbar-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .topbar-greeting {
+        font-size: 13px;
+        color: #64748b;
+        font-weight: 400;
+    }
+
+    .topbar-user-name {
+        font-size: 15px;
+        font-weight: 700;
+        color: #0f172a;
+        letter-spacing: -0.2px;
+    }
+
+    .dark-theme .topbar-greeting {
+        color: #94a3b8;
+    }
+
+    .dark-theme .topbar-user-name {
+        color: #f8fafc;
+    }
+
+    .topbar-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #3762c8, #6384d2);
+        display: grid;
+        place-items: center;
+        color: #fff;
+        font-size: 14px;
+        flex-shrink: 0;
+        box-shadow: 0 3px 10px rgba(55, 98, 200, 0.3);
+    }
+
+    /* Right side: action buttons */
+    .topbar-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .topbar-btn {
+        position: relative;
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        background: rgba(248, 250, 252, 0.8);
+        color: #475569;
+        font-size: 16px;
+        display: grid;
+        place-items: center;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        outline: none;
+        flex-shrink: 0;
+    }
+
+    .topbar-btn:hover {
+        background: #3762c8;
+        color: #fff;
+        border-color: #3762c8;
+        box-shadow: 0 4px 12px rgba(55, 98, 200, 0.35);
+        transform: translateY(-1px);
+    }
+
+    .dark-theme .topbar-btn {
+        background: rgba(30, 41, 59, 0.8);
+        border-color: rgba(255, 255, 255, 0.1);
+        color: #94a3b8;
+    }
+
+    .dark-theme .topbar-btn:hover {
+        background: #3762c8;
+        color: #fff;
+        border-color: #3762c8;
+    }
+
+    /* Notification badge on bell */
+    .topbar-notif-badge {
+        position: absolute;
+        top: 3px;
+        right: 3px;
+        width: 8px;
+        height: 8px;
+        background: #ef4444;
+        border-radius: 50%;
+        border: 2px solid rgba(255, 255, 255, 0.9);
+        box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.4);
+    }
+
+    .dark-theme .topbar-notif-badge {
+        border-color: rgba(13, 19, 33, 0.9);
+    }
+
+    /* Day/night toggle in topbar */
+    .topbar-theme-wrap {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        cursor: pointer;
+        padding: 0;
+        border: none;
+        background: transparent;
+        outline: none;
+    }
+
+    .topbar-theme-wrap:hover .day-night-toggle {
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Topbar divider */
+    .topbar-divider {
+        width: 1px;
+        height: 24px;
+        background: rgba(0, 0, 0, 0.1);
+        border-radius: 1px;
+        margin: 0 4px;
+    }
+
+    .dark-theme .topbar-divider {
+        background: rgba(255, 255, 255, 0.1);
+    }
+
     /* Sync main-content margin with sidebar */
-    .main-content { margin-left: 280px; transition: margin-left 0.25s ease; min-height: 100vh; display: flex; flex-direction: column; }
+    .main-content { margin-left: 280px; margin-top: var(--topbar-height); transition: margin-left 0.25s ease; min-height: calc(100vh - var(--topbar-height)); display: flex; flex-direction: column; }
     .main-content > .card { flex: 1; }
     .main-content.collapsed { margin-left: 90px; }
+
+    /* Hide topbar on mobile (uses mobile-topbar instead) */
+    @media (max-width: 992px) {
+        .app-topbar {
+            display: none;
+        }
+        .main-content {
+            margin-top: 0 !important;
+            min-height: 100vh;
+        }
+    }
 
     /* ===== SMOOTH VIEW TRANSITIONS & MODULE SWITCHING ===== */
     @view-transition {
@@ -2357,6 +2536,43 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
     </div>
 </div>
 
+<?php if ($userType === 'employee'): ?>
+<!-- ===== DESKTOP TOP HEADER BAR (Employee Only) ===== -->
+<header class="app-topbar" id="app-topbar" role="banner">
+    <!-- Left: Avatar + User greeting -->
+    <div class="topbar-left">
+        <div class="topbar-avatar">
+            <i class="fas fa-user"></i>
+        </div>
+        <div>
+            <div class="topbar-greeting">Welcome back,</div>
+            <div class="topbar-user-name"><?php echo $userName; ?></div>
+        </div>
+    </div>
+
+    <!-- Right: Action buttons -->
+    <div class="topbar-actions">
+        <!-- Dark Mode Toggle -->
+        <button type="button" class="topbar-theme-wrap" onclick="toggleTheme()" title="Toggle Dark/Light Mode" aria-label="Toggle Dark/Light Mode">
+            <?php echo renderDayNightToggle('compact', 'topbar-theme-switch'); ?>
+        </button>
+
+        <div class="topbar-divider"></div>
+
+        <!-- Notification Bell -->
+        <button type="button" class="topbar-btn" id="topbar-notif-btn" aria-label="Notifications" title="Notifications">
+            <i class="fas fa-bell"></i>
+            <span class="topbar-notif-badge" id="topbar-notif-indicator" style="display:none;"></span>
+        </button>
+
+        <!-- Settings -->
+        <button type="button" class="topbar-btn" id="topbar-settings-btn" aria-label="Settings" title="Settings (coming soon)" disabled style="opacity:0.5; cursor:not-allowed;">
+            <i class="fas fa-cog"></i>
+        </button>
+    </div>
+</header>
+<?php endif; ?>
+
 <!-- Backdrop Overlay for Mobile Drawer -->
 <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
 
@@ -2765,10 +2981,12 @@ window.addEventListener('click', function(event) {
     const isCitizen   = <?php echo ($userType !== 'employee') ? 'true' : 'false'; ?>;
 
     // Desktop collapse toggle
+    const appTopbar = document.getElementById('app-topbar');
     if (collapseBtn && sidebar) {
         collapseBtn.addEventListener('click', () => {
             const isCollapsed = sidebar.classList.toggle('collapsed');
             if (mainContent) mainContent.classList.toggle('collapsed', isCollapsed);
+            if (appTopbar) appTopbar.classList.toggle('collapsed', isCollapsed);
             collapseBtn.innerHTML = isCollapsed ? '&#8250;' : '&#8249;';
             collapseBtn.setAttribute('aria-pressed', isCollapsed);
         });
