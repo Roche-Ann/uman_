@@ -953,9 +953,16 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
         flex-direction: column;
         box-sizing: border-box;
     }
-    .main-content > .card { flex: 1; }
+    .main-content > .card,
+    .main-content > .dashboard-container,
+    .main-content > .container,
+    .main-content > .container-fluid {
+        flex: 1;
+        margin-left: auto !important;
+        margin-right: auto !important;
+    }
 
-    /* Collapsed: shrink left margin, content stays full-width of remaining area */
+    /* Collapsed: shrink left margin, content stays centered in remaining area */
     .main-content.collapsed {
         margin-left: 78px;
     }
