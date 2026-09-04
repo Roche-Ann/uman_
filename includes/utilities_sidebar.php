@@ -959,6 +959,278 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
         }
     }
 
+    /* ===== TOPBAR CLOCK ===== */
+    .topbar-clock-block {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+    }
+
+    .topbar-clock-time {
+        font-size: 20px;
+        font-weight: 700;
+        color: #0f172a;
+        letter-spacing: 0.5px;
+        line-height: 1.2;
+        font-variant-numeric: tabular-nums;
+        font-family: 'Poppins', sans-serif;
+    }
+
+    .dark-theme .topbar-clock-time {
+        color: #f8fafc;
+    }
+
+    .topbar-clock-date {
+        font-size: 11px;
+        color: #64748b;
+        font-weight: 500;
+        letter-spacing: 0.3px;
+        font-family: 'Poppins', sans-serif;
+    }
+
+    .dark-theme .topbar-clock-date {
+        color: #94a3b8;
+    }
+
+    /* ===== ACCOUNT AVATAR & POPOVER ===== */
+    .topbar-account-wrap {
+        position: relative;
+    }
+
+    .topbar-account-btn {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        background: rgba(55, 98, 200, 0.1);
+        border: 1px solid rgba(55, 98, 200, 0.2);
+        border-radius: 99px;
+        padding: 4px 10px 4px 4px;
+        cursor: pointer;
+        outline: none;
+        transition: all 0.2s ease;
+    }
+
+    .topbar-account-btn:hover {
+        background: rgba(55, 98, 200, 0.18);
+        border-color: rgba(55, 98, 200, 0.4);
+        box-shadow: 0 3px 12px rgba(55, 98, 200, 0.2);
+    }
+
+    .dark-theme .topbar-account-btn {
+        background: rgba(99, 132, 210, 0.12);
+        border-color: rgba(99, 132, 210, 0.25);
+    }
+
+    .dark-theme .topbar-account-btn:hover {
+        background: rgba(99, 132, 210, 0.22);
+    }
+
+    .topbar-acct-avatar {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #3762c8, #6384d2);
+        display: grid;
+        place-items: center;
+        color: #fff;
+        font-size: 13px;
+        flex-shrink: 0;
+        box-shadow: 0 2px 8px rgba(55, 98, 200, 0.3);
+    }
+
+    .topbar-acct-caret {
+        font-size: 10px;
+        color: #3762c8;
+        transition: transform 0.25s ease;
+    }
+
+    .dark-theme .topbar-acct-caret {
+        color: #6384d2;
+    }
+
+    .topbar-acct-caret.open {
+        transform: rotate(180deg);
+    }
+
+    /* Popover panel */
+    .topbar-account-popover {
+        position: absolute;
+        top: calc(100% + 10px);
+        right: 0;
+        width: 260px;
+        background: #ffffff;
+        border-radius: 16px;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.14), 0 4px 12px rgba(0, 0, 0, 0.06);
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-8px) scale(0.97);
+        transition: opacity 0.22s ease, visibility 0.22s ease, transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+        z-index: 9999;
+        overflow: hidden;
+        font-family: 'Poppins', sans-serif;
+    }
+
+    .topbar-account-popover.open {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0) scale(1);
+    }
+
+    .dark-theme .topbar-account-popover {
+        background: #1e293b;
+        border-color: rgba(255, 255, 255, 0.1);
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Popover header */
+    .tpop-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 18px 18px 14px;
+    }
+
+    .tpop-avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #3762c8, #6384d2);
+        display: grid;
+        place-items: center;
+        color: #fff;
+        font-size: 20px;
+        flex-shrink: 0;
+        box-shadow: 0 4px 14px rgba(55, 98, 200, 0.35);
+    }
+
+    .tpop-name {
+        font-size: 15px;
+        font-weight: 700;
+        color: #0f172a;
+        line-height: 1.3;
+    }
+
+    .dark-theme .tpop-name {
+        color: #f8fafc;
+    }
+
+    .tpop-role {
+        font-size: 11px;
+        color: #3762c8;
+        font-weight: 600;
+        margin-top: 2px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .dark-theme .tpop-role {
+        color: #6384d2;
+    }
+
+    /* Popover divider */
+    .tpop-divider {
+        height: 1px;
+        background: rgba(0, 0, 0, 0.07);
+        margin: 0 18px;
+    }
+
+    .dark-theme .tpop-divider {
+        background: rgba(255, 255, 255, 0.08);
+    }
+
+    /* Popover detail rows */
+    .tpop-details {
+        padding: 12px 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .tpop-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+    }
+
+    .tpop-label {
+        font-size: 12px;
+        color: #64748b;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .dark-theme .tpop-label {
+        color: #94a3b8;
+    }
+
+    .tpop-label i {
+        width: 14px;
+        text-align: center;
+        color: #6384d2;
+        font-size: 11px;
+    }
+
+    .tpop-value {
+        font-size: 12px;
+        color: #1e293b;
+        font-weight: 600;
+        text-align: right;
+    }
+
+    .dark-theme .tpop-value {
+        color: #e2e8f0;
+    }
+
+    .tpop-online {
+        color: #10b981 !important;
+        font-size: 8px !important;
+    }
+
+    .tpop-status-active {
+        color: #10b981 !important;
+    }
+
+    /* Popover logout button */
+    .tpop-logout-btn {
+        width: 100%;
+        padding: 12px 18px;
+        background: rgba(239, 68, 68, 0.06);
+        border: none;
+        border-top: 1px solid rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+        font-size: 13px;
+        font-weight: 600;
+        font-family: 'Poppins', sans-serif;
+        cursor: pointer;
+        text-align: left;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: background 0.2s ease, color 0.2s ease;
+        margin-top: 4px;
+    }
+
+    .tpop-logout-btn:hover {
+        background: rgba(239, 68, 68, 0.12);
+        color: #dc2626;
+    }
+
+    .dark-theme .tpop-logout-btn {
+        background: rgba(239, 68, 68, 0.08);
+        border-top-color: rgba(239, 68, 68, 0.15);
+        color: #f87171;
+    }
+
+    .dark-theme .tpop-logout-btn:hover {
+        background: rgba(239, 68, 68, 0.16);
+        color: #fca5a5;
+    }
+
     /* ===== SMOOTH VIEW TRANSITIONS & MODULE SWITCHING ===== */
     @view-transition {
         navigation: auto;
@@ -2539,18 +2811,15 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
 <?php if ($userType === 'employee'): ?>
 <!-- ===== DESKTOP TOP HEADER BAR (Employee Only) ===== -->
 <header class="app-topbar" id="app-topbar" role="banner">
-    <!-- Left: Avatar + User greeting -->
+    <!-- Left: Greeting + Live Clock -->
     <div class="topbar-left">
-        <div class="topbar-avatar">
-            <i class="fas fa-user"></i>
-        </div>
-        <div>
-            <div class="topbar-greeting">Welcome back,</div>
-            <div class="topbar-user-name"><?php echo $userName; ?></div>
+        <div class="topbar-clock-block">
+            <div class="topbar-clock-time" id="topbar-clock">00:00:00</div>
+            <div class="topbar-clock-date" id="topbar-date">Loading...</div>
         </div>
     </div>
 
-    <!-- Right: Action buttons -->
+    <!-- Right: Action buttons + Account Avatar -->
     <div class="topbar-actions">
         <!-- Dark Mode Toggle -->
         <button type="button" class="topbar-theme-wrap" onclick="toggleTheme()" title="Toggle Dark/Light Mode" aria-label="Toggle Dark/Light Mode">
@@ -2569,6 +2838,52 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
         <button type="button" class="topbar-btn" id="topbar-settings-btn" aria-label="Settings" title="Settings (coming soon)" disabled style="opacity:0.5; cursor:not-allowed;">
             <i class="fas fa-cog"></i>
         </button>
+
+        <div class="topbar-divider"></div>
+
+        <!-- Account Avatar (clickable → popover) -->
+        <div class="topbar-account-wrap" id="topbar-account-wrap">
+            <button type="button" class="topbar-account-btn" id="topbar-account-btn"
+                    aria-label="Account Info" title="Account Info"
+                    onclick="toggleAccountPopover(event)" aria-haspopup="true" aria-expanded="false">
+                <div class="topbar-acct-avatar">
+                    <i class="fas fa-user"></i>
+                </div>
+                <i class="fas fa-chevron-down topbar-acct-caret" id="topbar-acct-caret"></i>
+            </button>
+
+            <!-- Account Popover -->
+            <div class="topbar-account-popover" id="topbar-account-popover" role="dialog" aria-label="Account Information">
+                <div class="tpop-header">
+                    <div class="tpop-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="tpop-info">
+                        <div class="tpop-name"><?php echo $userName; ?></div>
+                        <div class="tpop-role"><i class="fas fa-shield-alt"></i> Employee</div>
+                    </div>
+                </div>
+                <div class="tpop-divider"></div>
+                <div class="tpop-details">
+                    <div class="tpop-row">
+                        <span class="tpop-label"><i class="fas fa-id-badge"></i> Account</span>
+                        <span class="tpop-value"><?php echo $userName; ?></span>
+                    </div>
+                    <div class="tpop-row">
+                        <span class="tpop-label"><i class="fas fa-user-tag"></i> Role</span>
+                        <span class="tpop-value">Employee</span>
+                    </div>
+                    <div class="tpop-row">
+                        <span class="tpop-label"><i class="fas fa-circle tpop-online"></i> Status</span>
+                        <span class="tpop-value tpop-status-active">Active</span>
+                    </div>
+                </div>
+                <div class="tpop-divider"></div>
+                <button type="button" class="tpop-logout-btn" onclick="confirmLogout()">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+            </div>
+        </div>
     </div>
 </header>
 <?php endif; ?>
@@ -2747,6 +3062,7 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
     <div class="sidebar-bottom">
         <div class="sidebar-divider"></div>
         <div class="user-info">
+            <?php if ($userType !== 'employee'): ?>
             <div class="user-welcome"><i class="fas fa-user-circle" style="margin-right:6px; color:#6384d2;"></i><?php echo $userName; ?></div>
             <div class="theme-toggle-container" onclick="toggleTheme()" title="Toggle Dark/Light Mode" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' ')toggleTheme()">
                 <div class="theme-toggle-meta">
@@ -2755,6 +3071,7 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
                 </div>
                 <?php echo renderDayNightToggle('', 'sidebar-theme-switch'); ?>
             </div>
+            <?php endif; ?>
             <button class="logout-btn" onclick="confirmLogout()" title="Logout">
                 <i class="fas fa-sign-out-alt"></i> <span class="logout-text">Logout</span>
             </button>
@@ -2954,6 +3271,50 @@ function toggleTheme() {
 document.addEventListener('DOMContentLoaded', () => {
     const savedTheme = localStorage.getItem('theme') || 'light';
     applyTheme(savedTheme);
+
+    // ── Live Clock ──────────────────────────────────────────────
+    const clockEl = document.getElementById('topbar-clock');
+    const dateEl  = document.getElementById('topbar-date');
+    if (clockEl && dateEl) {
+        function updateClock() {
+            const now  = new Date();
+            const h    = String(now.getHours()).padStart(2, '0');
+            const m    = String(now.getMinutes()).padStart(2, '0');
+            const s    = String(now.getSeconds()).padStart(2, '0');
+            clockEl.textContent = `${h}:${m}:${s}`;
+
+            const days   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+            const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            dateEl.textContent = `${days[now.getDay()]}, ${months[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`;
+        }
+        updateClock();
+        setInterval(updateClock, 1000);
+    }
+});
+
+// ── Account Popover ──────────────────────────────────────────
+function toggleAccountPopover(e) {
+    e.stopPropagation();
+    const popover = document.getElementById('topbar-account-popover');
+    const btn     = document.getElementById('topbar-account-btn');
+    const caret   = document.getElementById('topbar-acct-caret');
+    if (!popover) return;
+    const isOpen = popover.classList.toggle('open');
+    if (btn)   btn.setAttribute('aria-expanded', isOpen);
+    if (caret) caret.classList.toggle('open', isOpen);
+}
+
+// Close popover when clicking anywhere outside
+document.addEventListener('click', function(e) {
+    const wrap  = document.getElementById('topbar-account-wrap');
+    const pop   = document.getElementById('topbar-account-popover');
+    const btn   = document.getElementById('topbar-account-btn');
+    const caret = document.getElementById('topbar-acct-caret');
+    if (pop && pop.classList.contains('open') && wrap && !wrap.contains(e.target)) {
+        pop.classList.remove('open');
+        if (btn)   btn.setAttribute('aria-expanded', 'false');
+        if (caret) caret.classList.remove('open');
+    }
 });
 
 function confirmLogout() {
