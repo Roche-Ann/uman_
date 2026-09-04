@@ -954,9 +954,11 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
         box-sizing: border-box;
     }
     .main-content > .card,
+    .main-content > .page-wrapper,
     .main-content > .dashboard-container,
     .main-content > .container,
-    .main-content > .container-fluid {
+    .main-content > .container-fluid,
+    .main-content > div {
         flex: 1;
         margin-left: auto !important;
         margin-right: auto !important;
@@ -1291,18 +1293,22 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
     }
 
     .main-content > .card,
+    .main-content > .page-wrapper,
     .main-content > .dashboard-container,
     .main-content > .container,
-    .main-content > .container-fluid {
+    .main-content > .container-fluid,
+    .main-content > div {
         animation: moduleFadeEnter 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         will-change: opacity, transform;
     }
 
     /* Smooth page exit transition */
     .page-nav-exiting .main-content > .card,
+    .page-nav-exiting .main-content > .page-wrapper,
     .page-nav-exiting .main-content > .dashboard-container,
     .page-nav-exiting .main-content > .container,
-    .page-nav-exiting .main-content > .container-fluid {
+    .page-nav-exiting .main-content > .container-fluid,
+    .page-nav-exiting .main-content > div {
         opacity: 0 !important;
         transform: translateY(-6px) !important;
         transition: opacity 0.14s ease-out, transform 0.14s ease-out !important;

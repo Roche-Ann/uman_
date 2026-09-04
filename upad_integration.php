@@ -397,10 +397,14 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
         .main-content {
             flex: 1;
             margin-left: 280px;
-            padding: 30px;
+            padding: 30px 40px;
             transition: margin-left 0.25s ease;
             z-index: 1;
             position: relative;
+        }
+
+        .main-content.collapsed {
+            margin-left: 78px;
         }
 
         .page-header {
@@ -428,6 +432,8 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
         .page-wrapper {
             width: 100%;
             max-width: 1700px;
+            margin-left: auto;
+            margin-right: auto;
             background: rgba(255, 255, 255, 0.88);
             backdrop-filter: blur(15px);
             border-radius: 18px;
