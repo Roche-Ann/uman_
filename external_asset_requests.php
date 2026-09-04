@@ -1116,6 +1116,23 @@ try {
             border: 1px solid rgba(255,255,255,.25);
         }
 
+        /* ── Clickable Asset Row Styling ── */
+        tr.asset-row {
+            cursor: pointer;
+            transition: background-color 0.18s ease, transform 0.1s ease;
+        }
+        tr.asset-row:hover {
+            background-color: rgba(55, 98, 200, 0.08) !important;
+        }
+        tr.asset-row td.code {
+            color: #3762c8;
+            font-weight: 700;
+        }
+        tr.asset-row:hover td.code {
+            text-decoration: underline;
+            text-underline-offset: 3px;
+        }
+
         /* ── Header ────────────────────────────────────────────────────── */
         .dashboard-header {
             display: flex; justify-content: space-between; align-items: center;
@@ -2096,7 +2113,18 @@ try {
                                             <?php foreach ($assignableAssets as $a):
                                                 $id = (int)$a['id'];
                                             ?>
-                                                <tr class="asset-row">
+                                                <tr class="asset-row"
+                                                     data-asset-id="<?= $id; ?>"
+                                                     data-asset-code="<?= h($a['asset_code'] ?? ''); ?>"
+                                                     data-asset-name="<?= h($a['name'] ?? ''); ?>"
+                                                     data-asset-type="<?= h($a['asset_type'] ?? ''); ?>"
+                                                     data-asset-condition="<?= h($a['condition_status'] ?? 'Operational'); ?>"
+                                                     data-asset-custody="In Warehouse Stock"
+                                                     data-facility-name="UMAN Main Warehouse"
+                                                     data-facility-id="0"
+                                                     data-loaned-qty="<?= (int)($a['quantity'] ?? 1); ?>"
+                                                     data-return-date="N/A"
+                                                     data-notes="<?= h($a['notes'] ?? $a['description'] ?? 'Operational asset in warehouse stock available for assignment.'); ?>">
                                                     <td><input type="checkbox" name="asset_ids[]" value="<?= $id; ?>" class="asset-chk"></td>
                                                     <td class="code"><?= h($a['asset_code'] ?? ''); ?></td>
                                                     <td><?= h($a['name'] ?? ''); ?></td>
@@ -2147,7 +2175,18 @@ try {
                                         </thead>
                                         <tbody>
                                             <?php foreach ($atFacility as $a): ?>
-                                                <tr class="asset-row">
+                                                <tr class="asset-row"
+                                                     data-asset-id="<?= (int)$a['id']; ?>"
+                                                     data-asset-code="<?= h($a['asset_code'] ?? ''); ?>"
+                                                     data-asset-name="<?= h($a['name'] ?? ''); ?>"
+                                                     data-asset-type="<?= h($a['asset_type'] ?? ''); ?>"
+                                                     data-asset-condition="Operational"
+                                                     data-asset-custody="On-Loan (Citizen)"
+                                                     data-facility-name="<?= h($selectedFacilityName ?? ''); ?>"
+                                                     data-facility-id="<?= (int)$selectedFacilityId; ?>"
+                                                     data-loaned-qty="<?= (int)$a['loaned_qty']; ?>"
+                                                     data-return-date="<?= h($a['return_date'] ?? 'N/A'); ?>"
+                                                     data-notes="<?= h($a['notes'] ?? 'Citizen equipment loan reservation.'); ?>">
                                                     <td class="code"><?= h($a['asset_code'] ?? ''); ?></td>
                                                     <td><?= h($a['name'] ?? ''); ?></td>
                                                     <td><?= h($a['asset_type'] ?? ''); ?></td>
@@ -2190,7 +2229,18 @@ try {
                                                     ? ['class' => 'ret-pending', 'text' => 'Return Pending (CPRF)']
                                                     : ['class' => 'available', 'text' => 'On-loan'];
                                             ?>
-                                                <tr class="asset-row">
+                                                <tr class="asset-row"
+                                                     data-asset-id="<?= $id; ?>"
+                                                     data-asset-code="<?= h($a['asset_code'] ?? ''); ?>"
+                                                     data-asset-name="<?= h($a['name'] ?? ''); ?>"
+                                                     data-asset-type="<?= h($a['asset_type'] ?? ''); ?>"
+                                                     data-asset-condition="<?= h($a['condition_status'] ?? 'Operational'); ?>"
+                                                     data-asset-custody="<?= h($custodyBadge['text']); ?>"
+                                                     data-facility-name="<?= h($selectedFacilityName ?? ''); ?>"
+                                                     data-facility-id="<?= (int)$selectedFacilityId; ?>"
+                                                     data-loaned-qty="<?= (int)($a['quantity'] ?? 1); ?>"
+                                                     data-return-date="N/A"
+                                                     data-notes="<?= h($a['notes'] ?? $a['description'] ?? 'Asset currently assigned & deployed at facility.'); ?>">
                                                     <td class="code"><?= h($a['asset_code'] ?? ''); ?></td>
                                                     <td><?= h($a['name'] ?? ''); ?></td>
                                                     <td><?= h($a['asset_type'] ?? ''); ?></td>
@@ -2362,6 +2412,80 @@ try {
         <div class="modal-footer">
             <button type="button" class="btn btn-outline" onclick="closeAssignModal()">Cancel</button>
             <button type="button" class="btn btn-success" onclick="submitAssign()"><i class="fas fa-check"></i> Confirm Assignment</button>
+        </div>
+    </div>
+</div>
+
+<!-- Asset Information Details Modal -->
+<div id="assetDetailModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="assetDetailTitle">
+    <div class="modal-content" style="max-width: 580px; border-radius: 18px; padding: 0; overflow: hidden; box-shadow: 0 20px 45px rgba(0,0,0,0.35);">
+        <div class="modal-header" style="background: linear-gradient(135deg, #1e293b, #0f172a); color: #fff; padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1);">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 42px; height: 42px; border-radius: 12px; background: rgba(55, 98, 200, 0.25); border: 1px solid rgba(255,255,255,0.15); display: grid; place-items: center; color: #60a5fa; font-size: 20px;">
+                    <i class="fas fa-info-circle"></i>
+                </div>
+                <div>
+                    <h3 id="assetDetailTitle" style="margin: 0; font-size: 18px; font-weight: 700; color: #fff;">Asset Information Details</h3>
+                    <p id="assetDetailSub" style="margin: 2px 0 0 0; font-size: 12px; color: #94a3b8;">Equipment custody &amp; technical specifications</p>
+                </div>
+            </div>
+            <button class="modal-close" type="button" onclick="closeAssetDetailModal()" style="background: none; border: none; color: #94a3b8; font-size: 20px; cursor: pointer; padding: 4px 8px; border-radius: 6px;"><i class="fas fa-times"></i></button>
+        </div>
+
+        <div class="modal-body" style="padding: 24px; background: #f8fafc; color: #1e293b;">
+            <!-- Hero Banner -->
+            <div style="display: flex; align-items: center; justify-content: space-between; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px; margin-bottom: 18px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+                <div>
+                    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; color: #64748b;">Asset Identifier Code</div>
+                    <div id="modal-asset-code" style="font-size: 20px; font-weight: 800; color: #3762c8; letter-spacing: -0.3px; margin-top: 2px;">-</div>
+                </div>
+                <div style="text-align: right;">
+                    <span id="modal-asset-custody-badge" class="badge available" style="font-size: 12px; padding: 6px 14px; border-radius: 99px;">On-loan</span>
+                </div>
+            </div>
+
+            <!-- Details Grid -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px;">
+                <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px;">
+                    <div style="font-size: 11px; font-weight: 600; color: #64748b; margin-bottom: 4px;"><i class="fas fa-tag" style="color:#3762c8;"></i> Equipment Name</div>
+                    <div id="modal-asset-name" style="font-size: 14px; font-weight: 700; color: #0f172a;">-</div>
+                </div>
+
+                <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px;">
+                    <div style="font-size: 11px; font-weight: 600; color: #64748b; margin-bottom: 4px;"><i class="fas fa-layer-group" style="color:#00A896;"></i> Category / Type</div>
+                    <div id="modal-asset-type" style="font-size: 14px; font-weight: 700; color: #0f172a;">-</div>
+                </div>
+
+                <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px;">
+                    <div style="font-size: 11px; font-weight: 600; color: #64748b; margin-bottom: 4px;"><i class="fas fa-heartbeat" style="color:#10b981;"></i> Condition Status</div>
+                    <div id="modal-asset-condition" style="font-size: 13px; font-weight: 700; color: #16a34a;">-</div>
+                </div>
+
+                <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px;">
+                    <div style="font-size: 11px; font-weight: 600; color: #64748b; margin-bottom: 4px;"><i class="fas fa-cubes" style="color:#f59e0b;"></i> Quantity</div>
+                    <div id="modal-asset-qty" style="font-size: 14px; font-weight: 700; color: #0f172a;">1 unit(s)</div>
+                </div>
+
+                <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; grid-column: span 2;">
+                    <div style="font-size: 11px; font-weight: 600; color: #64748b; margin-bottom: 4px;"><i class="fas fa-building" style="color:#3762c8;"></i> Current Facility / Custody Location</div>
+                    <div id="modal-asset-facility" style="font-size: 14px; font-weight: 700; color: #3762c8;">-</div>
+                </div>
+
+                <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; grid-column: span 2;" id="modal-return-date-wrap">
+                    <div style="font-size: 11px; font-weight: 600; color: #64748b; margin-bottom: 4px;"><i class="fas fa-calendar-check" style="color:#b45309;"></i> Return / Due Date</div>
+                    <div id="modal-asset-return-date" style="font-size: 13px; font-weight: 700; color: #b45309;">N/A</div>
+                </div>
+            </div>
+
+            <!-- Notes block -->
+            <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px;">
+                <div style="font-size: 11px; font-weight: 600; color: #64748b; margin-bottom: 4px;"><i class="fas fa-sticky-note" style="color:#8b5cf6;"></i> Remarks &amp; Information</div>
+                <div id="modal-asset-notes" style="font-size: 12.5px; color: #334155; line-height: 1.5;">No notes recorded.</div>
+            </div>
+        </div>
+
+        <div class="modal-footer" style="padding: 16px 24px; background: #ffffff; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 10px;">
+            <button type="button" class="btn btn-primary" onclick="closeAssetDetailModal()"><i class="fas fa-check"></i> Close Details</button>
         </div>
     </div>
 </div>
@@ -2601,6 +2725,80 @@ try {
             });
 
             document.getElementById('acceptReturnModal').classList.add('open');
+        });
+    });
+
+    // ── Asset Information Details Modal ──────────────────────────────
+    window.openAssetDetailModal = function(data) {
+        document.getElementById('modal-asset-code').textContent = data.code || 'N/A';
+        document.getElementById('modal-asset-name').textContent = data.name || 'Unknown Equipment';
+        document.getElementById('modal-asset-type').textContent = data.type || 'General Utility';
+        
+        const condEl = document.getElementById('modal-asset-condition');
+        const condText = data.condition || 'Operational';
+        let condColor = '#16a34a';
+        let condIcon = 'fa-check-circle';
+        if (condText.toLowerCase().includes('need') || condText.toLowerCase().includes('inspect')) {
+            condColor = '#d97706'; condIcon = 'fa-exclamation-triangle';
+        } else if (condText.toLowerCase().includes('damage') || condText.toLowerCase().includes('repair')) {
+            condColor = '#dc2626'; condIcon = 'fa-times-circle';
+        }
+        condEl.style.color = condColor;
+        condEl.innerHTML = `<i class="fas ${condIcon}"></i> ${condText}`;
+
+        const badgeEl = document.getElementById('modal-asset-custody-badge');
+        badgeEl.textContent = data.custody || 'On-loan';
+        if (data.custody.toLowerCase().includes('pending')) {
+            badgeEl.className = 'badge ret-pending';
+        } else if (data.custody.toLowerCase().includes('warehouse') || data.custody.toLowerCase().includes('available')) {
+            badgeEl.className = 'badge available';
+        } else {
+            badgeEl.className = 'badge count';
+        }
+
+        document.getElementById('modal-asset-qty').textContent = (data.quantity || '1') + ' unit(s)';
+        document.getElementById('modal-asset-facility').textContent = data.facilityName ? `${data.facilityName} ${data.facilityId ? '(ID #' + data.facilityId + ')' : ''}` : 'UMAN Main Warehouse';
+        
+        const retWrap = document.getElementById('modal-return-date-wrap');
+        const retVal = document.getElementById('modal-asset-return-date');
+        if (data.returnDate && data.returnDate !== 'N/A') {
+            retWrap.style.display = 'block';
+            retVal.textContent = data.returnDate;
+        } else {
+            retWrap.style.display = 'none';
+        }
+
+        document.getElementById('modal-asset-notes').textContent = data.notes || 'No additional remarks recorded for this asset.';
+        document.getElementById('assetDetailModal').classList.add('open');
+    };
+
+    window.closeAssetDetailModal = function() {
+        document.getElementById('assetDetailModal').classList.remove('open');
+    };
+
+    // Make table rows clickable to view full asset information
+    document.addEventListener('click', function(e) {
+        const row = e.target.closest('tr.asset-row');
+        if (!row) return;
+        
+        // Ignore clicks on buttons, inputs, form controls, links
+        if (e.target.closest('button, input, select, textarea, form, a, label')) {
+            return;
+        }
+
+        const ds = row.dataset || {};
+        openAssetDetailModal({
+            id: ds.assetId || '',
+            code: ds.assetCode || 'N/A',
+            name: ds.assetName || 'Unknown Equipment',
+            type: ds.assetType || 'General Utility',
+            condition: ds.assetCondition || 'Operational',
+            custody: ds.assetCustody || 'On-loan',
+            facilityName: ds.facilityName || '',
+            facilityId: ds.facilityId || '',
+            quantity: ds.loanedQty || '1',
+            returnDate: ds.returnDate || 'N/A',
+            notes: ds.notes || ''
         });
     });
 })();
