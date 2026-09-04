@@ -764,7 +764,7 @@ if (!empty($search) || $status_filter) {
         }
 
         .main-content.collapsed {
-            margin-left: 90px;
+            margin-left: 78px;
         }
 
         .card {

@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // citizen_reports.php
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
@@ -188,7 +188,7 @@ $assets = $pdo->query("SELECT id, name, asset_id FROM utility_assets ORDER BY as
         }
 
         .main-content.collapsed {
-            margin-left: 90px;
+            margin-left: 78px;
         }
 
         .card {
@@ -591,7 +591,7 @@ $assets = $pdo->query("SELECT id, name, asset_id FROM utility_assets ORDER BY as
             setTimeout(() => {
                 map = L.map('map').setView([14.5995, 120.9842], 13);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '© OpenStreetMap contributors'
+                    attribution: '� OpenStreetMap contributors'
                 }).addTo(map);
 
                 map.on('click', function(e) {

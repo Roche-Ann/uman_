@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // assets_map.php
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
@@ -90,7 +90,7 @@ $assetTypes = $pdo->query("SELECT * FROM asset_types ORDER BY name ASC")->fetchA
         }
 
         .main-content.collapsed {
-            margin-left: 90px;
+            margin-left: 78px;
         }
 
         .card {
@@ -310,7 +310,7 @@ $assetTypes = $pdo->query("SELECT * FROM asset_types ORDER BY name ASC")->fetchA
 
     // Load OpenStreetMap tiles
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
+        attribution: '� OpenStreetMap contributors'
     }).addTo(map);
 
     // Layer group to manage markers dynamically

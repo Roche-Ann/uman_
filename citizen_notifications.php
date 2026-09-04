@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // citizen_notifications.php
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
@@ -111,7 +111,7 @@ try {
         }
 
         .main-content.collapsed {
-            margin-left: 90px;
+            margin-left: 78px;
         }
 
         .card {

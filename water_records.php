@@ -1,5 +1,5 @@
-﻿<?php
-// water_records.php — Water Consumption Readings & Logs
+<?php
+// water_records.php � Water Consumption Readings & Logs
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
 ensureWaterSchema();
@@ -117,7 +117,7 @@ $records = $recordsStmt->fetchAll();
             z-index: 1;
             position: relative;
         }
-        .main-content.collapsed { margin-left: 90px; }
+        .main-content.collapsed { margin-left: 78px; }
         @media (max-width: 992px) { .main-content { margin-left: 0; padding: 20px; } }
 
         .card {
@@ -150,15 +150,15 @@ $records = $recordsStmt->fetchAll();
         .dashboard-header h1 i { color: #0284c7; }
         .dashboard-header p { color: #64748b; font-size: 13px; margin-top: 6px; }
 
-        /* ── Grid Layouts ── */
+        /* -- Grid Layouts -- */
         .layout-grid { display: block; }
 
-        /* ── Alert banners ── */
+        /* -- Alert banners -- */
         .flash { padding: 12px 18px; border-radius: 8px; font-size: 13.5px; font-weight: 500; margin-bottom: 24px; border-left: 4px solid; }
         .flash.success { background: #ecfdf5; color: #065f46; border-left-color: #10b981; }
         .flash.error { background: #fef2f2; color: #991b1b; border-left-color: #ef4444; }
 
-        /* ── Records Table ── */
+        /* -- Records Table -- */
         .panel {
             background: #fff;
             border: 1px solid #e2e8f0;
@@ -225,7 +225,7 @@ $records = $recordsStmt->fetchAll();
         .page-link:hover { background: #f1f5f9; color: #1e293b; }
         .page-link.active { background: #0284c7; color: #fff; border-color: #0284c7; font-weight: 600; }
 
-        /* ── Dark Mode ── */
+        /* -- Dark Mode -- */
         .dark-theme .card { background: rgba(15,23,42,0.92); border-color: rgba(255,255,255,0.08); }
         .dark-theme .dashboard-header h1 { color: #f8fafc; }
         .dark-theme .dashboard-header p { color: #94a3b8; }
@@ -293,9 +293,9 @@ $records = $recordsStmt->fetchAll();
                                 <th>Asset / Facility</th>
                                 <th>Location</th>
                                 <th>Month-Year</th>
-                                <th>Prev (m³)</th>
-                                <th>Curr (m³)</th>
-                                <th>Usage (m³)</th>
+                                <th>Prev (m�)</th>
+                                <th>Curr (m�)</th>
+                                <th>Usage (m�)</th>
                                 <th>Cost</th>
                                 <th>Source</th>
                                 <th>Actions</th>
@@ -322,7 +322,7 @@ $records = $recordsStmt->fetchAll();
                                         <td><?php echo number_format((float)$row['previous_reading'], 2); ?></td>
                                         <td><?php echo number_format((float)$row['current_reading'], 2); ?></td>
                                         <td><strong><?php echo number_format((float)$row['consumption_m3'], 2); ?></strong></td>
-                                        <td><strong>₱<?php echo number_format((float)$row['cost'], 2); ?></strong></td>
+                                        <td><strong>?<?php echo number_format((float)$row['cost'], 2); ?></strong></td>
                                         <td><span class="source-badge <?php echo $sourceClass; ?>"><?php echo htmlspecialchars($row['data_source']); ?></span></td>
                                         <td>
                                             <form action="" method="POST" onsubmit="return confirm('Are you sure you want to delete this record?');" style="display:inline;">
@@ -342,7 +342,7 @@ $records = $recordsStmt->fetchAll();
                 <?php if ($totalPages > 1): ?>
                 <div class="pagination-container">
                     <div class="pagination-info">
-                        Showing <?php echo ($offset + 1); ?> – <?php echo min($totalRecords, $offset + $limit); ?> of <?php echo $totalRecords; ?> records
+                        Showing <?php echo ($offset + 1); ?> � <?php echo min($totalRecords, $offset + $limit); ?> of <?php echo $totalRecords; ?> records
                     </div>
                     <div class="pagination-links">
                         <?php for ($pg = 1; $pg <= $totalPages; $pg++): ?>

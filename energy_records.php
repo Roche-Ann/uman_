@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // energy_records.php
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
@@ -183,7 +183,7 @@ $assetsList = $pdo->query("SELECT id, name, asset_id FROM utility_assets ORDER B
         }
 
         .main-content.collapsed {
-            margin-left: 90px;
+            margin-left: 78px;
         }
 
         .card {
@@ -458,8 +458,8 @@ $assetsList = $pdo->query("SELECT id, name, asset_id FROM utility_assets ORDER B
                                 </td>
                                 <td><?php echo htmlspecialchars($rec['month_year']); ?></td>
                                 <td><?php echo number_format($rec['consumption_kwh'], 2); ?> kWh</td>
-                                <td><?php echo ($rec['consumption_water_cbm'] ?? null) !== null ? number_format($rec['consumption_water_cbm'], 2) . ' m&sup3;' : '—'; ?></td>
-                                <td><?php echo $rec['cost'] ? '₱' . number_format($rec['cost'], 2) : '—'; ?></td>
+                                <td><?php echo ($rec['consumption_water_cbm'] ?? null) !== null ? number_format($rec['consumption_water_cbm'], 2) . ' m&sup3;' : '�'; ?></td>
+                                <td><?php echo $rec['cost'] ? '?' . number_format($rec['cost'], 2) : '�'; ?></td>
                                 <td><span class="badge badge-<?php echo $sourceBadge; ?>"><?php echo htmlspecialchars($rec['data_source']); ?></span></td>
                                 <td><?php echo htmlspecialchars($rec['location']); ?></td>
                                 <td style="text-align:right;">

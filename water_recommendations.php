@@ -1,5 +1,5 @@
-﻿<?php
-// water_recommendations.php — Water Efficiency Recommendations
+<?php
+// water_recommendations.php � Water Efficiency Recommendations
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
 ensureWaterSchema();
@@ -140,7 +140,7 @@ $recommendations = $recordsStmt->fetchAll();
             z-index: 1;
             position: relative;
         }
-        .main-content.collapsed { margin-left: 90px; }
+        .main-content.collapsed { margin-left: 78px; }
         @media (max-width: 992px) { .main-content { margin-left: 0; padding: 20px; } }
 
         .card {
@@ -193,7 +193,7 @@ $recommendations = $recordsStmt->fetchAll();
         .btn-amber     { background: #f59e0b; color: #fff; }
         .btn-amber:hover { background: #d97706; }
 
-        /* ── Filter Bar ── */
+        /* -- Filter Bar -- */
         .filter-bar {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
@@ -218,12 +218,12 @@ $recommendations = $recordsStmt->fetchAll();
         }
         .filter-control:focus { border-color: #0284c7; }
 
-        /* ── Alert banners ── */
+        /* -- Alert banners -- */
         .flash { padding: 12px 18px; border-radius: 8px; font-size: 13.5px; font-weight: 500; margin-bottom: 24px; border-left: 4px solid; }
         .flash.success { background: #ecfdf5; color: #065f46; border-left-color: #10b981; }
         .flash.error { background: #fef2f2; color: #991b1b; border-left-color: #ef4444; }
 
-        /* ── Recommendation Cards ── */
+        /* -- Recommendation Cards -- */
         .recs-list { display: flex; flex-direction: column; gap: 20px; margin-bottom: 24px; }
         .rec-item {
             background: #fff;
@@ -269,7 +269,7 @@ $recommendations = $recordsStmt->fetchAll();
         .status-badge.Implemented  { background: #dcfce7; color: #15803d; }
         .status-badge.Archived     { background: #f3e8ff; color: #7c3aed; }
 
-        /* ── Update Action Panel ── */
+        /* -- Update Action Panel -- */
         .rec-actions {
             border-left: 1px solid #f1f5f9;
             padding-left: 24px;
@@ -307,7 +307,7 @@ $recommendations = $recordsStmt->fetchAll();
         .page-link:hover { background: #f1f5f9; color: #1e293b; }
         .page-link.active { background: #0284c7; color: #fff; border-color: #0284c7; font-weight: 600; }
 
-        /* ── Dark Mode ── */
+        /* -- Dark Mode -- */
         .dark-theme .card { background: rgba(15,23,42,0.92); border-color: rgba(255,255,255,0.08); }
         .dark-theme .dashboard-header h1 { color: #f8fafc; }
         .dark-theme .dashboard-header p { color: #94a3b8; }
@@ -447,7 +447,7 @@ $recommendations = $recordsStmt->fetchAll();
         <?php if ($totalPages > 1): ?>
             <div class="pagination-container">
                 <div class="pagination-info">
-                    Showing <?php echo ($offset + 1); ?> – <?php echo min($totalRecords, $offset + $limit); ?> of <?php echo $totalRecords; ?> recommendations
+                    Showing <?php echo ($offset + 1); ?> � <?php echo min($totalRecords, $offset + $limit); ?> of <?php echo $totalRecords; ?> recommendations
                 </div>
                 <div class="pagination-links">
                     <?php

@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // assets_notifications.php
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
@@ -73,7 +73,7 @@ $notifications = $pdo->query("SELECT * FROM asset_notifications ORDER BY created
         }
 
         .main-content.collapsed {
-            margin-left: 90px;
+            margin-left: 78px;
         }
 
         .card {

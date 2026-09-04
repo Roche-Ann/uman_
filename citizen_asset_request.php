@@ -238,7 +238,7 @@ try {
             position: relative;
         }
 
-        .main-content.collapsed { margin-left: 90px; }
+        .main-content.collapsed { margin-left: 78px; }
 
         .card {
             width: 100%;

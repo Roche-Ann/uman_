@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // maintenance_assets_view.php
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
@@ -100,7 +100,7 @@ $assetsList = $stmt->fetchAll();
         }
 
         .main-content.collapsed {
-            margin-left: 90px;
+            margin-left: 78px;
         }
 
         .card {

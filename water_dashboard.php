@@ -1,5 +1,5 @@
-﻿<?php
-// water_dashboard.php — Redesigned Water Management Dashboard
+<?php
+// water_dashboard.php � Redesigned Water Management Dashboard
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
 ensureWaterSchema();
@@ -66,7 +66,7 @@ $stmtFCost->execute($filterParams);
 $filteredCost = (float)$stmtFCost->fetchColumn();
 
 // ============================================================
-// MONTHLY TREND — single aggregate line for selected year
+// MONTHLY TREND � single aggregate line for selected year
 // ============================================================
 $trendConds  = [];
 $trendParams = [];
@@ -113,7 +113,7 @@ $trendDataJson   = json_encode($trendData);
 // FACILITY / ASSET HORIZONTAL BAR CHART + TOP CONSUMERS
 // ============================================================
 $stmtFac = $pdo->prepare("
-    SELECT COALESCE(facility_name, CONCAT(asset_type, ' — ', location)) as label,
+    SELECT COALESCE(facility_name, CONCAT(asset_type, ' � ', location)) as label,
            asset_type,
            COALESCE(SUM(consumption_m3),0) as m3
     FROM water_consumption_records
@@ -156,30 +156,30 @@ function generateAIDigest(array $facilityRows, float $filteredTotal, float $filt
     $bottom = end($facilityRows);
     $topPct = $filteredTotal > 0 ? round(($top['m3'] / $filteredTotal) * 100, 1) : 0;
 
-    $out  = "📊 <strong>Consumption Summary for {$periodLabel}</strong><br><br>";
-    $out .= "Total recorded water consumption is <strong>" . number_format($filteredTotal, 2) . " m³</strong>";
+    $out  = "?? <strong>Consumption Summary for {$periodLabel}</strong><br><br>";
+    $out .= "Total recorded water consumption is <strong>" . number_format($filteredTotal, 2) . " m�</strong>";
     if ($filteredCost > 0) {
-        $out .= " with an estimated cost of <strong>₱" . number_format($filteredCost, 2) . "</strong>";
+        $out .= " with an estimated cost of <strong>?" . number_format($filteredCost, 2) . "</strong>";
     }
     $out .= ". A total of <strong>{$count} " . ($count === 1 ? 'facility/asset' : 'facilities/assets') . "</strong> have recorded consumption for this period.<br><br>";
 
-    $out .= "💧 <strong>Highest Consumer:</strong> ";
-    $out .= htmlspecialchars($top['label']) . " with <strong>" . number_format($top['m3'], 2) . " m³</strong>";
-    $out .= " — accounting for <strong>{$topPct}%</strong> of total consumption.<br>";
+    $out .= "?? <strong>Highest Consumer:</strong> ";
+    $out .= htmlspecialchars($top['label']) . " with <strong>" . number_format($top['m3'], 2) . " m�</strong>";
+    $out .= " � accounting for <strong>{$topPct}%</strong> of total consumption.<br>";
 
     if ($count > 1) {
-        $out .= "📉 <strong>Lowest Consumer:</strong> ";
-        $out .= htmlspecialchars($bottom['label']) . " with <strong>" . number_format($bottom['m3'], 2) . " m³</strong>.<br>";
+        $out .= "?? <strong>Lowest Consumer:</strong> ";
+        $out .= htmlspecialchars($bottom['label']) . " with <strong>" . number_format($bottom['m3'], 2) . " m�</strong>.<br>";
     }
 
     if ($count > 2) {
-        $out .= "<br>📋 <strong>Consumption Distribution:</strong><br>";
+        $out .= "<br>?? <strong>Consumption Distribution:</strong><br>";
         foreach (array_slice($facilityRows, 0, 5) as $idx => $fr) {
             $pct = $filteredTotal > 0 ? round(($fr['m3'] / $filteredTotal) * 100, 1) : 0;
-            $out .= "• " . htmlspecialchars($fr['label']) . ": <strong>" . number_format($fr['m3'], 2) . " m³</strong> ({$pct}%)<br>";
+            $out .= "� " . htmlspecialchars($fr['label']) . ": <strong>" . number_format($fr['m3'], 2) . " m�</strong> ({$pct}%)<br>";
         }
         if ($count > 5) {
-            $out .= "• … and " . ($count - 5) . " more " . ($count - 5 == 1 ? 'facility/asset' : 'facilities/assets') . ".<br>";
+            $out .= "� � and " . ($count - 5) . " more " . ($count - 5 == 1 ? 'facility/asset' : 'facilities/assets') . ".<br>";
         }
     }
 
@@ -187,7 +187,7 @@ function generateAIDigest(array $facilityRows, float $filteredTotal, float $filt
 }
 $aiDigest = generateAIDigest($facilityRows, $filteredTotal, $filteredCost, $fYear, $fMonth, $fType);
 
-// AI Analytics — Water Intelligence Score
+// AI Analytics � Water Intelligence Score
 $waterScore = max(0, 100 - ($pendingAdvisories * 10));
 $waterScore = min(100, $waterScore);
 
@@ -335,7 +335,7 @@ $locationsAvail = $pdo->query("
             z-index: 1;
             position: relative;
         }
-        .main-content.collapsed { margin-left: 90px; }
+        .main-content.collapsed { margin-left: 78px; }
         @media (max-width: 992px) { .main-content { margin-left: 0; padding: 20px; } }
 
         .card {
@@ -399,7 +399,7 @@ $locationsAvail = $pdo->query("
         .section-divider h2 { font-size: 16px; font-weight: 600; color: #475569; letter-spacing: 0.5px; text-transform: uppercase; white-space: nowrap; }
         .section-divider .line { height: 1.5px; background: #e2e8f0; width: 100%; }
 
-        /* ── Filter Bar ── */
+        /* -- Filter Bar -- */
         .filter-bar {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
@@ -426,13 +426,13 @@ $locationsAvail = $pdo->query("
         .filter-control:focus { border-color: #0284c7; }
         .filter-actions { display: flex; gap: 8px; }
 
-        /* ── Grid Layouts ── */
+        /* -- Grid Layouts -- */
         .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 24px; }
         .grid-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 24px; }
         .grid-1-2 { display: grid; grid-template-columns: 1fr 2fr; gap: 24px; margin-bottom: 24px; }
         @media (max-width: 1200px) { .grid-3, .grid-2-1, .grid-1-2 { grid-template-columns: 1fr; } }
 
-        /* ── KPI Cards ── */
+        /* -- KPI Cards -- */
         .kpi-card {
             background: #fff;
             border: 1px solid #e2e8f0;
@@ -454,7 +454,7 @@ $locationsAvail = $pdo->query("
         .kpi-icon.orange { background: #ffedd5; color: #ea580c; }
         .kpi-icon.purple { background: #f3e8ff; color: #7c3aed; }
 
-        /* ── Panel Cards ── */
+        /* -- Panel Cards -- */
         .panel {
             background: #fff;
             border: 1px solid #e2e8f0;
@@ -477,7 +477,7 @@ $locationsAvail = $pdo->query("
         .panel-title i { color: #64748b; }
         .panel-body { flex: 1; position: relative; }
 
-        /* ── AI Insights ── */
+        /* -- AI Insights -- */
         .ai-panel { background: linear-gradient(135deg, #f8fafc, #eff6ff); border: 1px solid #dbeafe; }
         .ai-digest-content { font-size: 13.5px; line-height: 1.6; color: #334155; }
         .ai-digest-content strong { color: #0f172a; }
@@ -517,7 +517,7 @@ $locationsAvail = $pdo->query("
             transition: stroke-dashoffset 1s ease-out;
         }
 
-        /* ── Recommendations Grid ── */
+        /* -- Recommendations Grid -- */
         .recs-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
         .rec-card {
             border: 1px solid #e2e8f0;
@@ -561,7 +561,7 @@ $locationsAvail = $pdo->query("
         .status-badge.Implemented  { background: #dcfce7; color: #15803d; }
         .status-badge.Archived     { background: #f3e8ff; color: #7c3aed; }
 
-        /* ── Records Table Panel ── */
+        /* -- Records Table Panel -- */
         .table-panel { min-height: unset; margin-bottom: 24px; }
         .table-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 12px; }
         .table-search { position: relative; }
@@ -609,7 +609,7 @@ $locationsAvail = $pdo->query("
         .page-link:hover { background: #f1f5f9; color: #1e293b; }
         .page-link.active { background: #0284c7; color: #fff; border-color: #0284c7; font-weight: 600; }
 
-        /* ── Dark Theme Overrides ── */
+        /* -- Dark Theme Overrides -- */
         .dark-theme .card { background: rgba(15,23,42,0.92); border-color: rgba(255,255,255,0.08); }
         .dark-theme .dashboard-header h1 { color: #f8fafc; }
         .dark-theme .dashboard-header p { color: #94a3b8; }
@@ -722,7 +722,7 @@ $locationsAvail = $pdo->query("
             <div class="kpi-card">
                 <div class="kpi-info">
                     <h3>Total Water Usage</h3>
-                    <div class="value"><?php echo number_format($totalConsumption, 2); ?> m³</div>
+                    <div class="value"><?php echo number_format($totalConsumption, 2); ?> m�</div>
                     <div class="subtext">All-time consumption</div>
                 </div>
                 <div class="kpi-icon blue"><i class="fas fa-tint"></i></div>
@@ -731,7 +731,7 @@ $locationsAvail = $pdo->query("
             <div class="kpi-card">
                 <div class="kpi-info">
                     <h3>Estimated Costs</h3>
-                    <div class="value">₱<?php echo number_format($totalCost, 2); ?></div>
+                    <div class="value">?<?php echo number_format($totalCost, 2); ?></div>
                     <div class="subtext">Estimated monetary cost</div>
                 </div>
                 <div class="kpi-icon green"><i class="fas fa-wallet"></i></div>
@@ -856,9 +856,9 @@ $locationsAvail = $pdo->query("
                                 <th>Month-Year</th>
                                 <th>Prev Reading</th>
                                 <th>Curr Reading</th>
-                                <th>Consumption (m³)</th>
-                                <th>Rate (₱)</th>
-                                <th>Cost (₱)</th>
+                                <th>Consumption (m�)</th>
+                                <th>Rate (?)</th>
+                                <th>Cost (?)</th>
                                 <th>Source</th>
                                 <th>Date Recorded</th>
                             </tr>
@@ -884,8 +884,8 @@ $locationsAvail = $pdo->query("
                                         <td><?php echo number_format((float)$row['previous_reading'], 2); ?></td>
                                         <td><?php echo number_format((float)$row['current_reading'], 2); ?></td>
                                         <td><strong><?php echo number_format((float)$row['consumption_m3'], 2); ?></strong></td>
-                                        <td>₱<?php echo number_format((float)$row['rate_per_m3'], 2); ?></td>
-                                        <td><strong>₱<?php echo number_format((float)$row['cost'], 2); ?></strong></td>
+                                        <td>?<?php echo number_format((float)$row['rate_per_m3'], 2); ?></td>
+                                        <td><strong>?<?php echo number_format((float)$row['cost'], 2); ?></strong></td>
                                         <td><span class="source-badge <?php echo $sourceClass; ?>"><?php echo htmlspecialchars($row['data_source']); ?></span></td>
                                         <td><span class="muted"><?php echo date('M d, Y', strtotime($row['date_recorded'])); ?></span></td>
                                     </tr>
@@ -899,7 +899,7 @@ $locationsAvail = $pdo->query("
                 <?php if ($recTotalPages > 1): ?>
                 <div class="pagination-container">
                     <div class="pagination-info">
-                        Showing <?php echo ($recOffset + 1); ?> – <?php echo min($recTotal, $recOffset + $recLimit); ?> of <?php echo $recTotal; ?> records
+                        Showing <?php echo ($recOffset + 1); ?> � <?php echo min($recTotal, $recOffset + $recLimit); ?> of <?php echo $recTotal; ?> records
                     </div>
                     <div class="pagination-links">
                         <?php
@@ -928,7 +928,7 @@ $locationsAvail = $pdo->query("
 
 <!-- CHART.JS SCRIPTS -->
 <script>
-/* ─── Monthly Trend Chart ─── */
+/* --- Monthly Trend Chart --- */
 (function() {
     const canvas = document.getElementById('trendChart');
     if (!canvas) return;
@@ -943,7 +943,7 @@ $locationsAvail = $pdo->query("
         data: {
             labels: <?php echo $trendLabelsJson; ?>,
             datasets: [{
-                label: 'Total Water (m³)',
+                label: 'Total Water (m�)',
                 data: <?php echo $trendDataJson; ?>,
                 borderColor: '#0284c7',
                 backgroundColor: grad,
@@ -971,7 +971,7 @@ $locationsAvail = $pdo->query("
                     padding: 12,
                     callbacks: {
                         title: (items) => items[0].label + ' <?php echo $fYear; ?>',
-                        label: (item) => ' ' + Number(item.raw).toLocaleString('en-PH', {minimumFractionDigits:2}) + ' m³'
+                        label: (item) => ' ' + Number(item.raw).toLocaleString('en-PH', {minimumFractionDigits:2}) + ' m�'
                     }
                 }
             },
@@ -982,7 +982,7 @@ $locationsAvail = $pdo->query("
                     ticks: {
                         font: { family: 'Poppins', size: 11 },
                         color: '#64748b',
-                        callback: (v) => Number(v).toLocaleString() + ' m³'
+                        callback: (v) => Number(v).toLocaleString() + ' m�'
                     }
                 },
                 x: {
@@ -994,7 +994,7 @@ $locationsAvail = $pdo->query("
     });
 })();
 
-/* ─── Facility Horizontal Bar Chart ─── */
+/* --- Facility Horizontal Bar Chart --- */
 (function() {
     const canvas = document.getElementById('facilityChart');
     if (!canvas) return;
@@ -1013,7 +1013,7 @@ $locationsAvail = $pdo->query("
         data: {
             labels: labels,
             datasets: [{
-                label: 'Water Consumption (m³)',
+                label: 'Water Consumption (m�)',
                 data: data,
                 backgroundColor: colours,
                 borderRadius: 6,
@@ -1032,7 +1032,7 @@ $locationsAvail = $pdo->query("
                     bodyColor: '#94a3b8',
                     padding: 12,
                     callbacks: {
-                        label: (item) => ' ' + Number(item.raw).toLocaleString('en-PH', {minimumFractionDigits:2}) + ' m³'
+                        label: (item) => ' ' + Number(item.raw).toLocaleString('en-PH', {minimumFractionDigits:2}) + ' m�'
                     }
                 }
             },
@@ -1043,7 +1043,7 @@ $locationsAvail = $pdo->query("
                     ticks: {
                         font: { family: 'Poppins', size: 11 },
                         color: '#64748b',
-                        callback: (v) => Number(v).toLocaleString() + ' m³'
+                        callback: (v) => Number(v).toLocaleString() + ' m�'
                     }
                 },
                 y: {
@@ -1053,7 +1053,7 @@ $locationsAvail = $pdo->query("
                         color: '#334155',
                         callback: function(val) {
                             const lbl = this.getLabelForValue(val);
-                            return lbl.length > 30 ? lbl.substring(0, 28) + '…' : lbl;
+                            return lbl.length > 30 ? lbl.substring(0, 28) + '�' : lbl;
                         }
                     }
                 }

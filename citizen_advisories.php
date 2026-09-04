@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // citizen_advisories.php
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
@@ -68,7 +68,7 @@ function generateResidentAISummary($advisories) {
     }
     
     if (!empty($emergencies)) {
-        $summary .= "<span style='color:#e74c3c; font-weight:700;'>⚠️ Critical Alert:</span> " . implode(', ', $emergencies) . ". Residents in affected zones are advised to prepare alternative reserves.";
+        $summary .= "<span style='color:#e74c3c; font-weight:700;'>?? Critical Alert:</span> " . implode(', ', $emergencies) . ". Residents in affected zones are advised to prepare alternative reserves.";
     } else {
         $summary .= "Grid load remains stable. No critical emergency alerts active.";
     }
@@ -133,7 +133,7 @@ $aiSummary = generateResidentAISummary($advisories);
         }
 
         .main-content.collapsed {
-            margin-left: 90px;
+            margin-left: 78px;
         }
 
         .card {

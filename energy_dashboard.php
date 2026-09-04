@@ -341,7 +341,7 @@ $locationsAvail = $pdo->query("
             z-index: 1;
             position: relative;
         }
-        .main-content.collapsed { margin-left: 90px; }
+        .main-content.collapsed { margin-left: 78px; }
         @media (max-width: 992px) { .main-content { margin-left: 0; padding: 20px; } }
 
         /* ── Card ── */

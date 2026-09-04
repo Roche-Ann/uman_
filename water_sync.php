@@ -1,5 +1,5 @@
-﻿<?php
-// water_sync.php — Outbound Integration & Sync Logs
+<?php
+// water_sync.php � Outbound Integration & Sync Logs
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
 ensureWaterSchema();
@@ -108,7 +108,7 @@ if (isset($_GET['fetch_payload_id'])) {
             z-index: 1;
             position: relative;
         }
-        .main-content.collapsed { margin-left: 90px; }
+        .main-content.collapsed { margin-left: 78px; }
         @media (max-width: 992px) { .main-content { margin-left: 0; padding: 20px; } }
 
         .card {
@@ -161,11 +161,11 @@ if (isset($_GET['fetch_payload_id'])) {
         .btn-danger    { background: #ef4444; color: #fff; }
         .btn-danger:hover { background: #dc2626; }
 
-        /* ── Grid Layouts ── */
+        /* -- Grid Layouts -- */
         .layout-grid { display: grid; grid-template-columns: 1fr 400px; gap: 30px; align-items: start; }
         @media (max-width: 1200px) { .layout-grid { grid-template-columns: 1fr; } }
 
-        /* ── Panel Cards ── */
+        /* -- Panel Cards -- */
         .panel {
             background: #fff;
             border: 1px solid #e2e8f0;
@@ -188,7 +188,7 @@ if (isset($_GET['fetch_payload_id'])) {
         .flash.success { background: #ecfdf5; color: #065f46; border-left-color: #10b981; }
         .flash.error { background: #fef2f2; color: #991b1b; border-left-color: #ef4444; }
 
-        /* ── Sync Control ── */
+        /* -- Sync Control -- */
         .sync-control-panel { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
         .sync-control-title { font-size: 14px; font-weight: 600; color: #334155; }
         .sync-control-desc { font-size: 12px; color: #64748b; line-height: 1.5; }
@@ -202,7 +202,7 @@ if (isset($_GET['fetch_payload_id'])) {
             outline: none;
         }
 
-        /* ── Tables ── */
+        /* -- Tables -- */
         .table-wrapper { width: 100%; overflow-x: auto; }
         .table { width: 100%; border-collapse: collapse; text-align: left; font-size: 12.5px; }
         .table th { padding: 12px 16px; border-bottom: 2px solid #e2e8f0; color: #475569; font-weight: 600; background: #f8fafc; }
@@ -234,7 +234,7 @@ if (isset($_GET['fetch_payload_id'])) {
         }
         .btn-view-payload:hover { background: #bae6fd; }
 
-        /* ── Payload Modal ── */
+        /* -- Payload Modal -- */
         .modal {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -262,7 +262,7 @@ if (isset($_GET['fetch_payload_id'])) {
         .btn-close:hover { color: #64748b; }
         .modal-body { flex: 1; overflow-y: auto; background: #0f172a; color: #38bdf8; padding: 16px; border-radius: 8px; font-family: monospace; font-size: 12px; white-space: pre-wrap; word-break: break-all; }
 
-        /* ── Dark Mode ── */
+        /* -- Dark Mode -- */
         .dark-theme .card { background: rgba(15,23,42,0.92); border-color: rgba(255,255,255,0.08); }
         .dark-theme .dashboard-header h1 { color: #f8fafc; }
         .dark-theme .dashboard-header p { color: #94a3b8; }

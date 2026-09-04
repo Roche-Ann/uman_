@@ -1107,7 +1107,7 @@ try {
             transition: margin-left .25s ease;
             z-index: 1; position: relative;
         }
-        .main-content.collapsed { margin-left: 90px; }
+        .main-content.collapsed { margin-left: 78px; }
         .card {
             width: 100%; max-width: 1700px;
             background: rgba(255,255,255,0.88); backdrop-filter: blur(15px);

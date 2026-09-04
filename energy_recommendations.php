@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // energy_recommendations.php
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
@@ -157,7 +157,7 @@ $recsList = $stmt->fetchAll();
         }
 
         .main-content.collapsed {
-            margin-left: 90px;
+            margin-left: 78px;
         }
 
         .card {

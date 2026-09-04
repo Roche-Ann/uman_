@@ -238,7 +238,7 @@ $unreadNotifications = $pdo->query("SELECT COUNT(*) FROM maintenance_notificatio
         }
 
         .main-content.collapsed {
-            margin-left: 90px;
+            margin-left: 78px;
         }
 
         .card {

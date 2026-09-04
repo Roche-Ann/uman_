@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // energy_sync.php
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
@@ -118,7 +118,7 @@ if (isset($_GET['fetch_payload_id'])) {
         }
 
         .main-content.collapsed {
-            margin-left: 90px;
+            margin-left: 78px;
         }
 
         .card {

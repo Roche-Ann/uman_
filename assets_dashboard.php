@@ -180,7 +180,7 @@ if ($damagedNoMaint > 0) {
         }
 
         .main-content.collapsed {
-            margin-left: 90px;
+            margin-left: 78px;
         }
 
         .card {

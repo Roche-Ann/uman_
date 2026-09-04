@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // maintenance_list.php
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
@@ -301,7 +301,7 @@ if (isset($_GET['fetch_logs_id'])) {
         }
 
         .main-content.collapsed {
-            margin-left: 90px;
+            margin-left: 78px;
         }
 
         .card {
@@ -854,7 +854,7 @@ if (isset($_GET['fetch_logs_id'])) {
                         </div>
                         <div style="font-size:12px; color:#475569; margin-top:2px;">${log.notes || 'No comments.'}</div>
                         <div style="font-size:10px; color:#94a3b8; margin-top:3px;">
-                            ${date} · Updated by ${log.user_name || 'System'}
+                            ${date} � Updated by ${log.user_name || 'System'}
                         </div>
                     `;
                     container.appendChild(item);

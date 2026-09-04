@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // citizen_submit_report.php
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
@@ -162,7 +162,7 @@ $reports = $myReports->fetchAll();
         }
 
         .main-content.collapsed {
-            margin-left: 90px;
+            margin-left: 78px;
         }
 
         .card {
@@ -472,7 +472,7 @@ $reports = $myReports->fetchAll();
 
     // OSM Tiles
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
+        attribution: '� OpenStreetMap contributors'
     }).addTo(map);
 
     let marker = null;

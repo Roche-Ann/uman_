@@ -1,5 +1,5 @@
-ï»¿<?php
-// assets_history.php â€” Asset Audit Activity Timeline
+<?php
+// assets_history.php — Asset Audit Activity Timeline
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
 
@@ -186,7 +186,7 @@ function pageUrl(int $p, string $search, string $date, string $type): string {
     </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0">
-    <title>Asset Activity Log â€” Utilities Management</title>
+    <title>Asset Activity Log — Utilities Management</title>
     <meta name="description" content="Chronological audit timeline of all asset actions.">
     <link rel="icon" type="image/png" href="assets/images/logocityhall.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
@@ -197,7 +197,7 @@ function pageUrl(int $p, string $search, string $date, string $type): string {
         body { min-height: 100vh; display: flex; background: url("assets/images/cityhall.jpeg") center/cover no-repeat fixed; position: relative; }
         body::before { content: ""; position: fixed; inset: 0; backdrop-filter: blur(6px); background: rgba(0,0,0,.35); z-index: 0; }
         .main-content { flex: 1; margin-left: 280px; padding: 30px 36px; transition: margin-left .25s ease; z-index: 1; position: relative; }
-        .main-content.collapsed { margin-left: 90px; }
+        .main-content.collapsed { margin-left: 78px; }
         .card{background:rgba(255,255,255,.88);backdrop-filter:blur(18px);border-radius:20px;padding:36px 40px;box-shadow:0 8px 32px rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.3);}
         .page-header{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;margin-bottom:28px;}
         .page-header h1{font-size:28px;font-weight:700;color:#1e293b;display:flex;align-items:center;gap:12px;}
@@ -286,7 +286,7 @@ function pageUrl(int $p, string $search, string $date, string $type): string {
     <div class="page-header">
         <div>
             <h1><i class="fas fa-scroll"></i> Asset Activity Log</h1>
-            <p class="subtitle">Chronological audit of every action taken on utility assets â€” registrations, edits, status changes, splits &amp; merges.</p>
+            <p class="subtitle">Chronological audit of every action taken on utility assets — registrations, edits, status changes, splits &amp; merges.</p>
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
             <a href="assets_crud.php" class="btn btn-outline"><i class="fas fa-boxes"></i> Inventory</a>
@@ -313,7 +313,7 @@ function pageUrl(int $p, string $search, string $date, string $type): string {
     <form method="GET" class="filter-bar">
         <div class="filter-group" style="flex:2;min-width:200px;">
             <label><i class="fas fa-search" style="margin-right:4px;"></i> Search Asset / Notes</label>
-            <input type="text" name="search" class="form-control" placeholder="Asset ID, name, or note keywordâ€¦" value="<?php echo htmlspecialchars($search); ?>">
+            <input type="text" name="search" class="form-control" placeholder="Asset ID, name, or note keyword…" value="<?php echo htmlspecialchars($search); ?>">
         </div>
         <div class="filter-group">
             <label><i class="fas fa-calendar-day" style="margin-right:4px;"></i> Date</label>
@@ -372,8 +372,8 @@ function pageUrl(int $p, string $search, string $date, string $type): string {
             $ts = strtotime($day);
             $today = date('Y-m-d');
             $yesterday = date('Y-m-d', strtotime('-1 day'));
-            if ($day === $today)         $dayLabel = 'Today â€” ' . date('F j, Y', $ts);
-            elseif ($day === $yesterday) $dayLabel = 'Yesterday â€” ' . date('F j, Y', $ts);
+            if ($day === $today)         $dayLabel = 'Today — ' . date('F j, Y', $ts);
+            elseif ($day === $yesterday) $dayLabel = 'Yesterday — ' . date('F j, Y', $ts);
             else                         $dayLabel = date('l, F j, Y', $ts);
         ?>
         <div class="day-group">
@@ -409,7 +409,7 @@ function pageUrl(int $p, string $search, string $date, string $type): string {
                                 <?php echo htmlspecialchars($log['asset_name'] ?? 'Utility Asset');?>
                                 <?php if (!empty($log['parent_asset_id'])): ?><span style="font-size:10px;background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:4px;margin-left:6px;font-weight:700;">OFFSHOOT</span><?php endif;?>
                             </div>
-                            <div class="tl-asset-id"><?php echo htmlspecialchars($log['asset_id'] ?? 'â€”');?></div>
+                            <div class="tl-asset-id"><?php echo htmlspecialchars($log['asset_id'] ?? '—');?></div>
                         </div>
                         <div class="tl-meta">
                             <div><?php echo date('h:i A', strtotime($log['changed_at']));?></div>
@@ -432,8 +432,8 @@ function pageUrl(int $p, string $search, string $date, string $type): string {
                             <?php foreach ($diff as $field => $change): ?>
                             <tr>
                                 <td class="diff-field"><?php echo htmlspecialchars((string)$field);?></td>
-                                <td><span class="diff-old"><?php echo htmlspecialchars((string)($change['old'] ?? 'â€”'));?></span></td>
-                                <td><span class="diff-new"><?php echo htmlspecialchars((string)($change['new'] ?? 'â€”'));?></span></td>
+                                <td><span class="diff-old"><?php echo htmlspecialchars((string)($change['old'] ?? '—'));?></span></td>
+                                <td><span class="diff-new"><?php echo htmlspecialchars((string)($change['new'] ?? '—'));?></span></td>
                             </tr>
                             <?php endforeach;?>
                         </tbody>
@@ -452,13 +452,13 @@ function pageUrl(int $p, string $search, string $date, string $type): string {
 
         <?php if ($totalPages > 1): ?>
         <div class="pagination-row">
-            <div class="pagination-info">Showing <?php echo number_format($offset+1);?>â€“<?php echo number_format(min($totalLogs,$offset+$limit));?> of <?php echo number_format($totalLogs);?> entries</div>
+            <div class="pagination-info">Showing <?php echo number_format($offset+1);?>–<?php echo number_format(min($totalLogs,$offset+$limit));?> of <?php echo number_format($totalLogs);?> entries</div>
             <div class="pagination-links">
                 <a href="<?php echo pageUrl($page-1,$search,$filterDate,$filterType);?>" class="page-link <?php echo $page<=1?'disabled':'';?>"><i class="fas fa-chevron-left"></i></a>
                 <?php $s=max(1,$page-2);$e=min($totalPages,$page+2);
-                if($s>1){echo '<a href="'.pageUrl(1,$search,$filterDate,$filterType).'" class="page-link">1</a>';if($s>2)echo '<span class="page-link disabled">â€¦</span>';}
+                if($s>1){echo '<a href="'.pageUrl(1,$search,$filterDate,$filterType).'" class="page-link">1</a>';if($s>2)echo '<span class="page-link disabled">…</span>';}
                 for($i=$s;$i<=$e;$i++){echo '<a href="'.pageUrl($i,$search,$filterDate,$filterType).'" class="page-link '.($i===$page?'active':'').'">'.$i.'</a>';}
-                if($e<$totalPages){if($e<$totalPages-1)echo '<span class="page-link disabled">â€¦</span>';echo '<a href="'.pageUrl($totalPages,$search,$filterDate,$filterType).'" class="page-link">'.$totalPages.'</a>';}?>
+                if($e<$totalPages){if($e<$totalPages-1)echo '<span class="page-link disabled">…</span>';echo '<a href="'.pageUrl($totalPages,$search,$filterDate,$filterType).'" class="page-link">'.$totalPages.'</a>';}?>
                 <a href="<?php echo pageUrl($page+1,$search,$filterDate,$filterType);?>" class="page-link <?php echo $page>=$totalPages?'disabled':'';?>"><i class="fas fa-chevron-right"></i></a>
             </div>
         </div>

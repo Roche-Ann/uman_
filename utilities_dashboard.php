@@ -156,7 +156,7 @@ $maintenanceData = json_encode([$maintenance['pending_requests'] ?? 0, $maintena
         }
 
         .main-content.collapsed {
-            margin-left: 90px;
+            margin-left: 78px;
         }
 
         .card {
