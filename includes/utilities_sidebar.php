@@ -3345,6 +3345,21 @@ window.addEventListener('click', function(event) {
 
     // Desktop collapse toggle
     const appTopbar = document.getElementById('app-topbar');
+
+    // ── Restore saved sidebar collapsed state on every page load ──
+    (function restoreCollapsedState() {
+        const savedCollapsed = localStorage.getItem('sidebar_collapsed') === 'true';
+        if (savedCollapsed && sidebar) {
+            sidebar.classList.add('collapsed');
+            if (mainContent) mainContent.classList.add('collapsed');
+            if (appTopbar)   appTopbar.classList.add('collapsed');
+            if (collapseBtn) {
+                collapseBtn.innerHTML = '&#8250;';
+                collapseBtn.setAttribute('aria-pressed', 'true');
+            }
+        }
+    })();
+
     if (collapseBtn && sidebar) {
         collapseBtn.addEventListener('click', () => {
             const isCollapsed = sidebar.classList.toggle('collapsed');
@@ -3352,6 +3367,8 @@ window.addEventListener('click', function(event) {
             if (appTopbar) appTopbar.classList.toggle('collapsed', isCollapsed);
             collapseBtn.innerHTML = isCollapsed ? '&#8250;' : '&#8249;';
             collapseBtn.setAttribute('aria-pressed', isCollapsed);
+            // Persist state so it survives page navigation
+            localStorage.setItem('sidebar_collapsed', isCollapsed);
         });
     }
 
