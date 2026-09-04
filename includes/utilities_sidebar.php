@@ -803,7 +803,7 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
     }
 
     .app-topbar.collapsed {
-        left: 90px;
+        left: 78px;
     }
 
     .dark-theme .app-topbar {
@@ -946,7 +946,7 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
     /* Sync main-content margin with sidebar */
     .main-content { margin-left: 280px; margin-top: var(--topbar-height); transition: margin-left 0.25s ease; min-height: calc(100vh - var(--topbar-height)); display: flex; flex-direction: column; }
     .main-content > .card { flex: 1; }
-    .main-content.collapsed { margin-left: 90px; }
+    .main-content.collapsed { margin-left: 78px; }
 
     /* Hide topbar on mobile (uses mobile-topbar instead) */
     @media (max-width: 992px) {
@@ -3072,9 +3072,11 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
                 <?php echo renderDayNightToggle('', 'sidebar-theme-switch'); ?>
             </div>
             <?php endif; ?>
+            <?php if ($userType !== 'employee'): ?>
             <button class="logout-btn" onclick="confirmLogout()" title="Logout">
                 <i class="fas fa-sign-out-alt"></i> <span class="logout-text">Logout</span>
             </button>
+            <?php endif; ?>
         </div>
     </div>
 </nav>
