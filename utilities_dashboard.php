@@ -234,7 +234,7 @@ function generateAICentralSummary($assetStats, $maintenanceStats, $energyStats, 
         $summary .= "All assets reporting nominal operational status.<br>";
     }
     
-    $summary .= "• <strong>Maintenance Pipeline:</strong> " . number_format($maintenanceStats['active_requests']) . " active work orders (" . number_format($maintenanceStats['total_requests']) . " total logged). ";
+    $summary .= "• <strong>Work Orders & Maintenance:</strong> " . number_format($maintenanceStats['active_requests']) . " active work orders (" . number_format($maintenanceStats['total_requests']) . " total logged). ";
     if ($maintenanceStats['emergency_requests'] > 0) {
         $summary .= "<span style='color:#ef4444; font-weight:700;'>🚨 " . $maintenanceStats['emergency_requests'] . " emergency dispatches flagged!</span><br>";
     } else {
@@ -281,14 +281,6 @@ $assetConditionData = json_encode([
     $assetStats['under_maintenance']
 ]);
 
-$maintenanceStatusLabels = json_encode(['Reported', 'Scheduled', 'In Progress', 'Testing', 'Completed']);
-$maintenanceStatusData = json_encode([
-    $maintenanceStats['reported'],
-    $maintenanceStats['scheduled'],
-    $maintenanceStats['in_progress'],
-    $maintenanceStats['testing'],
-    $maintenanceStats['completed']
-]);
 
 $upadStatusLabels = json_encode(['Pending Review', 'Approved / Clear', 'Urgent Priority']);
 $upadStatusData = json_encode([
@@ -901,7 +893,6 @@ $upadStatusData = json_encode([
         <!-- Section Tabs -->
         <div class="tab-buttons">
             <button class="tab-btn active" onclick="switchTab(event, 'assets-pane')"><i class="fas fa-warehouse"></i> Asset Analytics</button>
-            <button class="tab-btn" onclick="switchTab(event, 'maintenance-pane')"><i class="fas fa-tools"></i> Maintenance Pipeline</button>
             <button class="tab-btn" onclick="switchTab(event, 'resource-pane')"><i class="fas fa-bolt"></i> Resource Grids (Energy & Water)</button>
             <button class="tab-btn" onclick="switchTab(event, 'upad-pane')"><i class="fas fa-network-wired"></i> UPAD Grid Review</button>
             <button class="tab-btn" onclick="switchTab(event, 'facility-pane')"><i class="fas fa-building"></i> Facility Deployments</button>
@@ -937,35 +928,7 @@ $upadStatusData = json_encode([
             </div>
         </div>
 
-        <!-- 2. Maintenance Pane -->
-        <div id="maintenance-pane" class="tab-pane">
-            <div class="dashboard-layout">
-                <div class="box">
-                    <h3><i class="fas fa-chart-bar"></i> Maintenance Work Order Pipeline</h3>
-                    <div style="position:relative; height:280px; width:100%; display:flex; justify-content:center; align-items:center;">
-                        <canvas id="maintenanceChart"></canvas>
-                    </div>
-                </div>
-                <div class="box" style="display:flex; flex-direction:column; justify-content:center;">
-                    <h4 style="color:#1e293b; font-size:15px; margin-bottom:12px;" class="msg-text">Work Order Dispatches:</h4>
-                    <p style="font-size:13px; color:#64748b; line-height:1.6;" class="msg-text">
-                        Maintenance orders handle repairs for damaged and routine-scheduled municipal assets.
-                        There are currently <strong><?php echo number_format($maintenanceStats['active_requests']); ?></strong> active repair orders in the queue.
-                    </p>
-                    <div style="margin-top: 15px; padding: 12px; background: rgba(0,0,0,0.03); border-radius: 8px;">
-                        <div style="font-size: 12px; color: #64748b; line-height: 1.8;" class="msg-text">
-                            • 📋 <strong>Reported (Queue):</strong> <?php echo number_format($maintenanceStats['reported']); ?> orders<br>
-                            • 📅 <strong>Scheduled:</strong> <?php echo number_format($maintenanceStats['scheduled']); ?> orders<br>
-                            • ⚙️ <strong>In Progress:</strong> <?php echo number_format($maintenanceStats['in_progress']); ?> orders<br>
-                            • 🧪 <strong>Testing:</strong> <?php echo number_format($maintenanceStats['testing']); ?> orders<br>
-                            • ✅ <strong>Completed (All-Time):</strong> <?php echo number_format($maintenanceStats['completed']); ?> orders
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 3. Resource Grid (Energy & Water) -->
+        <!-- 2. Resource Grid (Energy & Water) -->
         <div id="resource-pane" class="tab-pane">
             <div class="dashboard-layout" style="grid-template-columns: 1fr 1fr;">
                 <div class="box">
@@ -991,7 +954,7 @@ $upadStatusData = json_encode([
             </div>
         </div>
 
-        <!-- 4. UPAD Grid Review Pane -->
+        <!-- 3. UPAD Grid Review Pane -->
         <div id="upad-pane" class="tab-pane">
             <div class="dashboard-layout">
                 <div class="box">
@@ -1018,7 +981,7 @@ $upadStatusData = json_encode([
             </div>
         </div>
 
-        <!-- 5. Facility Deployments Pane -->
+        <!-- 4. Facility Deployments Pane -->
         <div id="facility-pane" class="tab-pane">
             <div class="dashboard-layout" style="grid-template-columns: 1fr;">
                 <div class="box">
@@ -1086,33 +1049,7 @@ $upadStatusData = json_encode([
         }
     });
 
-    // Chart 2: Maintenance Request Status
-    const maintenanceCtx = document.getElementById('maintenanceChart').getContext('2d');
-    new Chart(maintenanceCtx, {
-        type: 'bar',
-        data: {
-            labels: <?php echo $maintenanceStatusLabels; ?>,
-            datasets: [{
-                label: 'Work Orders',
-                data: <?php echo $maintenanceStatusData; ?>,
-                backgroundColor: '#3b82f6',
-                borderRadius: 6
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: { precision: 0 }
-                }
-            }
-        }
-    });
-
-    // Chart 3: UPAD Electrical Clearances Status
+    // Chart 2: UPAD Electrical Clearances Status
     const upadCtx = document.getElementById('upadChart').getContext('2d');
     new Chart(upadCtx, {
         type: 'doughnut',
@@ -1155,7 +1092,7 @@ $upadStatusData = json_encode([
                 <li>
                     <i class="fas fa-tools"></i>
                     <div>
-                        <strong>Maintenance Pipeline:</strong> <?php echo number_format($maintenanceStats['active_requests']); ?> active work orders in repair queue (<?php echo number_format($maintenanceStats['emergency_requests']); ?> emergency).
+                        <strong>Active Maintenance:</strong> <?php echo number_format($maintenanceStats['active_requests']); ?> active work orders in repair queue (<?php echo number_format($maintenanceStats['emergency_requests']); ?> emergency).
                     </div>
                 </li>
                 <li>
