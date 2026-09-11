@@ -1,5 +1,5 @@
 <?php
-// water_dashboard.php � Redesigned Water Management Dashboard
+// water_dashboard.php — Redesigned Water Management Dashboard
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
 ensureWaterSchema();
@@ -12,13 +12,13 @@ if (!isLoggedIn()) {
 // ============================================================
 // FILTER PARAMETERS
 // ============================================================
-$fYear     = !empty($_GET['year'])     ? intval($_GET['year'])          : intval(date('Y'));
-$fMonth    = !empty($_GET['month'])    ? intval($_GET['month'])          : 0; // 0 = All months
+$fYear     = !empty($_GET['year'])       ? intval($_GET['year'])          : intval(date('Y'));
+$fMonth    = !empty($_GET['month'])      ? intval($_GET['month'])         : 0; // 0 = All months
 $fType     = trim($_GET['asset_type'] ?? '');
 $fLocation = trim($_GET['location']   ?? '');
 
 // ============================================================
-// SUMMARY CARD QUERIES
+// SUMMARY CARD QUERIES (always all-time totals for header cards)
 // ============================================================
 $totalConsumption       = $pdo->query("SELECT COALESCE(SUM(consumption_m3),0) FROM water_consumption_records")->fetchColumn();
 $totalCost              = $pdo->query("SELECT COALESCE(SUM(cost),0) FROM water_consumption_records")->fetchColumn();
@@ -66,7 +66,7 @@ $stmtFCost->execute($filterParams);
 $filteredCost = (float)$stmtFCost->fetchColumn();
 
 // ============================================================
-// MONTHLY TREND � single aggregate line for selected year
+// MONTHLY TREND — single aggregate line for selected year
 // ============================================================
 $trendConds  = [];
 $trendParams = [];
@@ -103,8 +103,10 @@ foreach ($trendRows as $tr) {
 for ($m = 1; $m <= 12; $m++) {
     $key = sprintf('%d-%02d', $fYear, $m);
     $trendLabels[] = $monthNames[$m - 1];
-    $trendData[]   = $trendMap[$key] ?? null;
+    $trendData[]   = $trendMap[$key] ?? null; // null creates gap in chart
 }
+$latestTrendValue = !empty($trendRows) ? end($trendRows)['total_m3'] : 0;
+$latestTrendMonth = !empty($trendRows) ? $monthNames[intval(substr(end($trendRows)['month_year'], 5, 2)) - 1] . ' ' . $fYear : '—';
 
 $trendLabelsJson = json_encode($trendLabels);
 $trendDataJson   = json_encode($trendData);
@@ -113,7 +115,7 @@ $trendDataJson   = json_encode($trendData);
 // FACILITY / ASSET HORIZONTAL BAR CHART + TOP CONSUMERS
 // ============================================================
 $stmtFac = $pdo->prepare("
-    SELECT COALESCE(facility_name, CONCAT(asset_type, ' � ', location)) as label,
+    SELECT COALESCE(facility_name, CONCAT(asset_type, ' — ', location)) as label,
            asset_type,
            COALESCE(SUM(consumption_m3),0) as m3
     FROM water_consumption_records
@@ -156,30 +158,30 @@ function generateAIDigest(array $facilityRows, float $filteredTotal, float $filt
     $bottom = end($facilityRows);
     $topPct = $filteredTotal > 0 ? round(($top['m3'] / $filteredTotal) * 100, 1) : 0;
 
-    $out  = "?? <strong>Consumption Summary for {$periodLabel}</strong><br><br>";
-    $out .= "Total recorded water consumption is <strong>" . number_format($filteredTotal, 2) . " m�</strong>";
+    $out  = "📊 <strong>Consumption Summary for {$periodLabel}</strong><br><br>";
+    $out .= "Total recorded water consumption is <strong>" . number_format($filteredTotal, 2) . " m³</strong>";
     if ($filteredCost > 0) {
-        $out .= " with an estimated cost of <strong>?" . number_format($filteredCost, 2) . "</strong>";
+        $out .= " with an estimated cost of <strong>₱" . number_format($filteredCost, 2) . "</strong>";
     }
     $out .= ". A total of <strong>{$count} " . ($count === 1 ? 'facility/asset' : 'facilities/assets') . "</strong> have recorded consumption for this period.<br><br>";
 
-    $out .= "?? <strong>Highest Consumer:</strong> ";
-    $out .= htmlspecialchars($top['label']) . " with <strong>" . number_format($top['m3'], 2) . " m�</strong>";
-    $out .= " � accounting for <strong>{$topPct}%</strong> of total consumption.<br>";
+    $out .= "💧 <strong>Highest Consumer:</strong> ";
+    $out .= htmlspecialchars($top['label']) . " with <strong>" . number_format($top['m3'], 2) . " m³</strong>";
+    $out .= " — accounting for <strong>{$topPct}%</strong> of total consumption.<br>";
 
     if ($count > 1) {
-        $out .= "?? <strong>Lowest Consumer:</strong> ";
-        $out .= htmlspecialchars($bottom['label']) . " with <strong>" . number_format($bottom['m3'], 2) . " m�</strong>.<br>";
+        $out .= "📉 <strong>Lowest Consumer:</strong> ";
+        $out .= htmlspecialchars($bottom['label']) . " with <strong>" . number_format($bottom['m3'], 2) . " m³</strong>.<br>";
     }
 
     if ($count > 2) {
-        $out .= "<br>?? <strong>Consumption Distribution:</strong><br>";
+        $out .= "<br>📋 <strong>Consumption Distribution:</strong><br>";
         foreach (array_slice($facilityRows, 0, 5) as $idx => $fr) {
             $pct = $filteredTotal > 0 ? round(($fr['m3'] / $filteredTotal) * 100, 1) : 0;
-            $out .= "� " . htmlspecialchars($fr['label']) . ": <strong>" . number_format($fr['m3'], 2) . " m�</strong> ({$pct}%)<br>";
+            $out .= "• " . htmlspecialchars($fr['label']) . ": <strong>" . number_format($fr['m3'], 2) . " m³</strong> ({$pct}%)<br>";
         }
         if ($count > 5) {
-            $out .= "� � and " . ($count - 5) . " more " . ($count - 5 == 1 ? 'facility/asset' : 'facilities/assets') . ".<br>";
+            $out .= "• … and " . ($count - 5) . " more " . ($count - 5 == 1 ? 'facility/asset' : 'facilities/assets') . ".<br>";
         }
     }
 
@@ -187,7 +189,7 @@ function generateAIDigest(array $facilityRows, float $filteredTotal, float $filt
 }
 $aiDigest = generateAIDigest($facilityRows, $filteredTotal, $filteredCost, $fYear, $fMonth, $fType);
 
-// AI Analytics � Water Intelligence Score
+// AI Analytics — Water Intelligence Score
 $waterScore = max(0, 100 - ($pendingAdvisories * 10));
 $waterScore = min(100, $waterScore);
 
@@ -215,7 +217,7 @@ if ($waterScore >= 90) {
         'text' => "Efficiency score dropped to {$waterScore}%. Multiple pending repairs need immediate attention."];
 }
 if ($successfulSyncs > 0) {
-    $waterAiRecs[] = ['icon' => 'fa-sync-alt', 'color' => '#3762c8', 'priority' => 'Info',
+    $waterAiRecs[] = ['icon' => 'fa-sync-alt', 'color' => '#0284c7', 'priority' => 'Info',
         'title' => 'Data Sync Complete',
         'text' => "{$successfulSyncs} successful data exports to external Water Utility integration."];
 }
@@ -313,6 +315,7 @@ $locationsAvail = $pdo->query("
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
         *::before, *::after { box-sizing: border-box; }
 
+        /* ── Body & Background ── */
         body {
             min-height: 100vh;
             display: flex;
@@ -327,6 +330,7 @@ $locationsAvail = $pdo->query("
             z-index: 0;
         }
 
+        /* ── Main Layout ── */
         .main-content {
             flex: 1;
             margin-left: 280px;
@@ -338,6 +342,7 @@ $locationsAvail = $pdo->query("
         .main-content.collapsed { margin-left: 78px; }
         @media (max-width: 992px) { .main-content { margin-left: 0; padding: 20px; } }
 
+        /* ── Card ── */
         .card {
             width: 100%;
             max-width: 1700px;
@@ -349,6 +354,7 @@ $locationsAvail = $pdo->query("
             border: 1px solid rgba(255,255,255,0.3);
         }
 
+        /* ── Dashboard Header ── */
         .dashboard-header {
             display: flex;
             justify-content: space-between;
@@ -369,6 +375,7 @@ $locationsAvail = $pdo->query("
         .dashboard-header p { color: #64748b; font-size: 13px; margin-top: 6px; }
         .header-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 
+        /* ── Buttons ── */
         .btn {
             padding: 10px 18px;
             border-radius: 9px;
@@ -390,560 +397,907 @@ $locationsAvail = $pdo->query("
         .btn-amber:hover { background: #d97706; }
         .btn-sm        { padding: 7px 13px; font-size: 12px; }
 
+        /* ── Section Divider ── */
         .section-divider {
             display: flex;
             align-items: center;
             gap: 12px;
             margin: 36px 0 22px;
         }
-        .section-divider h2 { font-size: 16px; font-weight: 600; color: #475569; letter-spacing: 0.5px; text-transform: uppercase; white-space: nowrap; }
-        .section-divider .line { height: 1.5px; background: #e2e8f0; width: 100%; }
+        .section-divider h2 {
+            font-size: 15px;
+            font-weight: 700;
+            color: #334155;
+            white-space: nowrap;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+        .section-divider::after {
+            content: '';
+            flex: 1;
+            height: 2px;
+            background: linear-gradient(90deg, #e2e8f0, transparent);
+            border-radius: 2px;
+        }
 
-        /* -- Filter Bar -- */
+        /* ── Summary Cards ── */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 18px;
+            margin-bottom: 30px;
+        }
+        @media (max-width: 1200px) { .stats-grid { grid-template-columns: repeat(3, 1fr); } }
+        @media (max-width: 700px)  { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+
+        .stat-card {
+            border-radius: 16px;
+            padding: 20px 18px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            color: #fff;
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(135deg, #0369a1, #0284c7);
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+        }
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: -20px; right: -20px;
+            width: 90px; height: 90px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.08);
+            pointer-events: none;
+        }
+        .stat-card:hover { transform: translateY(-4px); box-shadow: 0 14px 32px rgba(0,0,0,0.25); }
+        .stat-card.blue   { background: linear-gradient(135deg, #1a3e7a, #2a5fc2); }
+        .stat-card.green  { background: linear-gradient(135deg, #1a6b38, #25a259); }
+        .stat-card.amber  { background: linear-gradient(135deg, #7a5c0d, #c4920e); }
+        .stat-card.purple { background: linear-gradient(135deg, #4c1d7a, #7c3dbf); }
+        .stat-card.teal   { background: linear-gradient(135deg, #0d4a7a, #1580cc); }
+
+        .stat-icon-wrap {
+            width: 52px; height: 52px;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.18) !important;
+            display: grid; place-items: center;
+            font-size: 22px;
+            flex-shrink: 0;
+            color: #fff !important;
+        }
+        .stat-card.blue   .stat-icon-wrap,
+        .stat-card.green  .stat-icon-wrap,
+        .stat-card.amber  .stat-icon-wrap,
+        .stat-card.purple .stat-icon-wrap,
+        .stat-card.teal   .stat-icon-wrap { background: rgba(255,255,255,0.18) !important; color: #fff !important; }
+
+        .stat-info h3 { font-size: 26px; font-weight: 700; color: #fff !important; line-height: 1.2; margin: 0; }
+        .stat-info h3 .unit { font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.85); }
+        .stat-info p { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.85) !important; text-transform: uppercase; letter-spacing: 0.6px; margin-top: 4px; margin-bottom: 0; }
+
+        /* ── Filter Bar ── */
         .filter-bar {
             background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 18px 24px;
-            margin-bottom: 30px;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) auto;
-            gap: 20px;
-            align-items: end;
-        }
-        .filter-group { display: flex; flex-direction: column; gap: 6px; }
-        .filter-group label { font-size: 12px; font-weight: 600; color: #64748b; }
-        .filter-control {
-            padding: 9px 12px;
-            border-radius: 8px;
-            border: 1px solid #cbd5e1;
-            font-size: 13px;
-            background: #fff;
-            color: #1e293b;
-            outline: none;
-            transition: border-color 0.2s;
-        }
-        .filter-control:focus { border-color: #0284c7; }
-        .filter-actions { display: flex; gap: 8px; }
-
-        /* -- Grid Layouts -- */
-        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 24px; }
-        .grid-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 24px; }
-        .grid-1-2 { display: grid; grid-template-columns: 1fr 2fr; gap: 24px; margin-bottom: 24px; }
-        @media (max-width: 1200px) { .grid-3, .grid-2-1, .grid-1-2 { grid-template-columns: 1fr; } }
-
-        /* -- KPI Cards -- */
-        .kpi-card {
-            background: #fff;
-            border: 1px solid #e2e8f0;
-            border-radius: 16px;
-            padding: 24px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
-            transition: transform 0.25s, box-shadow 0.25s;
-        }
-        .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
-        .kpi-info h3 { font-size: 13px; color: #64748b; font-weight: 500; }
-        .kpi-info .value { font-size: 26px; font-weight: 700; color: #1e293b; margin: 6px 0 2px; }
-        .kpi-info .subtext { font-size: 11px; color: #94a3b8; }
-        .kpi-icon { width: 52px; height: 52px; border-radius: 12px; display: grid; place-items: center; font-size: 22px; }
-        .kpi-icon.blue { background: #e0f2fe; color: #0284c7; }
-        .kpi-icon.green { background: #dcfce7; color: #15803d; }
-        .kpi-icon.orange { background: #ffedd5; color: #ea580c; }
-        .kpi-icon.purple { background: #f3e8ff; color: #7c3aed; }
-
-        /* -- Panel Cards -- */
-        .panel {
-            background: #fff;
-            border: 1px solid #e2e8f0;
-            border-radius: 16px;
-            padding: 24px;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
-            display: flex;
-            flex-direction: column;
-            min-height: 380px;
-        }
-        .panel-title {
-            font-size: 16px;
-            font-weight: 600;
-            color: #1e293b;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .panel-title i { color: #64748b; }
-        .panel-body { flex: 1; position: relative; }
-
-        /* -- AI Insights -- */
-        .ai-panel { background: linear-gradient(135deg, #f8fafc, #eff6ff); border: 1px solid #dbeafe; }
-        .ai-digest-content { font-size: 13.5px; line-height: 1.6; color: #334155; }
-        .ai-digest-content strong { color: #0f172a; }
-
-        .ai-rec-list { display: flex; flex-direction: column; gap: 12px; }
-        .ai-rec-item {
-            background: #fff;
-            border-left: 4px solid #0284c7;
-            border-radius: 0 8px 8px 0;
-            padding: 14px 16px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            border: 1.5px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 20px 24px;
             display: flex;
             gap: 14px;
-            align-items: flex-start;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
         }
-        .ai-rec-item.priority-High { border-left-color: #ef4444; }
-        .ai-rec-item.priority-Medium { border-left-color: #f59e0b; }
-        .ai-rec-item.priority-Info { border-left-color: #3b82f6; }
-
-        .ai-rec-icon { font-size: 18px; margin-top: 2px; }
-        .ai-rec-text h4 { font-size: 13px; font-weight: 600; color: #1e293b; margin-bottom: 4px; }
-        .ai-rec-text p { font-size: 12px; color: #475569; line-height: 1.4; }
-
-        .metric-ring-container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 15px; }
-        .efficiency-score-label { font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase; }
-
-        /* SVG Circle progress */
-        .score-svg { transform: rotate(-90deg); }
-        .score-bg { fill: none; stroke: #f1f5f9; stroke-width: 10; }
-        .score-fill {
-            fill: none;
-            stroke: #0284c7;
-            stroke-width: 10;
-            stroke-linecap: round;
-            stroke-dasharray: 283;
-            stroke-dashoffset: <?php echo (283 - (283 * $waterScore) / 100); ?>;
-            transition: stroke-dashoffset 1s ease-out;
-        }
-
-        /* -- Recommendations Grid -- */
-        .recs-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
-        .rec-card {
-            border: 1px solid #e2e8f0;
+        .filter-bar .fg { display: flex; flex-direction: column; gap: 5px; min-width: 130px; }
+        .filter-bar label { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+        .filter-bar select,
+        .filter-bar input[type="text"] {
+            padding: 9px 12px;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #334155;
             background: #fff;
-            border-radius: 12px;
-            padding: 16px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
+            outline: none;
             transition: border-color 0.2s;
+            min-width: 130px;
         }
-        .rec-card:hover { border-color: #cbd5e1; }
-        .rec-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
-        .rec-header h4 { font-size: 13.5px; font-weight: 600; color: #1e293b; }
-        .priority-badge {
-            font-size: 10px;
-            font-weight: 700;
-            padding: 2px 6px;
-            border-radius: 4px;
-            text-transform: uppercase;
-        }
-        .priority-badge.High      { background: #fee2e2; color: #ef4444; }
-        .priority-badge.Medium    { background: #fef3c7; color: #d97706; }
-        .priority-badge.Low       { background: #f0fdf4; color: #15803d; }
-        .priority-badge.Emergency { background: #fef2f2; color: #dc2626; border: 1px solid #fca5a5; }
+        .filter-bar select:focus,
+        .filter-bar input:focus { border-color: #0284c7; }
+        .filter-actions { display: flex; gap: 8px; align-items: flex-end; margin-left: auto; }
 
-        .rec-body { font-size: 12px; color: #475569; line-height: 1.5; margin-bottom: 12px; flex: 1; }
-        .rec-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f1f5f9; padding-top: 10px; }
-        .rec-target { font-size: 11px; color: #94a3b8; font-weight: 500; display: flex; align-items: center; gap: 4px; }
-        .status-badge {
-            font-size: 10px;
-            font-weight: 600;
-            padding: 3px 8px;
-            border-radius: 9999px;
+        /* ── Two Column Row ── */
+        .row-2col {
+            display: grid;
+            grid-template-columns: 1.3fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+        @media (max-width: 1050px) { .row-2col { grid-template-columns: 1fr; } }
+
+        /* ── Box ── */
+        .box {
+            background: #fff;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 2px 14px rgba(0,0,0,0.06);
+            border: 1px solid #f1f5f9;
+        }
+        .box-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 14px;
+            border-bottom: 2px solid #f1f5f9;
+        }
+        .box-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 9px;
+        }
+        .box-title i { color: #0284c7; font-size: 16px; }
+        .box-subtitle { font-size: 11px; color: #94a3b8; margin-top: 2px; font-weight: 500; }
+
+        /* ── Chart Containers ── */
+        .chart-wrap { position: relative; width: 100%; }
+        .chart-wrap canvas { width: 100% !important; }
+
+        /* ── Trend Stat Chip ── */
+        .trend-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #f0f9ff;
+            color: #0284c7;
+            border-radius: 99px;
+            padding: 5px 14px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        /* ── AI Box ── */
+        .ai-box {
+            background: linear-gradient(145deg, #092640, #0f3d66);
+            border: none;
+        }
+        .ai-box .box-title { color: #e0f2fe; }
+        .ai-box .box-title i { color: #38bdf8; }
+        .ai-box .box-header { border-bottom-color: rgba(255,255,255,0.1); }
+        .ai-content {
+            background: rgba(0,0,0,0.25);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 18px;
+            font-size: 13px;
+            line-height: 1.75;
+            color: #cbd5e1;
+            max-height: 320px;
+            overflow-y: auto;
+        }
+        .ai-content strong { color: #7dd3fc; }
+        .ai-disclaimer {
+            margin-top: 14px;
+            font-size: 11px;
+            color: rgba(255,255,255,0.45);
+            border-top: 1px solid rgba(255,255,255,0.08);
+            padding-top: 10px;
+        }
+
+        /* ── Donut Chart Styling ── */
+        .donut-chart {
+            --donut-unfilled: #f1f5f9;
+        }
+        .donut-inner {
+            background: white;
+        }
+        .donut-score {
+            color: #1e293b;
+        }
+        .donut-label {
+            color: #94a3b8;
+        }
+        .dark-theme .donut-chart {
+            --donut-unfilled: #334155;
+        }
+        .dark-theme .donut-inner {
+            background: #1e293b;
+        }
+        .dark-theme .donut-score {
+            color: #f8fafc;
+        }
+        .dark-theme .donut-label {
+            color: #cbd5e1;
+        }
+
+        /* ── Top Consumers ── */
+        .top-list { display: flex; flex-direction: column; gap: 12px; }
+        .top-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 16px;
+            border-radius: 10px;
+            background: #f8fafc;
+            border: 1px solid #f1f5f9;
+            transition: background 0.2s ease;
+        }
+        .top-item:hover { background: #f0f9ff; border-color: #bae6fd; }
+        .top-rank {
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            display: grid; place-items: center;
+            font-size: 14px; font-weight: 800;
+            flex-shrink: 0;
+        }
+        .top-rank.r1 { background: #fef9c3; color: #a16207; }
+        .top-rank.r2 { background: #f1f5f9; color: #475569; }
+        .top-rank.r3 { background: #fff7ed; color: #c2410c; }
+        .top-rank.rn { background: #f0f9ff; color: #0284c7; }
+        .top-info { flex: 1; min-width: 0; }
+        .top-name { font-size: 13px; font-weight: 600; color: #1e293b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .top-meta { font-size: 11px; color: #64748b; margin-top: 2px; }
+        .top-kwh { font-size: 14px; font-weight: 700; color: #0284c7; white-space: nowrap; }
+        .top-pct-bar { margin-top: 6px; height: 4px; background: #e2e8f0; border-radius: 99px; overflow: hidden; }
+        .top-pct-fill { height: 100%; background: linear-gradient(90deg, #0284c7, #38bdf8); border-radius: 99px; transition: width 1s ease; }
+
+        /* ── Advisories ── */
+        .advisory-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 16px;
+        }
+        .advisory-card {
+            border-radius: 12px;
+            padding: 18px;
+            border: 1.5px solid #e2e8f0;
+            background: #fff;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .advisory-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.08); }
+        .advisory-card.high, .advisory-card.emergency { border-left: 4px solid #ef4444; }
+        .advisory-card.medium { border-left: 4px solid #f59e0b; }
+        .advisory-card.low    { border-left: 4px solid #22c55e; }
+        .adv-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+        .adv-title { font-size: 13px; font-weight: 700; color: #1e293b; line-height: 1.4; }
+        .adv-badges { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; flex-shrink: 0; }
+        .adv-desc { font-size: 12px; color: #64748b; line-height: 1.6; margin-bottom: 12px; }
+        .adv-meta { display: flex; flex-wrap: wrap; gap: 8px; font-size: 11px; color: #94a3b8; }
+        .adv-meta span { display: flex; align-items: center; gap: 4px; }
+
+        /* ── Badges ── */
+        .badge {
             display: inline-flex;
             align-items: center;
             gap: 4px;
+            padding: 3px 9px;
+            border-radius: 99px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
         }
-        .status-badge.Pending      { background: #f1f5f9; color: #475569; }
-        .status-badge.Acknowledged { background: #e0f2fe; color: #0284c7; }
-        .status-badge.Implemented  { background: #dcfce7; color: #15803d; }
-        .status-badge.Archived     { background: #f3e8ff; color: #7c3aed; }
+        .badge-pending      { background: #fef3c7; color: #d97706; }
+        .badge-acknowledged { background: #dbeafe; color: #2563eb; }
+        .badge-in-progress  { background: #f3e8ff; color: #9333ea; }
+        .badge-archived     { background: #f1f5f9; color: #475569; }
+        .badge-implemented  { background: #dcfce7; color: #16a34a; }
+        .badge-high, .badge-emergency { background: #fee2e2; color: #dc2626; }
+        .badge-medium       { background: #fef3c7; color: #d97706; }
+        .badge-low          { background: #dcfce7; color: #16a34a; }
+        .badge-manual, .badge-manual-input { background: #e0f2fe; color: #0284c7; }
+        .badge-imported     { background: #dcfce7; color: #16a34a; }
+        .badge-cprf         { background: #f3e8ff; color: #7c3aed; }
 
-        /* -- Records Table Panel -- */
-        .table-panel { min-height: unset; margin-bottom: 24px; }
-        .table-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 12px; }
-        .table-search { position: relative; }
-        .table-search input {
-            padding: 8px 12px 8px 34px;
+        /* ── Records Table ── */
+        .table-section {
+            background: #fff;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 2px 14px rgba(0,0,0,0.06);
+            border: 1px solid #f1f5f9;
+        }
+        .table-search-bar {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 18px;
+            flex-wrap: wrap;
+        }
+        .table-search-bar input {
+            flex: 1;
+            min-width: 200px;
+            padding: 9px 14px;
+            border: 1.5px solid #cbd5e1;
             border-radius: 8px;
-            border: 1px solid #cbd5e1;
-            font-size: 12.5px;
+            font-size: 13px;
             outline: none;
-            width: 250px;
-            transition: all 0.2s;
         }
-        .table-search input:focus { border-color: #0284c7; width: 280px; }
-        .table-search i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 13px; }
-
-        .table-wrapper { width: 100%; overflow-x: auto; margin-bottom: 16px; }
-        .table { width: 100%; border-collapse: collapse; text-align: left; font-size: 12.5px; }
-        .table th { padding: 12px 16px; border-bottom: 2px solid #e2e8f0; color: #475569; font-weight: 600; background: #f8fafc; }
-        .table td { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; color: #334155; vertical-align: middle; }
-        .table tbody tr:hover td { background: #f8fafc; }
-
-        .source-badge {
-            font-size: 10.5px;
-            font-weight: 500;
-            padding: 2px 6px;
-            border-radius: 6px;
-            display: inline-block;
+        .table-search-bar input:focus { border-color: #0284c7; }
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        thead th {
+            background: #f8fafc;
+            color: #475569;
+            font-weight: 700;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 12px 16px;
+            border-bottom: 2px solid #e2e8f0;
+            white-space: nowrap;
         }
-        .source-badge.Manual      { background: #eff6ff; color: #2563eb; }
-        .source-badge.Imported    { background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; }
-        .source-badge.CPRF        { background: #f0fdf4; color: #16a34a; }
+        tbody td { padding: 13px 16px; border-bottom: 1px solid #f1f5f9; font-size: 13px; color: #334155; }
+        tbody tr:last-child td { border-bottom: none; }
+        tbody tr:hover td { background: #f8fafc; }
+        .td-kwh { font-weight: 700; color: #1e293b; }
+        .td-cost { color: #22c55e; font-weight: 600; }
+        .td-id { font-family: monospace; font-size: 12px; color: #64748b; }
 
-        .pagination-container { display: flex; justify-content: space-between; align-items: center; margin-top: 14px; flex-wrap: wrap; gap: 12px; }
+        /* ── Pagination ── */
+        .pagination-wrap { display: flex; justify-content: space-between; align-items: center; margin-top: 18px; flex-wrap: wrap; gap: 12px; }
         .pagination-info { font-size: 12px; color: #64748b; }
         .pagination-links { display: flex; gap: 5px; }
         .page-link {
             padding: 6px 11px;
-            border: 1px solid #e2e8f0;
-            border-radius: 6px;
+            border-radius: 7px;
+            border: 1.5px solid #e2e8f0;
             text-decoration: none;
-            color: #475569;
+            color: #64748b;
             font-size: 12px;
+            font-weight: 600;
             transition: all 0.2s;
         }
-        .page-link:hover { background: #f1f5f9; color: #1e293b; }
-        .page-link.active { background: #0284c7; color: #fff; border-color: #0284c7; font-weight: 600; }
+        .page-link:hover { border-color: #0284c7; color: #0284c7; background: #f0f9ff; }
+        .page-link.active { background: #0284c7; color: #fff; border-color: #0284c7; }
 
-        /* -- Dark Theme Overrides -- */
-        .dark-theme .card { background: rgba(15,23,42,0.92); border-color: rgba(255,255,255,0.08); }
-        .dark-theme .dashboard-header h1 { color: #f8fafc; }
-        .dark-theme .dashboard-header p { color: #94a3b8; }
-        .dark-theme .btn-outline { border-color: #334155; color: #cbd5e1; }
-        .dark-theme .btn-outline:hover { background: #1e293b; color: #f8fafc; }
-        .dark-theme .section-divider h2 { color: #94a3b8; }
-        .dark-theme .section-divider .line { background: #334155; }
-        .dark-theme .filter-bar { background: #1e293b; border-color: #334155; }
-        .dark-theme .filter-group label { color: #94a3b8; }
-        .dark-theme .filter-control { background: #0f172a; border-color: #334155; color: #cbd5e1; }
-        .dark-theme .filter-control:focus { border-color: #0284c7; }
-        .dark-theme .kpi-card { background: #1e293b; border-color: #334155; }
-        .dark-theme .kpi-info h3 { color: #94a3b8; }
-        .dark-theme .kpi-info .value { color: #f8fafc; }
-        .dark-theme .panel { background: #1e293b; border-color: #334155; }
-        .dark-theme .panel-title { color: #f8fafc; }
-        .dark-theme .panel-title i { color: #94a3b8; }
-        .dark-theme .ai-panel { background: linear-gradient(135deg, #1e293b, #0f172a); border-color: #1e3a8a; }
-        .dark-theme .ai-digest-content { color: #cbd5e1; }
-        .dark-theme .ai-digest-content strong { color: #f8fafc; }
-        .dark-theme .ai-rec-item { background: #0f172a; }
-        .dark-theme .ai-rec-text h4 { color: #f8fafc; }
-        .dark-theme .ai-rec-text p { color: #94a3b8; }
-        .dark-theme .score-bg { stroke: #0f172a; }
-        .dark-theme .rec-card { background: #0f172a; border-color: #1e293b; }
-        .dark-theme .rec-card:hover { border-color: #334155; }
-        .dark-theme .rec-header h4 { color: #f8fafc; }
-        .dark-theme .rec-body { color: #cbd5e1; }
-        .dark-theme .rec-footer { border-top-color: #1e293b; }
-        .dark-theme .status-badge.Pending { background: #1e293b; color: #94a3b8; }
-        .dark-theme .table th { background: #0f172a; border-bottom-color: #334155; color: #94a3b8; }
-        .dark-theme .table td { border-bottom-color: #1e293b; color: #cbd5e1; }
-        .dark-theme .table tbody tr:hover td { background: #0f172a; }
-        .dark-theme .table-search input { background: #0f172a; border-color: #334155; color: #cbd5e1; }
-        .dark-theme .table-search input:focus { border-color: #0284c7; }
-        .dark-theme .page-link { border-color: #334155; color: #94a3b8; }
-        .dark-theme .page-link:hover { background: #1e293b; }
+        /* ── Empty State ── */
+        .empty-state {
+            text-align: center;
+            padding: 50px 30px;
+            color: #94a3b8;
+        }
+        .empty-state i { font-size: 42px; opacity: 0.4; display: block; margin-bottom: 14px; }
+        .empty-state p { font-size: 14px; }
+
+        /* ── Pulse animation for AI icon ── */
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
+
+        /* ── Dark theme overrides (inherited from sidebar) ── */
+        .dark-theme .card { background: rgba(15,23,42,0.95) !important; }
+        .dark-theme .box,
+        .dark-theme .table-section,
+        .dark-theme .advisory-card,
+        .dark-theme .top-item,
+        .dark-theme .filter-bar { background: #1e293b !important; border-color: #334155 !important; }
+        .dark-theme .box-title,
+        .dark-theme .dashboard-header h1 { color: #f8fafc !important; }
+        .dark-theme .box-header { border-bottom-color: #334155 !important; }
+        .dark-theme thead th { background: #0f172a !important; color: #94a3b8 !important; border-bottom-color: #334155 !important; }
+        .dark-theme tbody td { color: #cbd5e1 !important; border-bottom-color: #334155 !important; }
+        .dark-theme tbody tr:hover td { background: rgba(255,255,255,0.04) !important; }
+        .dark-theme .filter-bar select,
+        .dark-theme .filter-bar input,
+        .dark-theme .table-search-bar input { background: #0f172a !important; border-color: #475569 !important; color: #f8fafc !important; }
+        .dark-theme .section-divider h2 { color: #94a3b8 !important; }
+        .dark-theme .top-name { color: #f8fafc !important; }
+        .dark-theme .adv-title { color: #f8fafc !important; }
     </style>
 </head>
 <body>
 
-<!-- SIDEBAR -->
-<?php include_once 'includes/utilities_sidebar.php'; ?>
+<?php include 'includes/utilities_sidebar.php'; ?>
 
-<main class="main-content <?php echo (isset($_COOKIE['sidebar_collapsed']) && $_COOKIE['sidebar_collapsed'] === 'true') ? 'collapsed' : ''; ?>">
-    <div class="card">
+<main class="main-content" id="mainContent">
+<div class="card">
 
-        <!-- DASHBOARD HEADER -->
-        <header class="dashboard-header">
-            <div>
-                <h1><i class="fas fa-tint"></i> Water Management Dashboard</h1>
-                <p>Monitor water distribution parameters, costs, and optimization recommendations.</p>
-            </div>
-            <div class="header-actions">
-                <a href="water_records.php" class="btn btn-primary"><i class="fas fa-list"></i> Water Readings</a>
-                <a href="water_sync.php" class="btn btn-outline"><i class="fas fa-sync"></i> Sync Status</a>
-            </div>
-        </header>
-
-        <!-- FILTER BAR -->
-        <section class="filter-bar">
-            <form action="" method="GET" style="display:contents;">
-                <div class="filter-group">
-                    <label for="year">Year</label>
-                    <select name="year" id="year" class="filter-control">
-                        <?php foreach ($yearsAvail as $yr): ?>
-                            <option value="<?php echo $yr; ?>" <?php echo ($yr === $fYear) ? 'selected' : ''; ?>><?php echo $yr; ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label for="month">Month</label>
-                    <select name="month" id="month" class="filter-control">
-                        <option value="0" <?php echo ($fMonth === 0) ? 'selected' : ''; ?>>All Months</option>
-                        <?php 
-                        $months = ['','January','February','March','April','May','June','July','August','September','October','November','December'];
-                        for ($m=1; $m<=12; $m++):
-                        ?>
-                            <option value="<?php echo $m; ?>" <?php echo ($m === $fMonth) ? 'selected' : ''; ?>><?php echo $months[$m]; ?></option>
-                        <?php endfor; ?>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label for="asset_type">Asset Type</label>
-                    <select name="asset_type" id="asset_type" class="filter-control">
-                        <option value="" <?php echo ($fType === '') ? 'selected' : ''; ?>>All Types</option>
-                        <option value="Water Pipeline" <?php echo ($fType === 'Water Pipeline') ? 'selected' : ''; ?>>Water Pipeline</option>
-                        <option value="Public Utility Infrastructure" <?php echo ($fType === 'Public Utility Infrastructure') ? 'selected' : ''; ?>>Public Utility Infrastructure</option>
-                        <option value="Water Infrastructure" <?php echo ($fType === 'Water Infrastructure') ? 'selected' : ''; ?>>Water Infrastructure</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label for="location">Location</label>
-                    <select name="location" id="location" class="filter-control">
-                        <option value="" <?php echo ($fLocation === '') ? 'selected' : ''; ?>>All Locations</option>
-                        <?php foreach ($locationsAvail as $loc): ?>
-                            <option value="<?php echo htmlspecialchars($loc); ?>" <?php echo ($loc === $fLocation) ? 'selected' : ''; ?>><?php echo htmlspecialchars($loc); ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="filter-actions">
-                    <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-filter"></i> Filter</button>
-                    <a href="water_dashboard.php" class="btn btn-outline btn-sm"><i class="fas fa-undo"></i> Reset</a>
-                </div>
-            </form>
-        </section>
-
-        <!-- KPI SUMMARY CARDS -->
-        <section class="grid-3" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 30px;">
-            <div class="kpi-card">
-                <div class="kpi-info">
-                    <h3>Total Water Usage</h3>
-                    <div class="value"><?php echo number_format($totalConsumption, 2); ?> m�</div>
-                    <div class="subtext">All-time consumption</div>
-                </div>
-                <div class="kpi-icon blue"><i class="fas fa-tint"></i></div>
-            </div>
-
-            <div class="kpi-card">
-                <div class="kpi-info">
-                    <h3>Estimated Costs</h3>
-                    <div class="value">?<?php echo number_format($totalCost, 2); ?></div>
-                    <div class="subtext">Estimated monetary cost</div>
-                </div>
-                <div class="kpi-icon green"><i class="fas fa-wallet"></i></div>
-            </div>
-
-            <div class="kpi-card">
-                <div class="kpi-info">
-                    <h3>System Loss Risks</h3>
-                    <div class="value"><?php echo $pendingAdvisories; ?></div>
-                    <div class="subtext">Pending recommendations</div>
-                </div>
-                <div class="kpi-icon orange"><i class="fas fa-triangle-exclamation"></i></div>
-            </div>
-
-            <div class="kpi-card">
-                <div class="kpi-info">
-                    <h3>External Integration</h3>
-                    <div class="value"><?php echo $successfulSyncs; ?></div>
-                    <div class="subtext">Last Sync: <?php echo $lastSyncDate; ?></div>
-                </div>
-                <div class="kpi-icon purple"><i class="fas fa-sync-alt"></i></div>
-            </div>
-        </section>
-
-        <!-- CHARTS SECTION -->
-        <section class="grid-2-1">
-            <div class="panel">
-                <div class="panel-title"><i class="fas fa-chart-line"></i> Monthly Water Consumption Trend (<?php echo $fYear; ?>)</div>
-                <div class="panel-body">
-                    <canvas id="trendChart"></canvas>
-                </div>
-            </div>
-
-            <div class="panel">
-                <div class="panel-title"><i class="fas fa-gauge"></i> Distribution Efficiency Score</div>
-                <div class="panel-body">
-                    <div class="metric-ring-container">
-                        <svg class="score-svg" width="130" height="130">
-                            <circle class="score-bg" cx="65" cy="65" r="45"></circle>
-                            <circle class="score-fill" cx="65" cy="65" r="45"></circle>
-                        </svg>
-                        <div style="position: absolute; font-size: 26px; font-weight: 700; color: #1e293b; top: 120px; transform: translateY(-50%);" class="kpi-info">
-                            <span style="color: inherit; font-size: inherit; font-weight: inherit;" id="score-text"><?php echo $waterScore; ?>%</span>
-                        </div>
-                        <div class="efficiency-score-label">Efficiency Index</div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- ANALYTICS PANEL & CATEGORIES -->
-        <section class="grid-1-2">
-            <div class="panel ai-panel">
-                <div class="panel-title" style="color:#0284c7;"><i class="fas fa-brain"></i> Water intelligence Analysis</div>
-                <div class="panel-body">
-                    <div class="ai-digest-content">
-                        <?php echo $aiDigest; ?>
-                    </div>
-                </div>
-            </div>
-
-            <div class="panel">
-                <div class="panel-title"><i class="fas fa-building-columns"></i> Top Facility Water Consumption Rankings</div>
-                <div class="panel-body">
-                    <canvas id="facilityChart"></canvas>
-                </div>
-            </div>
-        </section>
-
-        <!-- RECOMMENDATIONS PANEL -->
-        <section class="panel" style="min-height:unset; margin-bottom:24px;">
-            <div class="panel-title"><i class="fas fa-lightbulb"></i> Efficiency recommendations & System Loss Interventions</div>
-            <div class="panel-body">
-                <?php if (empty($recentRecs)): ?>
-                    <p style="font-size:13px; color:#64748b;">No recommendations currently loaded.</p>
-                <?php else: ?>
-                    <div class="recs-grid">
-                        <?php foreach ($recentRecs as $rec): ?>
-                            <div class="rec-card">
-                                <div class="rec-header">
-                                    <h4><?php echo htmlspecialchars($rec['recommendation_title']); ?></h4>
-                                    <span class="priority-badge <?php echo $rec['priority_level']; ?>"><?php echo $rec['priority_level']; ?></span>
-                                </div>
-                                <div class="rec-body">
-                                    <p><?php echo htmlspecialchars($rec['description']); ?></p>
-                                </div>
-                                <div class="rec-footer">
-                                    <span class="rec-target"><i class="fas fa-location-dot"></i> <?php echo htmlspecialchars($rec['target_facility_asset']); ?></span>
-                                    <span class="status-badge <?php echo $rec['status']; ?>"><i class="fas fa-circle" style="font-size:6px; margin-right:4px;"></i> <?php echo $rec['status']; ?></span>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                <?php endif; ?>
-            </div>
-        </section>
-
-        <!-- CONSUMPTION RECORDS TABLE -->
-        <section class="panel table-panel">
-            <div class="table-header-row">
-                <div class="panel-title" style="margin-bottom:0;"><i class="fas fa-list"></i> Water Readings (Filtered)</div>
-                <div class="table-search">
-                    <form action="" method="GET">
-                        <input type="hidden" name="year" value="<?php echo $fYear; ?>">
-                        <input type="hidden" name="month" value="<?php echo $fMonth; ?>">
-                        <input type="hidden" name="asset_type" value="<?php echo $fType; ?>">
-                        <input type="hidden" name="location" value="<?php echo htmlspecialchars($fLocation); ?>">
-                        <i class="fas fa-search"></i>
-                        <input type="text" name="rec_search" placeholder="Search record ID or location..." value="<?php echo htmlspecialchars($recSearch); ?>">
-                    </form>
-                </div>
-            </div>
-
-            <div class="panel-body">
-                <div class="table-wrapper">
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Record ID</th>
-                                <th>Asset / Facility</th>
-                                <th>Location</th>
-                                <th>Month-Year</th>
-                                <th>Prev Reading</th>
-                                <th>Curr Reading</th>
-                                <th>Consumption (m�)</th>
-                                <th>Rate (?)</th>
-                                <th>Cost (?)</th>
-                                <th>Source</th>
-                                <th>Date Recorded</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if (empty($recordsList)): ?>
-                                <tr>
-                                    <td colspan="11" style="text-align:center; color:#64748b; padding:30px;">No water readings found matching filters.</td>
-                                </tr>
-                            <?php else: ?>
-                                <?php foreach ($recordsList as $row): ?>
-                                    <?php 
-                                    $displayName = $row['facility_name'] ?: ($row['asset_name'] ?: 'N/A');
-                                    $sourceClass = 'Manual';
-                                    if ($row['data_source'] === 'Imported') $sourceClass = 'Imported';
-                                    if ($row['data_source'] === 'CPRF Integration') $sourceClass = 'CPRF';
-                                    ?>
-                                    <tr>
-                                        <td><strong><?php echo htmlspecialchars($row['record_id']); ?></strong></td>
-                                        <td><?php echo htmlspecialchars($displayName); ?></td>
-                                        <td><?php echo htmlspecialchars($row['location']); ?></td>
-                                        <td><span class="code"><?php echo htmlspecialchars($row['month_year']); ?></span></td>
-                                        <td><?php echo number_format((float)$row['previous_reading'], 2); ?></td>
-                                        <td><?php echo number_format((float)$row['current_reading'], 2); ?></td>
-                                        <td><strong><?php echo number_format((float)$row['consumption_m3'], 2); ?></strong></td>
-                                        <td>?<?php echo number_format((float)$row['rate_per_m3'], 2); ?></td>
-                                        <td><strong>?<?php echo number_format((float)$row['cost'], 2); ?></strong></td>
-                                        <td><span class="source-badge <?php echo $sourceClass; ?>"><?php echo htmlspecialchars($row['data_source']); ?></span></td>
-                                        <td><span class="muted"><?php echo date('M d, Y', strtotime($row['date_recorded'])); ?></span></td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- PAGINATION -->
-                <?php if ($recTotalPages > 1): ?>
-                <div class="pagination-container">
-                    <div class="pagination-info">
-                        Showing <?php echo ($recOffset + 1); ?> � <?php echo min($recTotal, $recOffset + $recLimit); ?> of <?php echo $recTotal; ?> records
-                    </div>
-                    <div class="pagination-links">
-                        <?php
-                        $baseQ = http_build_query([
-                            'year'       => $fYear,
-                            'month'      => $fMonth,
-                            'asset_type' => $fType,
-                            'location'   => $fLocation,
-                            'rec_search' => $recSearch,
-                        ]);
-                        for ($pg = 1; $pg <= $recTotalPages; $pg++):
-                        ?>
-                        <a href="water_dashboard.php?<?php echo $baseQ; ?>&rec_page=<?php echo $pg; ?>"
-                           class="page-link <?php echo ($pg === $recPage) ? 'active' : ''; ?>">
-                            <?php echo $pg; ?>
-                        </a>
-                        <?php endfor; ?>
-                    </div>
-                </div>
-                <?php endif; ?>
-            </div>
-        </section>
-
+    <!-- ═══════════════════════════════════════════════════════
+         HEADER
+    ═══════════════════════════════════════════════════════ -->
+    <div class="dashboard-header">
+        <div>
+            <h1><i class="fas fa-tint"></i> Water Management Dashboard</h1>
+            <p>Monitor water distribution parameters, consumption, and efficiency metrics across LGU facilities and utility assets.</p>
+        </div>
+        <div class="header-actions">
+            <a href="water_records.php" class="btn btn-primary"><i class="fas fa-plus"></i> Water Readings</a>
+            <a href="water_sync.php"    class="btn btn-outline"><i class="fas fa-sync-alt"></i> Transmission Logs</a>
+            <a href="water_recommendations.php" class="btn btn-outline"><i class="fas fa-lightbulb"></i> Advisories</a>
+        </div>
     </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+         SUMMARY CARDS (all-time totals)
+    ═══════════════════════════════════════════════════════ -->
+    <div class="stats-grid">
+        <div class="stat-card blue">
+            <div class="stat-icon-wrap"><i class="fas fa-tint"></i></div>
+            <div class="stat-info">
+                <h3><?php echo number_format($totalConsumption, 2); ?> <span class="unit">m³</span></h3>
+                <p>Total Consumption</p>
+            </div>
+        </div>
+        <div class="stat-card green">
+            <div class="stat-icon-wrap"><i class="fas fa-coins"></i></div>
+            <div class="stat-info">
+                <h3>₱<?php echo number_format($totalCost, 2); ?></h3>
+                <p>Estimated Cost</p>
+            </div>
+        </div>
+        <div class="stat-card teal">
+            <div class="stat-icon-wrap"><i class="fas fa-building"></i></div>
+            <div class="stat-info">
+                <h3><?php echo number_format($facilityCount); ?></h3>
+                <p>Facilities / Assets Monitored</p>
+            </div>
+        </div>
+        <div class="stat-card amber">
+            <div class="stat-icon-wrap"><i class="fas fa-bell"></i></div>
+            <div class="stat-info">
+                <h3><?php echo number_format($pendingAdvisories); ?></h3>
+                <p>Pending Advisories</p>
+            </div>
+        </div>
+        <div class="stat-card purple">
+            <div class="stat-icon-wrap"><i class="fas fa-arrows-rotate"></i></div>
+            <div class="stat-info">
+                <h3><?php echo number_format($successfulSyncs); ?></h3>
+                <p>Data Syncs — Last: <?php echo $lastSyncDate; ?></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+         FILTER BAR
+    ═══════════════════════════════════════════════════════ -->
+    <form method="GET" id="filterForm">
+        <!-- preserve rec_search across filter submits -->
+        <?php if ($recSearch): ?>
+            <input type="hidden" name="rec_search" value="<?php echo htmlspecialchars($recSearch); ?>">
+        <?php endif; ?>
+        <div class="filter-bar">
+            <div class="fg">
+                <label>Year</label>
+                <select name="year" id="fYear" onchange="this.form.submit()">
+                    <?php foreach ($yearsAvail as $yr): ?>
+                        <option value="<?php echo $yr; ?>" <?php echo ($yr == $fYear) ? 'selected' : ''; ?>>
+                            <?php echo $yr; ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="fg">
+                <label>Month</label>
+                <select name="month" id="fMonth" onchange="this.form.submit()">
+                    <option value="0" <?php echo ($fMonth == 0) ? 'selected' : ''; ?>>All Months</option>
+                    <?php
+                    $mn = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+                    foreach ($mn as $mi => $mname):
+                    ?>
+                    <option value="<?php echo $mi+1; ?>" <?php echo ($fMonth == $mi+1) ? 'selected' : ''; ?>>
+                        <?php echo $mname; ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="fg">
+                <label>Type</label>
+                <select name="asset_type" id="fType" onchange="this.form.submit()">
+                    <option value="" <?php echo ($fType === '') ? 'selected' : ''; ?>>All Types</option>
+                    <option value="Water Infrastructure"<?php echo ($fType === 'Water Infrastructure') ? 'selected' : ''; ?>>Water Infrastructure</option>
+                    <option value="Public Facility"     <?php echo ($fType === 'Public Facility')     ? 'selected' : ''; ?>>Public Facility</option>
+                    <option value="Streetlight"         <?php echo ($fType === 'Streetlight')         ? 'selected' : ''; ?>>Streetlight</option>
+                </select>
+            </div>
+            <div class="fg">
+                <label>Location</label>
+                <select name="location" id="fLocation" onchange="this.form.submit()">
+                    <option value="" <?php echo ($fLocation === '') ? 'selected' : ''; ?>>All Locations</option>
+                    <?php foreach ($locationsAvail as $loc): ?>
+                        <option value="<?php echo htmlspecialchars($loc); ?>"
+                            <?php echo ($fLocation === $loc) ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars($loc); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-filter"></i> Apply</button>
+                <a href="water_dashboard.php" class="btn btn-outline btn-sm"><i class="fas fa-times"></i> Reset</a>
+            </div>
+        </div>
+        <!-- Showing filter context -->
+        <?php if ($fMonth > 0 || $fType !== '' || $fLocation !== ''): ?>
+        <div style="margin-bottom:16px; font-size:12px; color:#64748b; display:flex; align-items:center; gap:6px;">
+            <i class="fas fa-info-circle" style="color:#0284c7;"></i>
+            Showing data for:
+            <strong style="color:#1e293b;">
+                <?php
+                $parts = [];
+                if ($fMonth > 0) $parts[] = $mn[$fMonth-1] . ' ' . $fYear;
+                else $parts[] = 'Year ' . $fYear;
+                if ($fType)     $parts[] = $fType;
+                if ($fLocation) $parts[] = $fLocation;
+                echo htmlspecialchars(implode(' · ', $parts));
+                ?>
+            </strong>
+            &nbsp;·&nbsp; Filtered total: <strong style="color:#0284c7;"><?php echo number_format($filteredTotal, 2); ?> m³</strong>
+        </div>
+        <?php endif; ?>
+    </form>
+
+    <!-- ═══════════════════════════════════════════════════════
+         ROW 1: Monthly Trend + AI Digest
+    ═══════════════════════════════════════════════════════ -->
+    <div class="section-divider"><h2><i class="fas fa-chart-line" style="color:#0284c7;margin-right:6px;"></i> Consumption Overview</h2></div>
+    <div class="row-2col">
+
+        <!-- LEFT: Monthly Trend Chart -->
+        <div class="box">
+            <div class="box-header">
+                <div>
+                    <div class="box-title"><i class="fas fa-chart-area"></i> Total Monthly Water Consumption</div>
+                    <div class="box-subtitle">Aggregate m³ across all monitored facilities &amp; assets — <?php echo $fYear; ?></div>
+                </div>
+                <?php if ($latestTrendValue > 0): ?>
+                <div class="trend-chip">
+                    <i class="fas fa-tint"></i>
+                    <?php echo number_format($latestTrendValue, 2); ?> m³
+                    <span style="font-weight:500; color:#0284c7;"><?php echo $latestTrendMonth; ?></span>
+                </div>
+                <?php endif; ?>
+            </div>
+
+            <?php if (array_sum(array_filter($trendData, fn($v) => $v !== null)) == 0): ?>
+            <div class="empty-state">
+                <i class="fas fa-chart-area"></i>
+                <p>No water consumption records found for <?php echo $fYear; ?>.</p>
+                <a href="water_records.php" class="btn btn-primary btn-sm" style="margin-top:14px;"><i class="fas fa-plus"></i> Water Readings</a>
+            </div>
+            <?php else: ?>
+            <div class="chart-wrap" style="height:290px;">
+                <canvas id="trendChart"></canvas>
+            </div>
+            <?php endif; ?>
+        </div>
+
+        <!-- RIGHT: AI Digest -->
+        <div class="box ai-box">
+            <div class="box-header">
+                <div>
+                    <div class="box-title"><i class="fas fa-robot" style="animation:pulse 2s infinite;"></i> LGU AI Water Consumption Digest</div>
+                    <div class="box-subtitle" style="color:rgba(255,255,255,0.45);">Based on actual recorded data — descriptive summary only</div>
+                </div>
+            </div>
+            <div class="ai-content">
+                <?php echo $aiDigest; ?>
+            </div>
+            <div class="ai-disclaimer">
+                <i class="fas fa-info-circle"></i>
+                This AI digest describes recorded consumption data only. Water efficiency recommendations are received separately from the external Water Efficiency System.
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Recommendations Row -->
+    <div class="row-2col" style="margin-bottom:30px;">
+        <div class="box">
+            <div class="box-header">
+                <div>
+                    <div class="box-title"><i class="fas fa-chart-pie"></i> Distribution Efficiency Score</div>
+                    <div class="box-subtitle">Derived from pending advisories and system loss parameters</div>
+                </div>
+            </div>
+            <div style="display:flex; align-items:center; justify-content:center; flex-direction:column; padding:20px;">
+                <div class="donut-chart" style="width:140px; height:140px; border-radius:50%; background:conic-gradient(<?php echo $waterScore >= 80 ? '#27ae60' : ($waterScore >= 50 ? '#f1c40f' : '#e74c3c'); ?> <?php echo $waterScore * 3.6; ?>deg, var(--donut-unfilled) <?php echo $waterScore * 3.6; ?>deg); display:flex; align-items:center; justify-content:center; position:relative;">
+                    <div class="donut-inner" style="width:110px; height:110px; border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+                        <span class="donut-score" style="font-size:32px; font-weight:700; line-height:1;"><?php echo $waterScore; ?>%</span>
+                        <span class="donut-label" style="font-size:10px; text-transform:uppercase; font-weight:700; margin-top:2px;">Score</span>
+                    </div>
+                </div>
+                <div style="margin-top:20px; text-align:center;">
+                    <span style="font-size:12px; font-weight:600; padding:4px 12px; border-radius:99px; background:<?php echo $waterScore >= 80 ? '#dcfce7; color:#166534' : ($waterScore >= 50 ? '#fef9c3; color:#854d0e' : '#fee2e2; color:#991b1b'); ?>;">
+                        <?php echo $waterScore >= 80 ? 'Optimal Efficiency' : ($waterScore >= 50 ? 'Moderate Efficiency' : 'Needs Improvement'); ?>
+                    </span>
+                </div>
+            </div>
+        </div>
+        <div class="box">
+            <div class="box-header">
+                <div>
+                    <div class="box-title"><i class="fas fa-lightbulb" style="color:#f59e0b;"></i> AI Recommendations <span style="background:#0284c7;color:#fff;font-size:10px;padding:2px 8px;border-radius:99px;margin-left:8px;"><?php echo count($waterAiRecs); ?></span></div>
+                    <div class="box-subtitle">Prioritized actions to optimize water distribution</div>
+                </div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:10px; max-height:220px; overflow-y:auto;">
+                <?php foreach ($waterAiRecs as $rec): ?>
+                <div style="padding:12px 14px; border-radius:10px; background:#f8fafc; border-left:4px solid <?php echo $rec['color']; ?>;">
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                        <div style="width:28px;height:28px;border-radius:7px;background:<?php echo $rec['color']; ?>;display:flex;align-items:center;justify-content:center;color:white;font-size:12px;flex-shrink:0;">
+                            <i class="fas <?php echo $rec['icon']; ?>"></i>
+                        </div>
+                        <span style="font-weight:600;font-size:13px;color:#2c3e50;"><?php echo $rec['title']; ?></span>
+                        <span style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;text-transform:uppercase;margin-left:auto;background:<?php echo $rec['color']; ?>20;color:<?php echo $rec['color']; ?>;"><?php echo $rec['priority']; ?></span>
+                    </div>
+                    <div style="font-size:12px;color:#64748b;line-height:1.5;padding-left:36px;"><?php echo $rec['text']; ?></div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+         ROW 2: Facility Bar Chart + Top Consumers
+    ═══════════════════════════════════════════════════════ -->
+    <div class="section-divider"><h2><i class="fas fa-chart-bar" style="color:#0284c7;margin-right:6px;"></i> Facility &amp; Asset Breakdown</h2></div>
+    <div class="row-2col">
+
+        <!-- LEFT: Horizontal Bar Chart -->
+        <div class="box">
+            <div class="box-header">
+                <div>
+                    <div class="box-title"><i class="fas fa-bars"></i> Water Consumption by Facility / Asset</div>
+                    <div class="box-subtitle">Sorted highest to lowest — top 8 shown</div>
+                </div>
+                <?php if (count($facilityRows) > 8): ?>
+                <a href="water_records.php" class="btn btn-outline btn-sm"><i class="fas fa-list"></i> View All</a>
+                <?php endif; ?>
+            </div>
+
+            <?php if (empty($facilityRows)): ?>
+            <div class="empty-state">
+                <i class="fas fa-chart-bar"></i>
+                <p>No consumption records found for the selected filters.</p>
+            </div>
+            <?php else: ?>
+            <div class="chart-wrap" style="height:<?php echo max(200, count($chartFacilityRows) * 48 + 40); ?>px;">
+                <canvas id="facilityChart"></canvas>
+            </div>
+            <?php endif; ?>
+        </div>
+
+        <!-- RIGHT: Top Consumers -->
+        <div class="box">
+            <div class="box-header">
+                <div>
+                    <div class="box-title"><i class="fas fa-trophy"></i> Top Consumers</div>
+                    <div class="box-subtitle">Highest water consumers for selected period</div>
+                </div>
+            </div>
+
+            <?php if (empty($topConsumers)): ?>
+            <div class="empty-state">
+                <i class="fas fa-trophy"></i>
+                <p>No data available for the selected filters.</p>
+            </div>
+            <?php else: ?>
+            <div class="top-list">
+                <?php foreach ($topConsumers as $idx => $tc):
+                    $rank  = $idx + 1;
+                    $pct   = $filteredTotal > 0 ? round(($tc['m3'] / $filteredTotal) * 100, 1) : 0;
+                    $rankClass = match($rank) { 1 => 'r1', 2 => 'r2', 3 => 'r3', default => 'rn' };
+                ?>
+                <div class="top-item">
+                    <div class="top-rank <?php echo $rankClass; ?>"><?php echo $rank; ?></div>
+                    <div class="top-info">
+                        <div class="top-name" title="<?php echo htmlspecialchars($tc['label']); ?>">
+                            <?php echo htmlspecialchars($tc['label']); ?>
+                        </div>
+                        <div class="top-meta"><?php echo htmlspecialchars($tc['asset_type']); ?></div>
+                        <div class="top-pct-bar">
+                            <div class="top-pct-fill" style="width:<?php echo $pct; ?>%"></div>
+                        </div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div class="top-kwh"><?php echo number_format($tc['m3'], 2); ?> <small style="font-size:10px;color:#94a3b8;">m³</small></div>
+                        <div style="font-size:11px; color:#64748b; margin-top:3px;"><?php echo $pct; ?>% of total</div>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+         ROW 3: Received Water Efficiency Advisories
+    ═══════════════════════════════════════════════════════ -->
+    <div class="section-divider"><h2><i class="fas fa-lightbulb" style="color:#f59e0b;margin-right:6px;"></i> Received Water Efficiency Advisories</h2></div>
+    <div class="box" style="margin-bottom:24px;">
+        <div class="box-header">
+            <div>
+                <div class="box-title"><i class="fas fa-bell"></i> Received Water Efficiency Advisories</div>
+                <div class="box-subtitle">Recommendations received from the external Water Efficiency System — this module only displays and tracks them</div>
+            </div>
+            <a href="water_recommendations.php" class="btn btn-outline btn-sm"><i class="fas fa-external-link-alt"></i> Manage All</a>
+        </div>
+
+        <?php if (empty($recentRecs)): ?>
+        <div class="empty-state">
+            <i class="fas fa-check-circle" style="color:#22c55e; opacity:0.6;"></i>
+            <p>No water efficiency advisories have been received yet.</p>
+        </div>
+        <?php else: ?>
+        <div class="advisory-grid">
+            <?php foreach ($recentRecs as $rec):
+                $priorityRaw = $rec['priority_level'] ?? 'Medium';
+                $priority    = strtolower($priorityRaw);
+                $statusRaw   = $rec['status'] ?? 'Pending';
+                $statusClass = strtolower(str_replace(' ', '-', $statusRaw));
+            ?>
+            <div class="advisory-card <?php echo $priority; ?>">
+                <div class="adv-header">
+                    <div class="adv-title"><?php echo htmlspecialchars($rec['recommendation_title']); ?></div>
+                    <div class="adv-badges">
+                        <span class="badge badge-<?php echo $statusClass; ?>"><?php echo htmlspecialchars($statusRaw); ?></span>
+                        <span class="badge badge-<?php echo $priority; ?>"><?php echo htmlspecialchars($priorityRaw); ?></span>
+                    </div>
+                </div>
+                <div class="adv-desc"><?php echo htmlspecialchars($rec['description'] ?? ''); ?></div>
+                <div class="adv-meta">
+                    <?php if (!empty($rec['target_facility_asset'])): ?>
+                    <span><i class="fas fa-building"></i> <?php echo htmlspecialchars($rec['target_facility_asset']); ?></span>
+                    <?php endif; ?>
+                    <?php if (!empty($rec['date_received'])): ?>
+                    <span><i class="fas fa-calendar-alt"></i> <?php echo date('M d, Y', strtotime($rec['date_received'])); ?></span>
+                    <?php endif; ?>
+                    <span><i class="fas fa-info-circle"></i> Source: External Water Efficiency System</span>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+         ROW 4: Detailed Water Consumption Records Table
+    ═══════════════════════════════════════════════════════ -->
+    <div class="section-divider"><h2><i class="fas fa-table" style="color:#0284c7;margin-right:6px;"></i> Water Consumption Records</h2></div>
+    <div class="table-section">
+        <div class="box-header" style="border-bottom:2px solid #f1f5f9; margin-bottom:18px; padding-bottom:14px;">
+            <div>
+                <div class="box-title"><i class="fas fa-list-alt"></i> Water Consumption Records</div>
+                <div class="box-subtitle">Filtered by selected year/month/type/location — <?php echo $recTotal; ?> record<?php echo $recTotal !== 1 ? 's' : ''; ?> found</div>
+            </div>
+            <a href="water_records.php" class="btn btn-primary btn-sm"><i class="fas fa-external-link-alt"></i> Full Records Page</a>
+        </div>
+
+        <!-- Table search -->
+        <form method="GET" class="table-search-bar">
+            <input type="hidden" name="year"       value="<?php echo $fYear; ?>">
+            <input type="hidden" name="month"      value="<?php echo $fMonth; ?>">
+            <input type="hidden" name="asset_type" value="<?php echo htmlspecialchars($fType); ?>">
+            <input type="hidden" name="location"   value="<?php echo htmlspecialchars($fLocation); ?>">
+            <input type="text" name="rec_search" placeholder="Search by record ID, facility, or location…"
+                   value="<?php echo htmlspecialchars($recSearch); ?>">
+            <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-search"></i> Search</button>
+            <?php if ($recSearch): ?>
+            <a href="water_dashboard.php?year=<?php echo $fYear; ?>&month=<?php echo $fMonth; ?>&asset_type=<?php echo urlencode($fType); ?>&location=<?php echo urlencode($fLocation); ?>"
+               class="btn btn-outline btn-sm"><i class="fas fa-times"></i> Clear</a>
+            <?php endif; ?>
+        </form>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Record ID</th>
+                        <th>Facility / Asset</th>
+                        <th>Type</th>
+                        <th>Location</th>
+                        <th>Period</th>
+                        <th>Prev Reading</th>
+                        <th>Curr Reading</th>
+                        <th>Consumption (m³)</th>
+                        <th>Rate (₱)</th>
+                        <th>Estimated Cost</th>
+                        <th>Date Recorded</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (empty($recordsList)): ?>
+                    <tr>
+                        <td colspan="12">
+                            <div class="empty-state">
+                                <i class="fas fa-search"></i>
+                                <p>No consumption records found for the selected filters.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    <?php else: ?>
+                    <?php foreach ($recordsList as $rec):
+                        $facName = '';
+                        if (!empty($rec['facility_name'])) {
+                            $facName = $rec['facility_name'];
+                        } elseif (!empty($rec['asset_name'])) {
+                            $facName = $rec['asset_name'] . (!empty($rec['asset_code']) ? ' (' . $rec['asset_code'] . ')' : '');
+                        } else {
+                            $facName = '<em style="color:#94a3b8;">Unlinked Asset</em>';
+                        }
+                        $src = $rec['data_source'] ?? 'Manual Input';
+                        $srcClass = 'manual';
+                        if ($src === 'Imported') $srcClass = 'imported';
+                        elseif ($src === 'CPRF Integration') $srcClass = 'cprf';
+                    ?>
+                    <tr>
+                        <td class="td-id"><?php echo htmlspecialchars($rec['record_id']); ?></td>
+                        <td><?php echo $facName; ?></td>
+                        <td><?php echo htmlspecialchars($rec['asset_type']); ?></td>
+                        <td style="max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="<?php echo htmlspecialchars($rec['location']); ?>">
+                            <?php echo htmlspecialchars($rec['location']); ?>
+                        </td>
+                        <td><?php echo htmlspecialchars($rec['month_year']); ?></td>
+                        <td><?php echo number_format((float)$rec['previous_reading'], 2); ?></td>
+                        <td><?php echo number_format((float)$rec['current_reading'], 2); ?></td>
+                        <td class="td-kwh"><?php echo number_format((float)$rec['consumption_m3'], 2); ?> m³</td>
+                        <td>₱<?php echo number_format((float)($rec['rate_per_m3'] ?? 68.02), 2); ?></td>
+                        <td class="td-cost"><?php echo $rec['cost'] ? '₱' . number_format((float)$rec['cost'], 2) : '<span style="color:#94a3b8;">—</span>'; ?></td>
+                        <td><?php echo !empty($rec['date_recorded']) ? date('M d, Y', strtotime($rec['date_recorded'])) : '—'; ?></td>
+                        <td><span class="badge badge-<?php echo $srcClass; ?>"><?php echo htmlspecialchars($src); ?></span></td>
+                    </tr>
+                    <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <?php if ($recTotalPages > 1): ?>
+        <div class="pagination-wrap">
+            <div class="pagination-info">
+                Showing <?php echo ($recOffset + 1); ?> – <?php echo min($recTotal, $recOffset + $recLimit); ?> of <?php echo $recTotal; ?> records
+            </div>
+            <div class="pagination-links">
+                <?php
+                $baseQ = http_build_query([
+                    'year'       => $fYear,
+                    'month'      => $fMonth,
+                    'asset_type' => $fType,
+                    'location'   => $fLocation,
+                    'rec_search' => $recSearch,
+                ]);
+                for ($pg = 1; $pg <= $recTotalPages; $pg++):
+                ?>
+                <a href="water_dashboard.php?<?php echo $baseQ; ?>&rec_page=<?php echo $pg; ?>"
+                   class="page-link <?php echo ($pg === $recPage) ? 'active' : ''; ?>">
+                    <?php echo $pg; ?>
+                </a>
+                <?php endfor; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+    </div>
+
+</div><!-- /.card -->
 </main>
 
-<!-- CHART.JS SCRIPTS -->
+<!-- ═══════════════════════════════════════════════════════
+     CHART.JS SCRIPTS
+═══════════════════════════════════════════════════════ -->
 <script>
-/* --- Monthly Trend Chart --- */
+/* ─── Monthly Trend Chart ─── */
 (function() {
     const canvas = document.getElementById('trendChart');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
+    // Gradient fill
     const grad = ctx.createLinearGradient(0, 0, 0, 300);
-    grad.addColorStop(0, 'rgba(2,132,199,0.28)');
-    grad.addColorStop(1, 'rgba(2,132,199,0.01)');
+    grad.addColorStop(0, 'rgba(2, 132, 199, 0.28)');
+    grad.addColorStop(1, 'rgba(2, 132, 199, 0.01)');
 
     new Chart(ctx, {
         type: 'line',
         data: {
             labels: <?php echo $trendLabelsJson; ?>,
             datasets: [{
-                label: 'Total Water (m�)',
+                label: 'Total Water (m³)',
                 data: <?php echo $trendDataJson; ?>,
                 borderColor: '#0284c7',
                 backgroundColor: grad,
@@ -971,7 +1325,7 @@ $locationsAvail = $pdo->query("
                     padding: 12,
                     callbacks: {
                         title: (items) => items[0].label + ' <?php echo $fYear; ?>',
-                        label: (item) => ' ' + Number(item.raw).toLocaleString('en-PH', {minimumFractionDigits:2}) + ' m�'
+                        label: (item) => ' ' + Number(item.raw).toLocaleString('en-PH', {minimumFractionDigits:2}) + ' m³'
                     }
                 }
             },
@@ -982,7 +1336,7 @@ $locationsAvail = $pdo->query("
                     ticks: {
                         font: { family: 'Poppins', size: 11 },
                         color: '#64748b',
-                        callback: (v) => Number(v).toLocaleString() + ' m�'
+                        callback: (v) => Number(v).toLocaleString() + ' m³'
                     }
                 },
                 x: {
@@ -994,7 +1348,7 @@ $locationsAvail = $pdo->query("
     });
 })();
 
-/* --- Facility Horizontal Bar Chart --- */
+/* ─── Facility Horizontal Bar Chart ─── */
 (function() {
     const canvas = document.getElementById('facilityChart');
     if (!canvas) return;
@@ -1003,9 +1357,10 @@ $locationsAvail = $pdo->query("
     const labels = <?php echo $facLabelsJson; ?>;
     const data   = <?php echo $facDataJson; ?>;
 
+    // Colour gradient per bar based on rank
     const colours = labels.map((_, i) => {
         const alpha = 1 - (i * 0.08);
-        return `rgba(2,132,199,${Math.max(0.35, alpha)})`;
+        return `rgba(2, 132, 199, ${Math.max(0.35, alpha)})`;
     });
 
     new Chart(ctx, {
@@ -1013,7 +1368,7 @@ $locationsAvail = $pdo->query("
         data: {
             labels: labels,
             datasets: [{
-                label: 'Water Consumption (m�)',
+                label: 'Water Consumption (m³)',
                 data: data,
                 backgroundColor: colours,
                 borderRadius: 6,
@@ -1021,7 +1376,7 @@ $locationsAvail = $pdo->query("
             }]
         },
         options: {
-            indexAxis: 'y',
+            indexAxis: 'y',            // Horizontal bar
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
@@ -1032,7 +1387,7 @@ $locationsAvail = $pdo->query("
                     bodyColor: '#94a3b8',
                     padding: 12,
                     callbacks: {
-                        label: (item) => ' ' + Number(item.raw).toLocaleString('en-PH', {minimumFractionDigits:2}) + ' m�'
+                        label: (item) => ' ' + Number(item.raw).toLocaleString('en-PH', {minimumFractionDigits:2}) + ' m³'
                     }
                 }
             },
@@ -1043,7 +1398,7 @@ $locationsAvail = $pdo->query("
                     ticks: {
                         font: { family: 'Poppins', size: 11 },
                         color: '#64748b',
-                        callback: (v) => Number(v).toLocaleString() + ' m�'
+                        callback: (v) => Number(v).toLocaleString() + ' m³'
                     }
                 },
                 y: {
@@ -1053,7 +1408,7 @@ $locationsAvail = $pdo->query("
                         color: '#334155',
                         callback: function(val) {
                             const lbl = this.getLabelForValue(val);
-                            return lbl.length > 30 ? lbl.substring(0, 28) + '�' : lbl;
+                            return lbl.length > 30 ? lbl.substring(0, 28) + '…' : lbl;
                         }
                     }
                 }
