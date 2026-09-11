@@ -999,7 +999,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         })();
     </script>
     <!-- GLOBAL SPINNER -->
-    <div id="global-spinner" class="global-spinner-overlay">
+    <div id="global-spinner" class="global-spinner-overlay hidden">
         <div class="spinner"></div>
     </div>
     <style>
@@ -1021,8 +1021,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         background: rgba(15, 23, 42, 0.8);
     }
     .global-spinner-overlay.hidden {
-        opacity: 0;
-        visibility: hidden;
+        opacity: 0 !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+        display: none !important;
     }
     .global-spinner-overlay .spinner {
         width: 48px;
@@ -1041,16 +1043,29 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
     </style>
     <script>
-    window.addEventListener('load', function() {
-        const spinner = document.getElementById('global-spinner');
-        if (spinner) {
-            setTimeout(() => spinner.classList.add('hidden'), 100);
+    (function() {
+        function hideGlobalSpinner() {
+            const spinner = document.getElementById('global-spinner');
+            if (spinner) {
+                spinner.classList.add('hidden');
+            }
         }
-    });
-    window.addEventListener('beforeunload', function() {
-        const spinner = document.getElementById('global-spinner');
-        if (spinner) spinner.classList.remove('hidden');
-    });
+        window.addEventListener('pageshow', function(event) {
+            hideGlobalSpinner();
+        });
+        window.addEventListener('load', hideGlobalSpinner);
+        document.addEventListener('DOMContentLoaded', hideGlobalSpinner);
+        if (document.readyState !== 'loading') {
+            hideGlobalSpinner();
+        }
+        window.addEventListener('beforeunload', function() {
+            const spinner = document.getElementById('global-spinner');
+            if (spinner) {
+                spinner.classList.remove('hidden');
+                setTimeout(hideGlobalSpinner, 2500);
+            }
+        });
+    })();
     </script>
 </body>
 </html>
