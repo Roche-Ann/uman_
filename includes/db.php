@@ -248,24 +248,4 @@ function ensureWaterSchema(): void {
     }
     $done = true;
 }
-
-// Auto-ensure Maintenance Schema is initialized
-function ensureMaintenanceSchema(): void {
-    global $pdo;
-    static $done = false;
-    if ($done || !($pdo instanceof PDO)) {
-        return;
-    }
-    
-    try {
-        $pdo->query("SELECT 1 FROM maintenance_requests LIMIT 1");
-    } catch (Throwable $e) {
-        $sqlPath = dirname(__DIR__) . '/sql/utility_maintenance.sql';
-        if (file_exists($sqlPath)) {
-            $sql = file_get_contents($sqlPath);
-            $pdo->exec($sql);
-        }
-    }
-    $done = true;
-}
 ?>
