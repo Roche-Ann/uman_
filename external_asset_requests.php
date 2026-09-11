@@ -133,34 +133,6 @@ function createMaintenanceTicketForReturnedAsset(PDO $pdo, int $assetDbId, strin
         return null;
     }
     try {
-        // Ensure table exists
-        $pdo->exec("
-            CREATE TABLE IF NOT EXISTS `maintenance_requests` (
-              `id` int(11) NOT NULL AUTO_INCREMENT,
-              `request_id` varchar(50) NOT NULL,
-              `utility_asset_id` int(11) DEFAULT NULL,
-              `title` varchar(255) NOT NULL,
-              `maintenance_type` varchar(50) NOT NULL DEFAULT 'Corrective',
-              `source` varchar(100) NOT NULL DEFAULT 'Asset Monitoring',
-              `description` text DEFAULT NULL,
-              `priority` varchar(50) NOT NULL DEFAULT 'Medium',
-              `assigned_to` varchar(150) DEFAULT NULL,
-              `location` varchar(255) DEFAULT NULL,
-              `status` varchar(100) NOT NULL DEFAULT 'Reported',
-              `progress_percent` int(11) NOT NULL DEFAULT 0,
-              `scheduled_date` date DEFAULT NULL,
-              `started_at` datetime DEFAULT NULL,
-              `completed_at` datetime DEFAULT NULL,
-              `notes` text DEFAULT NULL,
-              `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-              `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-              PRIMARY KEY (`id`),
-              UNIQUE KEY `idx_request_id` (`request_id`),
-              KEY `idx_asset_id` (`utility_asset_id`),
-              KEY `idx_status` (`status`)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-        ");
-
         // Check if an active ticket already exists for this asset
         $chk = $pdo->prepare("
             SELECT id, request_id 
@@ -645,7 +617,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $webhookFails > 0 ? " {$webhookFails} CPRF webhook(s) not delivered yet — auto-sync will pick them up." : ''
                     );
                 } catch (Throwable $e) {
-                    $pdo->rollBack();
+                    if ($pdo->inTransaction()) {
+                        $pdo->rollBack();
+                    }
                     $errors[] = 'Assign failed: ' . htmlspecialchars($e->getMessage());
                 }
             }
@@ -780,21 +754,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $targetAssetId = $assetId;
                     }
 
-                    // Directly create Maintenance Work Order if marked Damaged or Under Maintenance
-                    $createdMntRef = null;
-                    if (in_array($finalCondition, ['Damaged', 'Under Maintenance'], true)) {
-                        $createdMntRef = createMaintenanceTicketForReturnedAsset(
-                            $pdo,
-                            $targetAssetId,
-                            (string)($meta['asset_code'] ?? ($retAsset['asset_id'] ?? '')),
-                            (string)($meta['name'] ?? 'Equipment'),
-                            $finalCondition,
-                            $facilityName,
-                            $reason,
-                            (int)($_SESSION['user_id'] ?? 1)
-                        );
-                    }
-
                     $wh = uman_post_to_cprf('utilities/equipment/unassigned', [
                         'facility_id'   => $facilityId,
                         'uman_asset_id' => $assetId,
@@ -869,6 +828,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                     }
                     $pdo->commit();
+
+                    // Directly create Maintenance Work Order if marked Damaged or Under Maintenance
+                    $createdMntRef = null;
+                    if (in_array($finalCondition, ['Damaged', 'Under Maintenance'], true)) {
+                        $createdMntRef = createMaintenanceTicketForReturnedAsset(
+                            $pdo,
+                            $targetAssetId,
+                            (string)($meta['asset_code'] ?? ($retAsset['asset_id'] ?? '')),
+                            (string)($meta['name'] ?? 'Equipment'),
+                            $finalCondition,
+                            $facilityName,
+                            $reason,
+                            (int)($_SESSION['user_id'] ?? 1)
+                        );
+                    }
+
                     $whMsg = empty($wh['ok'])
                         ? ' CPRF webhook not delivered for the returned asset — auto-sync will catch it on next load.'
                         : '';
@@ -884,7 +859,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $whMsg
                     );
                 } catch (Throwable $e) {
-                    $pdo->rollBack();
+                    if ($pdo->inTransaction()) {
+                        $pdo->rollBack();
+                    }
                     $errors[] = 'Accept return failed: ' . htmlspecialchars($e->getMessage());
                 }
             }
@@ -902,7 +879,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $pdo->commit();
                     $successes[] = 'Citizen asset returned to inventory successfully.';
                 } catch (Throwable $e) {
-                    $pdo->rollBack();
+                    if ($pdo->inTransaction()) {
+                        $pdo->rollBack();
+                    }
                     $errors[] = 'Return failed: ' . htmlspecialchars($e->getMessage());
                 }
             }
