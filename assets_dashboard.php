@@ -18,16 +18,59 @@ $needsInspection = $pdo->query("SELECT COUNT(*) FROM utility_assets WHERE condit
 $damagedAssets = $pdo->query("SELECT COUNT(*) FROM utility_assets WHERE condition_status = 'Damaged'")->fetchColumn();
 $underMaintenance = $pdo->query("SELECT COUNT(*) FROM utility_assets WHERE condition_status = 'Under Maintenance'")->fetchColumn();
 
-// 2. Data for Category Chart
+// 2. Data for Category Chart (Sorted descending by count, with distinct modern colors)
 $categoryData = $pdo->query("
     SELECT t.name, COUNT(a.id) as count 
     FROM asset_types t 
-    LEFT JOIN utility_assets a ON t.id = a.asset_type_id 
-    GROUP BY t.id
-")->fetchAll();
+    JOIN utility_assets a ON t.id = a.asset_type_id 
+    GROUP BY t.id, t.name
+    HAVING count > 0
+    ORDER BY count DESC
+")->fetchAll(PDO::FETCH_ASSOC);
+
+if (empty($categoryData)) {
+    $categoryData = $pdo->query("
+        SELECT t.name, COUNT(a.id) as count 
+        FROM asset_types t 
+        LEFT JOIN utility_assets a ON t.id = a.asset_type_id 
+        GROUP BY t.id, t.name
+        ORDER BY count DESC, t.name ASC
+    ")->fetchAll(PDO::FETCH_ASSOC);
+}
+
+$totalCategoryAssets = array_sum(array_column($categoryData, 'count'));
+
+// Curated 16-color distinct palette (eliminates color repetitions)
+$palette = [
+    '#2563eb', // Vivid Blue
+    '#10b981', // Emerald Green
+    '#f59e0b', // Amber Orange
+    '#8b5cf6', // Violet Purple
+    '#06b6d4', // Cyan
+    '#ec4899', // Pink
+    '#f97316', // Orange
+    '#14b8a6', // Teal
+    '#6366f1', // Indigo
+    '#84cc16', // Lime Green
+    '#a855f7', // Purple
+    '#0ea5e9', // Sky Blue
+    '#d946ef', // Fuchsia
+    '#e11d48', // Rose
+    '#64748b', // Slate Gray
+    '#eab308'  // Yellow
+];
+
+$categoryColors = [];
+foreach ($categoryData as $idx => &$cat) {
+    $cat['color'] = $palette[$idx % count($palette)];
+    $cat['percent'] = $totalCategoryAssets > 0 ? round(($cat['count'] / $totalCategoryAssets) * 100, 1) : 0;
+    $categoryColors[] = $cat['color'];
+}
+unset($cat);
 
 $categoriesJson = json_encode(array_column($categoryData, 'name'));
 $categoryCountsJson = json_encode(array_column($categoryData, 'count'));
+$categoryColorsJson = json_encode($categoryColors);
 
 // 3. Recently Added Assets
 $recentAssets = $pdo->query("
@@ -533,6 +576,159 @@ if ($damagedNoMaint > 0) {
             color: #94a3b8;
             margin-top: 5px;
         }
+
+        /* Category Breakdown 2-Column Component */
+        .category-breakdown-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            min-height: 290px;
+            width: 100%;
+        }
+
+        @media (max-width: 768px) {
+            .category-breakdown-wrapper {
+                flex-direction: column;
+            }
+        }
+
+        .category-doughnut-side {
+            position: relative;
+            width: 220px;
+            height: 220px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto;
+        }
+
+        .category-center-label {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            pointer-events: none;
+        }
+
+        .category-center-num {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1;
+        }
+
+        .category-center-text {
+            font-size: 11px;
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 4px;
+        }
+
+        .category-ranked-list {
+            flex: 1;
+            min-width: 240px;
+            max-height: 280px;
+            overflow-y: auto;
+            padding-right: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .category-ranked-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.025);
+            border: 1px solid rgba(0, 0, 0, 0.04);
+            transition: all 0.2s ease;
+        }
+
+        .category-ranked-item:hover {
+            background: rgba(0, 0, 0, 0.05);
+            transform: translateX(2px);
+        }
+
+        .cat-info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12.5px;
+        }
+
+        .cat-name-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+        }
+
+        .cat-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .cat-label-text {
+            font-weight: 600;
+            color: #2c3e50;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .cat-val-group {
+            font-weight: 700;
+            color: #1e293b;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .cat-pct-label {
+            font-size: 11px;
+            font-weight: 500;
+            color: #64748b;
+            min-width: 40px;
+            text-align: right;
+        }
+
+        .cat-bar-bg {
+            width: 100%;
+            height: 5px;
+            background: #e2e8f0;
+            border-radius: 99px;
+            overflow: hidden;
+        }
+
+        .cat-bar-fill {
+            height: 100%;
+            border-radius: 99px;
+            transition: width 0.4s ease;
+        }
+
+        /* Dark Theme Support */
+        .dark-theme .category-center-num { color: #f8fafc !important; }
+        .dark-theme .category-center-text { color: #94a3b8 !important; }
+        .dark-theme .category-ranked-item {
+            background: rgba(255, 255, 255, 0.03) !important;
+            border-color: rgba(255, 255, 255, 0.06) !important;
+        }
+        .dark-theme .category-ranked-item:hover {
+            background: rgba(255, 255, 255, 0.07) !important;
+        }
+        .dark-theme .cat-label-text { color: #f1f5f9 !important; }
+        .dark-theme .cat-val-group { color: #f8fafc !important; }
+        .dark-theme .cat-pct-label { color: #94a3b8 !important; }
+        .dark-theme .cat-bar-bg { background: #334155 !important; }
     </style>
 </head>
 <body>
@@ -616,9 +812,45 @@ if ($damagedNoMaint > 0) {
         <div class="dashboard-layout">
             <!-- Left Chart Box (Categories Distribution) -->
             <div class="chart-box">
-                <h3><i class="fas fa-chart-pie"></i> Assets by Category</h3>
-                <div class="chart-container">
-                    <canvas id="categoryChart"></canvas>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 2px solid #f1f2f6; padding-bottom: 10px;">
+                    <h3 style="margin: 0; padding: 0; border: none;"><i class="fas fa-chart-pie" style="color: #3762c8;"></i> Assets by Category</h3>
+                    <span style="font-size: 11.5px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Ranked by Volume</span>
+                </div>
+                
+                <div class="category-breakdown-wrapper">
+                    <!-- Left: Doughnut Chart with Center Total -->
+                    <div class="category-doughnut-side">
+                        <canvas id="categoryChart"></canvas>
+                        <div class="category-center-label">
+                            <div class="category-center-num"><?php echo number_format($totalCategoryAssets); ?></div>
+                            <div class="category-center-text">Total Assets</div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Ranked Breakdown List -->
+                    <div class="category-ranked-list">
+                        <?php if (empty($categoryData)): ?>
+                            <div style="color: #94a3b8; font-size: 13px; text-align: center; padding: 40px 0;">No asset categories found.</div>
+                        <?php else: ?>
+                            <?php foreach ($categoryData as $cat): ?>
+                                <div class="category-ranked-item">
+                                    <div class="cat-info-row">
+                                        <div class="cat-name-badge">
+                                            <span class="cat-dot" style="background: <?php echo $cat['color']; ?>;"></span>
+                                            <span class="cat-label-text" title="<?php echo htmlspecialchars($cat['name']); ?>"><?php echo htmlspecialchars($cat['name']); ?></span>
+                                        </div>
+                                        <div class="cat-val-group">
+                                            <span><?php echo number_format($cat['count']); ?></span>
+                                            <span class="cat-pct-label"><?php echo $cat['percent']; ?>%</span>
+                                        </div>
+                                    </div>
+                                    <div class="cat-bar-bg">
+                                        <div class="cat-bar-fill" style="width: <?php echo $cat['percent']; ?>%; background: <?php echo $cat['color']; ?>;"></div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </div>
                 </div>
             </div>
             
@@ -757,34 +989,38 @@ if ($damagedNoMaint > 0) {
 </main>
 
 <script>
-    // Category Doughnut Chart
+    // Category Doughnut Chart (Clean, distinct colors, cutout for center total)
     const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+    const isDarkCategory = document.documentElement.classList.contains('dark-theme');
     new Chart(categoryCtx, {
         type: 'doughnut',
         data: {
             labels: <?php echo $categoriesJson; ?>,
             datasets: [{
                 data: <?php echo $categoryCountsJson; ?>,
-                backgroundColor: [
-                    '#4b7bec', // Streetlight
-                    '#26de81', // Drainage
-                    '#fa8231', // Water
-                    '#a55eea', // Electrical Pole
-                    '#45aaf2'  // Public Infra
-                ],
-                borderWidth: 1,
-                borderColor: '#ffffff'
+                backgroundColor: <?php echo $categoryColorsJson; ?>,
+                borderWidth: 2,
+                borderColor: isDarkCategory ? '#1e293b' : '#ffffff',
+                hoverOffset: 6
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            cutout: '72%',
             plugins: {
                 legend: {
-                    position: 'bottom',
-                    labels: {
-                        boxWidth: 12,
-                        font: { size: 11, family: 'Poppins' }
+                    display: false // Clean look: categories are ranked in the breakdown side list
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const val = context.raw || 0;
+                            const total = <?php echo (int)$totalCategoryAssets; ?>;
+                            const pct = total > 0 ? ((val / total) * 100).toFixed(1) : 0;
+                            return ` ${label}: ${val} (${pct}%)`;
+                        }
                     }
                 }
             }
