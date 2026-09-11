@@ -65,6 +65,21 @@ if (!function_exists('renderDayNightToggle')) {
     }
 }
 
+// Helper function for relative time formatting
+if (!function_exists('topbarRelativeTime')) {
+    function topbarRelativeTime($datetime) {
+        if (empty($datetime)) return 'Recently';
+        $timestamp = strtotime($datetime);
+        if (!$timestamp) return 'Recently';
+        $diff = time() - $timestamp;
+        if ($diff < 60) return 'Just now';
+        if ($diff < 3600) return floor($diff / 60) . 'm ago';
+        if ($diff < 86400) return floor($diff / 3600) . 'h ago';
+        if ($diff < 604800) return floor($diff / 86400) . 'd ago';
+        return date('M j', $timestamp);
+    }
+}
+
 // Fetch badge counts for citizen navigation
 $unreadNotifCount = 0;
 if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
@@ -80,6 +95,168 @@ $activeMaintenanceCount = 0;
 if (isset($pdo)) {
     try {
         $activeMaintenanceCount = (int)$pdo->query("SELECT COUNT(*) FROM maintenance_requests WHERE status NOT IN ('Completed', 'Unrepairable', 'Cancelled')")->fetchColumn();
+    } catch (Throwable $e) {}
+}
+
+// Fetch operational notifications and badge counts for topbar
+$topbarNotifications = [];
+$topbarUnreadCount = 0;
+$topbarUrgentCount = 0;
+
+if (isset($pdo)) {
+    try {
+        if ($userType === 'employee') {
+            // 1. Asset notifications
+            try {
+                $rawAssetNotifs = $pdo->query("
+                    SELECT id, type, message, read_status, created_at 
+                    FROM asset_notifications 
+                    ORDER BY created_at DESC LIMIT 15
+                ")->fetchAll(PDO::FETCH_ASSOC) ?: [];
+                
+                foreach ($rawAssetNotifs as $an) {
+                    $isUrgent = ($an['type'] === 'reported_damaged');
+                    $icon = 'fa-boxes-stacked';
+                    $color = '#3762c8';
+                    $cat = 'Inventory';
+                    $url = $sidebarBase . 'assets_crud.php';
+                    
+                    if ($an['type'] === 'reported_damaged') {
+                        $icon = 'fa-exclamation-triangle';
+                        $color = '#ef4444';
+                        $cat = 'Damaged Alert';
+                        $url = $sidebarBase . 'maintenance_list.php';
+                    } elseif ($an['type'] === 'asset_created') {
+                        $icon = 'fa-plus-circle';
+                        $color = '#10b981';
+                        $cat = 'New Asset';
+                        $url = $sidebarBase . 'assets_crud.php';
+                    } elseif ($an['type'] === 'status_changed') {
+                        $icon = 'fa-sync-alt';
+                        $color = '#8b5cf6';
+                        $cat = 'Status Update';
+                        $url = $sidebarBase . 'assets_crud.php';
+                    }
+                    
+                    $isUnread = ((int)$an['read_status'] === 0);
+                    if ($isUnread) $topbarUnreadCount++;
+                    if ($isUrgent) $topbarUrgentCount++;
+                    
+                    $topbarNotifications[] = [
+                        'id' => 'asset_' . $an['id'],
+                        'db_id' => $an['id'],
+                        'source' => 'asset_notifications',
+                        'title' => $cat,
+                        'message' => $an['message'],
+                        'category' => $cat,
+                        'icon' => $icon,
+                        'color' => $color,
+                        'is_unread' => $isUnread,
+                        'is_urgent' => $isUrgent,
+                        'url' => $url,
+                        'created_at' => $an['created_at']
+                    ];
+                }
+            } catch (Throwable $e) {}
+
+            // 2. Emergency / High-Priority Maintenance requests
+            try {
+                $rawMnt = $pdo->query("
+                    SELECT id, request_id, title, priority, status, created_at, updated_at
+                    FROM maintenance_requests 
+                    WHERE status NOT IN ('Completed', 'Unrepairable', 'Cancelled')
+                    ORDER BY (priority = 'Emergency') DESC, updated_at DESC LIMIT 8
+                ")->fetchAll(PDO::FETCH_ASSOC) ?: [];
+                
+                foreach ($rawMnt as $m) {
+                    $isEmergency = ($m['priority'] === 'Emergency');
+                    if ($isEmergency) $topbarUrgentCount++;
+                    
+                    $topbarNotifications[] = [
+                        'id' => 'mnt_' . $m['id'],
+                        'db_id' => $m['id'],
+                        'source' => 'maintenance_requests',
+                        'title' => ($isEmergency ? '🚨 Emergency Work Order' : 'Work Order ' . $m['status']),
+                        'message' => "Work Order #{$m['request_id']}: {$m['title']} ({$m['priority']} priority)",
+                        'category' => 'Maintenance',
+                        'icon' => $isEmergency ? 'fa-tools' : 'fa-wrench',
+                        'color' => $isEmergency ? '#ef4444' : '#f59e0b',
+                        'is_unread' => $isEmergency,
+                        'is_urgent' => $isEmergency,
+                        'url' => $sidebarBase . 'maintenance_list.php?search=' . urlencode($m['request_id']),
+                        'created_at' => $m['updated_at'] ?: $m['created_at']
+                    ];
+                    if ($isEmergency) $topbarUnreadCount++;
+                }
+            } catch (Throwable $e) {}
+
+            // 3. Pending External Facility Loan Requests
+            try {
+                $rawReqs = $pdo->query("
+                    SELECT id, request_ref, facility_name, asset_type, quantity, status, created_at 
+                    FROM external_asset_requests 
+                    WHERE status = 'Pending'
+                    ORDER BY created_at DESC LIMIT 5
+                ")->fetchAll(PDO::FETCH_ASSOC) ?: [];
+                
+                foreach ($rawReqs as $r) {
+                    $topbarNotifications[] = [
+                        'id' => 'req_' . $r['id'],
+                        'db_id' => $r['id'],
+                        'source' => 'external_asset_requests',
+                        'title' => 'Equipment Loan Request',
+                        'message' => "Pending request for {$r['quantity']}x {$r['asset_type']} at {$r['facility_name']}",
+                        'category' => 'Facility Loan',
+                        'icon' => 'fa-clipboard-list',
+                        'color' => '#8b5cf6',
+                        'is_unread' => true,
+                        'is_urgent' => false,
+                        'url' => $sidebarBase . 'assets_requests.php',
+                        'created_at' => $r['created_at']
+                    ];
+                    $topbarUnreadCount++;
+                }
+            } catch (Throwable $e) {}
+            
+            // Sort merged notifications by date descending
+            usort($topbarNotifications, function($a, $b) {
+                return strtotime($b['created_at']) - strtotime($a['created_at']);
+            });
+            $topbarNotifications = array_slice($topbarNotifications, 0, 15);
+            
+        } else {
+            // Citizen user: retrieve incident_notifications
+            if (isset($_SESSION['user_id'])) {
+                try {
+                    $cStmt = $pdo->prepare("
+                        SELECT id, message, read_status, created_at 
+                        FROM incident_notifications 
+                        WHERE user_id = ? 
+                        ORDER BY created_at DESC LIMIT 10
+                    ");
+                    $cStmt->execute([$_SESSION['user_id']]);
+                    $rawCNotifs = $cStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+                    foreach ($rawCNotifs as $cn) {
+                        $isUnread = ((int)$cn['read_status'] === 0);
+                        if ($isUnread) $topbarUnreadCount++;
+                        $topbarNotifications[] = [
+                            'id' => 'cit_' . $cn['id'],
+                            'db_id' => $cn['id'],
+                            'source' => 'incident_notifications',
+                            'title' => 'Incident Update',
+                            'message' => $cn['message'],
+                            'category' => 'Resident Portal',
+                            'icon' => 'fa-bell',
+                            'color' => '#3762c8',
+                            'is_unread' => $isUnread,
+                            'is_urgent' => false,
+                            'url' => $sidebarBase . 'citizen_notifications.php',
+                            'created_at' => $cn['created_at']
+                        ];
+                    }
+                } catch (Throwable $e) {}
+            }
+        }
     } catch (Throwable $e) {}
 }
 ?>
@@ -901,18 +1078,330 @@ if (isset($pdo)) {
     /* Notification badge on bell */
     .topbar-notif-badge {
         position: absolute;
-        top: 3px;
-        right: 3px;
-        width: 8px;
-        height: 8px;
+        top: -3px;
+        right: -4px;
+        min-width: 18px;
+        height: 18px;
+        padding: 0 4px;
         background: #ef4444;
-        border-radius: 50%;
-        border: 2px solid rgba(255, 255, 255, 0.9);
-        box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.4);
+        color: #ffffff;
+        font-size: 10px;
+        font-weight: 700;
+        line-height: 18px;
+        text-align: center;
+        border-radius: 10px;
+        border: 2px solid #ffffff;
+        box-shadow: 0 2px 6px rgba(239, 68, 68, 0.45);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
     }
 
     .dark-theme .topbar-notif-badge {
-        border-color: rgba(13, 19, 33, 0.9);
+        border-color: #0d1321;
+    }
+
+    /* Topbar notification wrap & popover */
+    .topbar-notif-wrap {
+        position: relative;
+    }
+
+    .topbar-notif-popover {
+        position: absolute;
+        top: calc(100% + 12px);
+        right: -60px;
+        width: 380px;
+        max-width: calc(100vw - 32px);
+        background: #ffffff;
+        border-radius: 16px;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.14), 0 4px 12px rgba(0, 0, 0, 0.06);
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-8px) scale(0.97);
+        transition: opacity 0.22s ease, visibility 0.22s ease, transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+        z-index: 9999;
+        overflow: hidden;
+        font-family: 'Poppins', sans-serif;
+    }
+
+    .topbar-notif-popover.open {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0) scale(1);
+    }
+
+    .dark-theme .topbar-notif-popover {
+        background: #1e293b;
+        border-color: rgba(255, 255, 255, 0.1);
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Popover header */
+    .tnotif-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 18px;
+        border-bottom: 1px solid #f1f5f9;
+        background: #ffffff;
+    }
+    .dark-theme .tnotif-header {
+        background: #1e293b;
+        border-bottom-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .tnotif-title-wrap {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .tnotif-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: #0f172a;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .dark-theme .tnotif-title {
+        color: #f8fafc;
+    }
+
+    .tnotif-pill {
+        font-size: 11px;
+        font-weight: 700;
+        background: #fee2e2;
+        color: #ef4444;
+        padding: 2px 7px;
+        border-radius: 99px;
+    }
+    .dark-theme .tnotif-pill {
+        background: rgba(239, 68, 68, 0.2);
+        color: #fca5a5;
+    }
+
+    .tnotif-mark-btn {
+        background: none;
+        border: none;
+        color: #3762c8;
+        font-size: 11.5px;
+        font-weight: 600;
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 6px;
+        transition: background 0.15s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .tnotif-mark-btn:hover {
+        background: rgba(55, 98, 200, 0.08);
+    }
+    .dark-theme .tnotif-mark-btn {
+        color: #60a5fa;
+    }
+    .dark-theme .tnotif-mark-btn:hover {
+        background: rgba(96, 165, 250, 0.12);
+    }
+
+    /* Filter tabs */
+    .tnotif-tabs {
+        display: flex;
+        gap: 6px;
+        padding: 8px 18px;
+        background: #f8fafc;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .dark-theme .tnotif-tabs {
+        background: #0f172a;
+        border-bottom-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .tnotif-tab {
+        border: none;
+        background: transparent;
+        font-size: 11.5px;
+        font-weight: 600;
+        color: #64748b;
+        padding: 4px 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+    .tnotif-tab:hover {
+        color: #0f172a;
+        background: rgba(0,0,0,0.04);
+    }
+    .dark-theme .tnotif-tab:hover {
+        color: #f8fafc;
+        background: rgba(255,255,255,0.06);
+    }
+    .tnotif-tab.active {
+        background: #3762c8;
+        color: #ffffff;
+    }
+    .dark-theme .tnotif-tab.active {
+        background: #3762c8;
+        color: #ffffff;
+    }
+
+    /* Notification items list */
+    .tnotif-list {
+        max-height: 310px;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    .tnotif-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 12px 18px;
+        text-decoration: none;
+        border-bottom: 1px solid #f8fafc;
+        transition: background 0.15s ease;
+        position: relative;
+    }
+    .dark-theme .tnotif-item {
+        border-bottom-color: rgba(255, 255, 255, 0.04);
+    }
+    .tnotif-item:hover {
+        background: #f8fafc;
+    }
+    .dark-theme .tnotif-item:hover {
+        background: rgba(255, 255, 255, 0.04);
+    }
+    .tnotif-item.is-unread {
+        background: #f0f7ff;
+    }
+    .dark-theme .tnotif-item.is-unread {
+        background: rgba(55, 98, 200, 0.12);
+    }
+
+    .tnotif-item-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        flex-shrink: 0;
+        margin-top: 2px;
+    }
+
+    .tnotif-item-body {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .tnotif-item-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+        margin-bottom: 2px;
+    }
+
+    .tnotif-item-cat {
+        font-size: 10.5px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    .tnotif-item-time {
+        font-size: 10.5px;
+        color: #94a3b8;
+        white-space: nowrap;
+    }
+
+    .tnotif-item-text {
+        font-size: 12.5px;
+        color: #334155;
+        line-height: 1.4;
+        word-break: break-word;
+    }
+    .dark-theme .tnotif-item-text {
+        color: #cbd5e1;
+    }
+    .tnotif-item.is-unread .tnotif-item-text {
+        font-weight: 600;
+        color: #0f172a;
+    }
+    .dark-theme .tnotif-item.is-unread .tnotif-item-text {
+        color: #ffffff;
+    }
+
+    .tnotif-item-dot {
+        width: 7px;
+        height: 7px;
+        background: #3762c8;
+        border-radius: 50%;
+        margin-top: 14px;
+        flex-shrink: 0;
+    }
+    .tnotif-item.urgent .tnotif-item-dot {
+        background: #ef4444;
+    }
+
+    /* Empty state */
+    .tnotif-empty {
+        padding: 35px 20px;
+        text-align: center;
+        color: #94a3b8;
+    }
+    .tnotif-empty i {
+        font-size: 32px;
+        color: #cbd5e1;
+        margin-bottom: 10px;
+        display: block;
+    }
+    .dark-theme .tnotif-empty i {
+        color: #475569;
+    }
+    .tnotif-empty-title {
+        font-size: 13.5px;
+        font-weight: 600;
+        color: #475569;
+        margin-bottom: 3px;
+    }
+    .dark-theme .tnotif-empty-title {
+        color: #94a3b8;
+    }
+    .tnotif-empty-sub {
+        font-size: 11.5px;
+    }
+
+    /* Popover footer */
+    .tnotif-footer {
+        padding: 10px 18px;
+        background: #f8fafc;
+        border-top: 1px solid #f1f5f9;
+        text-align: center;
+    }
+    .dark-theme .tnotif-footer {
+        background: #0f172a;
+        border-top-color: rgba(255, 255, 255, 0.08);
+    }
+    .tnotif-footer a {
+        font-size: 12px;
+        font-weight: 600;
+        color: #3762c8;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .dark-theme .tnotif-footer a {
+        color: #60a5fa;
+    }
+    .tnotif-footer a:hover {
+        text-decoration: underline;
     }
 
     /* Day/night toggle in topbar */
@@ -2861,11 +3350,98 @@ if (isset($pdo)) {
 
         <div class="topbar-divider"></div>
 
-        <!-- Notification Bell -->
-        <button type="button" class="topbar-btn" id="topbar-notif-btn" aria-label="Notifications" title="Notifications">
-            <i class="fas fa-bell"></i>
-            <span class="topbar-notif-badge" id="topbar-notif-indicator" style="display:none;"></span>
-        </button>
+        <!-- Notification Bell & Popover -->
+        <div class="topbar-notif-wrap" id="topbar-notif-wrap">
+            <button type="button" class="topbar-btn" id="topbar-notif-btn"
+                    onclick="toggleNotifPopover(event)"
+                    aria-label="Notifications" title="Notifications" aria-haspopup="true" aria-expanded="false">
+                <i class="fas fa-bell"></i>
+                <span class="topbar-notif-badge" id="topbar-notif-indicator" style="<?php echo ($topbarUnreadCount > 0) ? '' : 'display:none;'; ?>">
+                    <?php if ($topbarUnreadCount > 9): ?>9+<?php elseif ($topbarUnreadCount > 0): ?><?php echo $topbarUnreadCount; ?><?php endif; ?>
+                </span>
+            </button>
+
+            <!-- Notifications Popover -->
+            <div class="topbar-notif-popover" id="topbar-notif-popover" role="dialog" aria-label="Notifications Panel">
+                <div class="tnotif-header">
+                    <div class="tnotif-title-wrap">
+                        <h4 class="tnotif-title"><i class="fas fa-bell" style="color:#3762c8;"></i> Notifications</h4>
+                        <span class="tnotif-pill" id="tnotif-unread-pill" style="<?php echo ($topbarUnreadCount > 0) ? '' : 'display:none;'; ?>">
+                            <?php echo $topbarUnreadCount; ?> new
+                        </span>
+                    </div>
+                    <?php if ($topbarUnreadCount > 0): ?>
+                    <button type="button" class="tnotif-mark-btn" id="tnotif-mark-all-btn" onclick="markAllTopNotifications(event)">
+                        <i class="fas fa-check-double"></i> Mark all read
+                    </button>
+                    <?php endif; ?>
+                </div>
+
+                <div class="tnotif-tabs">
+                    <button type="button" class="tnotif-tab active" data-filter="all" onclick="filterTopNotifs('all', event)">
+                        All (<?php echo count($topbarNotifications); ?>)
+                    </button>
+                    <button type="button" class="tnotif-tab" data-filter="unread" onclick="filterTopNotifs('unread', event)">
+                        Unread (<span id="tnotif-tab-unread-num"><?php echo $topbarUnreadCount; ?></span>)
+                    </button>
+                    <button type="button" class="tnotif-tab" data-filter="urgent" onclick="filterTopNotifs('urgent', event)">
+                        Urgent (<span id="tnotif-tab-urgent-num"><?php echo $topbarUrgentCount; ?></span>)
+                    </button>
+                </div>
+
+                <div class="tnotif-list" id="tnotif-items-list">
+                    <?php if (empty($topbarNotifications)): ?>
+                        <div class="tnotif-empty" id="tnotif-empty-state">
+                            <i class="fas fa-bell-slash"></i>
+                            <div class="tnotif-empty-title">All caught up!</div>
+                            <div class="tnotif-empty-sub">No recent notifications recorded.</div>
+                        </div>
+                    <?php else: ?>
+                        <?php foreach ($topbarNotifications as $notif): ?>
+                            <a href="<?php echo htmlspecialchars($notif['url']); ?>" 
+                               class="tnotif-item <?php echo $notif['is_unread'] ? 'is-unread' : ''; ?> <?php echo $notif['is_urgent'] ? 'urgent' : ''; ?>"
+                               data-notif-id="<?php echo htmlspecialchars($notif['id']); ?>"
+                               data-db-id="<?php echo htmlspecialchars($notif['db_id']); ?>"
+                               data-source="<?php echo htmlspecialchars($notif['source']); ?>"
+                               data-unread="<?php echo $notif['is_unread'] ? '1' : '0'; ?>"
+                               data-urgent="<?php echo $notif['is_urgent'] ? '1' : '0'; ?>"
+                               onclick="handleNotifItemClick(event, this)">
+                                <div class="tnotif-item-icon" style="background: <?php echo htmlspecialchars($notif['color']); ?>1a; color: <?php echo htmlspecialchars($notif['color']); ?>;">
+                                    <i class="fas <?php echo htmlspecialchars($notif['icon']); ?>"></i>
+                                </div>
+                                <div class="tnotif-item-body">
+                                    <div class="tnotif-item-top">
+                                        <span class="tnotif-item-cat" style="color: <?php echo htmlspecialchars($notif['color']); ?>;">
+                                            <?php echo htmlspecialchars($notif['title']); ?>
+                                        </span>
+                                        <span class="tnotif-item-time">
+                                            <?php echo topbarRelativeTime($notif['created_at']); ?>
+                                        </span>
+                                    </div>
+                                    <div class="tnotif-item-text">
+                                        <?php echo htmlspecialchars($notif['message']); ?>
+                                    </div>
+                                </div>
+                                <?php if ($notif['is_unread']): ?>
+                                    <div class="tnotif-item-dot"></div>
+                                <?php endif; ?>
+                            </a>
+                        <?php endforeach; ?>
+                        <div class="tnotif-empty" id="tnotif-filter-empty" style="display:none;">
+                            <i class="fas fa-check-circle" style="color:#10b981;"></i>
+                            <div class="tnotif-empty-title">No notifications found</div>
+                            <div class="tnotif-empty-sub">No alerts match the selected filter.</div>
+                        </div>
+                    <?php endif; ?>
+                </div>
+
+                <div class="tnotif-footer">
+                    <a href="<?php echo ($userType === 'employee') ? $sidebarBase . 'assets_notifications.php' : $sidebarBase . 'citizen_notifications.php'; ?>">
+                        View Notifications Center <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
 
         <!-- Settings -->
         <button type="button" class="topbar-btn" id="topbar-settings-btn" aria-label="Settings" title="Settings (coming soon)" disabled style="opacity:0.5; cursor:not-allowed;">
@@ -3347,18 +3923,189 @@ function toggleAccountPopover(e) {
     if (caret) caret.classList.toggle('open', isOpen);
 }
 
-// Close popover when clicking anywhere outside
-document.addEventListener('click', function(e) {
-    const wrap  = document.getElementById('topbar-account-wrap');
-    const pop   = document.getElementById('topbar-account-popover');
-    const btn   = document.getElementById('topbar-account-btn');
-    const caret = document.getElementById('topbar-acct-caret');
-    if (pop && pop.classList.contains('open') && wrap && !wrap.contains(e.target)) {
-        pop.classList.remove('open');
-        if (btn)   btn.setAttribute('aria-expanded', 'false');
+// Toggle Notification Popover
+function toggleNotifPopover(e) {
+    if (e) e.stopPropagation();
+    const popover = document.getElementById('topbar-notif-popover');
+    const btn     = document.getElementById('topbar-notif-btn');
+    
+    // Close account popover if open
+    const acctPop = document.getElementById('topbar-account-popover');
+    const acctBtn = document.getElementById('topbar-account-btn');
+    const caret   = document.getElementById('topbar-acct-caret');
+    if (acctPop && acctPop.classList.contains('open')) {
+        acctPop.classList.remove('open');
+        if (acctBtn) acctBtn.setAttribute('aria-expanded', 'false');
         if (caret) caret.classList.remove('open');
     }
+
+    if (!popover) return;
+    const isOpen = popover.classList.toggle('open');
+    if (btn) btn.setAttribute('aria-expanded', isOpen);
+}
+
+// Close popovers when clicking anywhere outside
+document.addEventListener('click', function(e) {
+    const acctWrap = document.getElementById('topbar-account-wrap');
+    const acctPop  = document.getElementById('topbar-account-popover');
+    const acctBtn  = document.getElementById('topbar-account-btn');
+    const caret    = document.getElementById('topbar-acct-caret');
+    if (acctPop && acctPop.classList.contains('open') && acctWrap && !acctWrap.contains(e.target)) {
+        acctPop.classList.remove('open');
+        if (acctBtn) acctBtn.setAttribute('aria-expanded', 'false');
+        if (caret) caret.classList.remove('open');
+    }
+
+    const notifWrap = document.getElementById('topbar-notif-wrap');
+    const notifPop  = document.getElementById('topbar-notif-popover');
+    const notifBtn  = document.getElementById('topbar-notif-btn');
+    if (notifPop && notifPop.classList.contains('open') && notifWrap && !notifWrap.contains(e.target)) {
+        notifPop.classList.remove('open');
+        if (notifBtn) notifBtn.setAttribute('aria-expanded', 'false');
+    }
 });
+
+// Close popovers on Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const notifPop = document.getElementById('topbar-notif-popover');
+        const notifBtn = document.getElementById('topbar-notif-btn');
+        if (notifPop && notifPop.classList.contains('open')) {
+            notifPop.classList.remove('open');
+            if (notifBtn) notifBtn.setAttribute('aria-expanded', 'false');
+        }
+        const acctPop = document.getElementById('topbar-account-popover');
+        const acctBtn = document.getElementById('topbar-account-btn');
+        const caret   = document.getElementById('topbar-acct-caret');
+        if (acctPop && acctPop.classList.contains('open')) {
+            acctPop.classList.remove('open');
+            if (acctBtn) acctBtn.setAttribute('aria-expanded', 'false');
+            if (caret) caret.classList.remove('open');
+        }
+    }
+});
+
+// Filter notifications (All, Unread, Urgent)
+function filterTopNotifs(filterType, e) {
+    if (e) e.stopPropagation();
+    const tabs = document.querySelectorAll('.tnotif-tab');
+    tabs.forEach(t => t.classList.remove('active'));
+    if (e && e.target) {
+        const clickedTab = e.target.closest('.tnotif-tab');
+        if (clickedTab) clickedTab.classList.add('active');
+    }
+
+    const items = document.querySelectorAll('.tnotif-item');
+    let visibleCount = 0;
+    items.forEach(item => {
+        const isUnread = item.getAttribute('data-unread') === '1';
+        const isUrgent = item.getAttribute('data-urgent') === '1';
+
+        let show = false;
+        if (filterType === 'all') show = true;
+        else if (filterType === 'unread') show = isUnread;
+        else if (filterType === 'urgent') show = isUrgent;
+
+        item.style.display = show ? 'flex' : 'none';
+        if (show) visibleCount++;
+    });
+
+    const filterEmpty = document.getElementById('tnotif-filter-empty');
+    if (filterEmpty) {
+        filterEmpty.style.display = (visibleCount === 0 && items.length > 0) ? 'block' : 'none';
+    }
+}
+
+// Mark single notification as read on click
+function handleNotifItemClick(e, el) {
+    const isUnread = el.getAttribute('data-unread') === '1';
+    if (!isUnread) return; // Proceed to link normally
+
+    const dbId = el.getAttribute('data-db-id');
+    const source = el.getAttribute('data-source');
+    
+    // Optimistic UI update
+    el.setAttribute('data-unread', '0');
+    el.classList.remove('is-unread');
+    const dot = el.querySelector('.tnotif-item-dot');
+    if (dot) dot.remove();
+
+    // Decrease counters
+    const badge = document.getElementById('topbar-notif-indicator');
+    const pill = document.getElementById('tnotif-unread-pill');
+    const tabUnread = document.getElementById('tnotif-tab-unread-num');
+    let current = parseInt(tabUnread ? tabUnread.textContent : '0') || 0;
+    let next = Math.max(0, current - 1);
+    
+    if (tabUnread) tabUnread.textContent = next;
+    if (pill) {
+        pill.textContent = next + ' new';
+        if (next === 0) pill.style.display = 'none';
+    }
+    if (badge) {
+        if (next > 9) badge.textContent = '9+';
+        else if (next > 0) badge.textContent = next;
+        else badge.style.display = 'none';
+    }
+
+    // Call API in background
+    if (dbId && source) {
+        const formData = new FormData();
+        formData.append('action', 'mark_read');
+        formData.append('id', dbId);
+        formData.append('source', source);
+        fetch('<?php echo $sidebarBase; ?>api/notifications.php', {
+            method: 'POST',
+            body: formData
+        }).catch(function() {});
+    }
+}
+
+// Mark all notifications as read
+function markAllTopNotifications(e) {
+    if (e) e.stopPropagation();
+    const btn = document.getElementById('tnotif-mark-all-btn');
+    if (btn) {
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+        btn.disabled = true;
+    }
+
+    const formData = new FormData();
+    formData.append('action', 'mark_all_read');
+
+    fetch('<?php echo $sidebarBase; ?>api/notifications.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        // UI updates
+        const badge = document.getElementById('topbar-notif-indicator');
+        if (badge) badge.style.display = 'none';
+
+        const pill = document.getElementById('tnotif-unread-pill');
+        if (pill) pill.style.display = 'none';
+
+        const tabUnread = document.getElementById('tnotif-tab-unread-num');
+        if (tabUnread) tabUnread.textContent = '0';
+
+        if (btn) btn.style.display = 'none';
+
+        const items = document.querySelectorAll('.tnotif-item');
+        items.forEach(item => {
+            item.setAttribute('data-unread', '0');
+            item.classList.remove('is-unread');
+            const dot = item.querySelector('.tnotif-item-dot');
+            if (dot) dot.remove();
+        });
+    })
+    .catch(err => {
+        if (btn) {
+            btn.innerHTML = '<i class="fas fa-check-double"></i> Mark all read';
+            btn.disabled = false;
+        }
+    });
+}
 
 function confirmLogout() {
     document.getElementById('logoutConfirmModal').classList.add('show');
