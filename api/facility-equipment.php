@@ -410,6 +410,45 @@ if ($method === 'POST' && $action === 'accept_return') {
             // Accept even if the row already wasn't at facility (idempotent retry).
         }
 
+        // Directly create Maintenance Ticket if marked Damaged or Under Maintenance
+        $retCond = trim((string)($body['condition_after_return'] ?? ''));
+        if (in_array($retCond, ['Damaged', 'Under Maintenance'], true)) {
+            try {
+                $chkM = $pdo->prepare("SELECT id FROM maintenance_requests WHERE utility_asset_id = ? AND status NOT IN ('Completed', 'Unrepairable', 'Cancelled') LIMIT 1");
+                $chkM->execute([$assetId]);
+                if (!$chkM->fetchColumn()) {
+                    $year = date('Y');
+                    $mCheck = $pdo->query("SELECT MAX(id) FROM maintenance_requests");
+                    $nextNum = ((int)$mCheck->fetchColumn()) + 1;
+                    $reqId = sprintf("MNT-%s-%04d", $year, $nextNum);
+
+                    $isDamaged = ($retCond === 'Damaged');
+                    $pri = $isDamaged ? 'High' : 'Medium';
+                    $initStatus = $isDamaged ? 'Reported' : 'Scheduled';
+                    $mType = $isDamaged ? 'Corrective' : 'Preventive';
+                    $title = ($isDamaged ? "Repair Damaged Asset (Facility Return): " : "Maintenance Service (Facility Return): ") 
+                           . ($meta['name'] ?? 'Equipment') . (!empty($meta['asset_code']) ? " ({$meta['asset_code']})" : '');
+                    $desc = "Asset returned from facility {$facilityName} in {$retCond} condition. Reason: " . ($reason ?: 'Inspected on return');
+                    $loc = "Warehouse / {$facilityName}";
+
+                    $ins = $pdo->prepare("
+                        INSERT INTO maintenance_requests 
+                        (request_id, utility_asset_id, title, maintenance_type, source, description, priority, location, status, progress_percent)
+                        VALUES (?, ?, ?, ?, 'Asset Monitoring', ?, ?, ?, ?, 0)
+                    ");
+                    $ins->execute([$reqId, $assetId, $title, $mType, $desc, $pri, $loc, $initStatus]);
+                    $newMntId = (int)$pdo->lastInsertId();
+                    if ($newMntId > 0) {
+                        $pdo->prepare("
+                            INSERT INTO maintenance_status_logs 
+                            (maintenance_request_id, old_status, new_status, old_progress, new_progress, changed_by, notes)
+                            VALUES (?, NULL, ?, 0, 0, 1, ?)
+                        ")->execute([$newMntId, $initStatus, "Auto-created from facility return ({$facilityName})"]);
+                    }
+                }
+            } catch (Throwable $e) {}
+        }
+
         // 2. Phase 3c: Fire the NEW return-accepted webhook (carries richer
         //    COA-specific event_type) instead of the generic unassigned hook.
         $wh = uman_post_to_cprf('utilities/equipment/return-accepted', [
