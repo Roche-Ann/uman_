@@ -1450,6 +1450,7 @@ if (isset($pdo)) {
     .main-content > .container-fluid,
     .main-content > div {
         flex: 1;
+        width: 100%;
         margin-left: auto !important;
         margin-right: auto !important;
     }

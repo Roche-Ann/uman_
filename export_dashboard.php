@@ -37,8 +37,30 @@ $userName = $_SESSION['user_name'] ?? $_SESSION['full_name'] ?? 'LGU Coordinator
         * { font-family:'Poppins',sans-serif; margin:0; padding:0; box-sizing:border-box; }
         body { min-height:100vh; display:flex; background:url("assets/images/cityhall.jpeg") center/cover no-repeat fixed; position:relative; }
         body::before { content:""; position: fixed; top:0; left:0; width:100%; height:100%; backdrop-filter:blur(6px); background:rgba(0,0,0,0.35); z-index:0; }
-        .main-content { flex:1; margin-left:280px; padding:30px 40px; z-index:1; position:relative; }
-        .card { max-width:1700px; background:rgba(255,255,255,0.85); backdrop-filter:blur(15px); border-radius:18px; padding:40px; box-shadow:0 6px 20px rgba(0,0,0,0.2); }
+        .main-content {
+            flex: 1;
+            min-width: 0;
+            margin-left: 280px;
+            padding: 30px 40px;
+            z-index: 1;
+            position: relative;
+            transition: margin-left 0.25s ease;
+        }
+        .main-content.collapsed {
+            margin-left: 78px;
+        }
+        .card {
+            width: 100%;
+            max-width: 1700px;
+            margin-left: auto;
+            margin-right: auto;
+            background: rgba(255,255,255,0.85);
+            backdrop-filter: blur(15px);
+            border-radius: 18px;
+            padding: 40px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+            box-sizing: border-box;
+        }
         .dashboard-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:30px; flex-wrap:wrap; gap:20px; }
         .dashboard-header h1 { color:#2c3e50; font-size:32px; font-weight:700; display:flex; align-items:center; gap:15px; }
         .dashboard-header h1 i { color:#3762c8; }
@@ -47,7 +69,12 @@ $userName = $_SESSION['user_name'] ?? $_SESSION['full_name'] ?? 'LGU Coordinator
         .btn-outline:hover { background:#f8f9fa; }
         .btn-success { background:#28a745; color:#fff; }
         .btn-danger { background:#dc3545; color:#fff; }
-        .export-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:25px; }
+        .export-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 25px;
+            width: 100%;
+        }
         .export-card { background:white; border-radius:12px; padding:25px; box-shadow:0 4px 12px rgba(0,0,0,0.05); border:1px solid rgba(0,0,0,0.05); transition:0.2s; }
         .export-card:hover { transform:translateY(-4px); box-shadow:0 8px 20px rgba(0,0,0,0.1); }
         .export-card .icon { font-size:32px; margin-bottom:12px; }
@@ -64,6 +91,16 @@ $userName = $_SESSION['user_name'] ?? $_SESSION['full_name'] ?? 'LGU Coordinator
             background: #f8fafc;
             border-radius: 12px;
             border: 1px solid #e2e8f0;
+        }
+
+        @media (max-width: 992px) {
+            .main-content {
+                margin-left: 0 !important;
+                padding: 20px 15px;
+            }
+            .card {
+                padding: 25px 20px;
+            }
         }
 
         /* ===== DARK THEME OVERRIDES (Matches maintenance_list.php deep navy shade) ===== */
@@ -84,7 +121,6 @@ $userName = $_SESSION['user_name'] ?? $_SESSION['full_name'] ?? 'LGU Coordinator
         .dark-theme .export-card:hover {
             border-color: #3b82f6 !important;
             background: rgba(30, 41, 59, 0.9) !important;
-        }
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
         }
         .dark-theme .export-card h3 {
