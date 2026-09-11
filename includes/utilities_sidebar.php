@@ -3435,18 +3435,8 @@ if (isset($pdo)) {
                     <?php endif; ?>
                 </div>
 
-                <div class="tnotif-footer">
-                    <a href="<?php echo ($userType === 'employee') ? $sidebarBase . 'assets_notifications.php' : $sidebarBase . 'citizen_notifications.php'; ?>">
-                        View Notifications Center <i class="fas fa-arrow-right"></i>
-                    </a>
-                </div>
             </div>
         </div>
-
-        <!-- Settings -->
-        <button type="button" class="topbar-btn" id="topbar-settings-btn" aria-label="Settings" title="Settings (coming soon)" disabled style="opacity:0.5; cursor:not-allowed;">
-            <i class="fas fa-cog"></i>
-        </button>
 
         <div class="topbar-divider"></div>
 
