@@ -2980,30 +2980,12 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
                 </ul>
             </li>
 
-            <!-- Operations Dropdown -->
-            <?php 
-            $isOpsActive = (strpos($currentPage, 'maintenance_') === 0) || $currentPage === 'upad_integration.php';
-            ?>
-            <li class="sidebar-dropdown-wrapper">
-                <button type="button" class="sidebar-dropdown-toggle<?php echo $isOpsActive ? ' active' : ''; ?>" onclick="toggleSidebarDropdown(this)">
-                    <i class="fas fa-tasks icon-main"></i>
-                    <span class="link-label">Operations</span>
-                    <i class="fas fa-chevron-right chevron-icon<?php echo $isOpsActive ? ' rotate' : ''; ?>"></i>
-                </button>
-                <ul class="sidebar-dropdown-menu<?php echo $isOpsActive ? ' open' : ''; ?>">
-                    <li>
-                        <a href="<?php echo $sidebarBase; ?>maintenance_dashboard.php" class="dropdown-link<?php echo (strpos($currentPage, 'maintenance_') === 0) ? ' active' : ''; ?>">
-                            <i class="fas fa-tools"></i>
-                            <span>Maintenance</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="<?php echo $sidebarBase; ?>upad_integration.php" class="dropdown-link<?php echo sidebarActive('upad_integration.php', $currentPage); ?>">
-                            <i class="fas fa-city"></i>
-                            <span>Inspection Requests</span>
-                        </a>
-                    </li>
-                </ul>
+            <!-- Inspection Requests -->
+            <li>
+                <a href="<?php echo $sidebarBase; ?>upad_integration.php" class="nav-link<?php echo sidebarActive('upad_integration.php', $currentPage); ?>">
+                    <i class="fas fa-city"></i>
+                    <span class="link-label">Inspection Requests</span>
+                </a>
             </li>
 
             <!-- Utilities Dropdown -->
