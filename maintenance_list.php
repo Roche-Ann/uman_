@@ -77,6 +77,14 @@ if (!function_exists('ensureMaintenanceSchema')) {
             };
             $repairTable($pdo, 'maintenance_requests');
             $repairTable($pdo, 'maintenance_status_logs');
+
+            // Relax ENUM restrictions on legacy tables to prevent truncation warnings
+            try {
+                $pdo->exec("ALTER TABLE `maintenance_requests` MODIFY COLUMN `source` VARCHAR(100) NOT NULL DEFAULT 'Asset Monitoring'");
+            } catch (Throwable $e) {}
+            try {
+                $pdo->exec("ALTER TABLE `maintenance_requests` MODIFY COLUMN `status` VARCHAR(100) NOT NULL DEFAULT 'Reported'");
+            } catch (Throwable $e) {}
         } catch (Throwable $e) {}
         $done = true;
     }
@@ -129,7 +137,7 @@ if (!function_exists('syncOrphanedDamagedAssets')) {
                     INSERT INTO maintenance_requests 
                         (request_id, utility_asset_id, title, maintenance_type, source, description, priority, location, status, progress_percent, created_at, updated_at)
                     VALUES 
-                        (?, ?, ?, ?, 'Asset Inventory Auto-Sync', ?, ?, ?, ?, 0, NOW(), NOW())
+                        (?, ?, ?, ?, 'Asset Monitoring', ?, ?, ?, ?, 0, NOW(), NOW())
                 ");
                 $ins->execute([$reqId, $asset['id'], $title, $type, $desc, $priority, $loc, $status]);
                 $newId = (int)$pdo->lastInsertId();
@@ -219,7 +227,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 INSERT INTO maintenance_requests 
                     (request_id, utility_asset_id, title, maintenance_type, source, description, priority, assigned_to, location, status, progress_percent, scheduled_date, notes, created_at, updated_at)
                 VALUES 
-                    (?, ?, ?, ?, 'Manual Request', ?, ?, ?, ?, 'Reported', 0, ?, ?, NOW(), NOW())
+                    (?, ?, ?, ?, 'Asset Monitoring', ?, ?, ?, ?, 'Reported', 0, ?, ?, NOW(), NOW())
             ");
             $stmt->execute([$reqId, $assetId, $title, $mType, $description, $priority, $assignedTo, $location, $schedDate, $notes]);
             $newMntId = (int)$pdo->lastInsertId();

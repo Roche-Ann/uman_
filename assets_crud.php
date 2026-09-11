@@ -174,7 +174,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $pdo->prepare("
                 INSERT INTO maintenance_requests
                     (request_id, utility_asset_id, title, maintenance_type, source, description, priority, location, status, progress_percent, created_at, updated_at)
-                VALUES (?, ?, ?, ?, 'Asset Inventory', ?, ?, ?, ?, 0, NOW(), NOW())
+                VALUES (?, ?, ?, ?, 'Asset Monitoring', ?, ?, ?, ?, 0, NOW(), NOW())
             ");
             $stmt->execute([$reqId, $assetDbId, $title, $mType, $desc, $priority, $location ?: 'Unspecified Location', $status]);
             $newMntId = (int)$pdo->lastInsertId();
@@ -226,7 +226,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         INSERT INTO maintenance_requests 
                             (request_id, utility_asset_id, title, maintenance_type, source, description, priority, location, status, progress_percent, created_at, updated_at)
                         VALUES 
-                            (?, ?, ?, ?, 'Asset Inventory Auto-Sync', ?, ?, ?, ?, 0, NOW(), NOW())
+                            (?, ?, ?, ?, 'Asset Monitoring', ?, ?, ?, ?, 0, NOW(), NOW())
                     ");
                     $ins->execute([$reqId, $asset['id'], $title, $type, $desc, $priority, $loc, $status]);
                     $newId = (int)$pdo->lastInsertId();
