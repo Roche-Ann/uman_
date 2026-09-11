@@ -65,7 +65,58 @@ try {
     $repairTable($pdo, 'maintenance_requests');
     $repairTable($pdo, 'maintenance_status_logs');
 
-    echo "Maintenance tables verified/created successfully.\n";
+    echo "<h3>Maintenance tables verified/created successfully.</h3>\n";
+
+    // Auto-sync inventory assets
+    $stmt = $pdo->query("
+        SELECT a.id, a.asset_id, a.name, a.location, a.condition_status, a.description, a.quantity
+        FROM utility_assets a
+        WHERE LOWER(TRIM(REPLACE(a.condition_status, '_', ' '))) IN ('damaged', 'under maintenance')
+          AND NOT EXISTS (
+              SELECT 1 FROM maintenance_requests m 
+              WHERE m.utility_asset_id = a.id 
+                AND m.status NOT IN ('Completed', 'Unrepairable', 'Cancelled')
+          )
+    ");
+    $orphans = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    echo "<p>Found " . count($orphans) . " asset(s) with Damaged or Under Maintenance condition needing work orders.</p>\n<ul>\n";
+
+    $year = date('Y');
+    foreach ($orphans as $asset) {
+        $seqRow = $pdo->query("SELECT COUNT(*) FROM maintenance_requests WHERE request_id LIKE 'MNT-$year-%'")->fetchColumn();
+        $seq = intval($seqRow) + 1;
+        $reqId = sprintf("MNT-%s-%04d", $year, $seq);
+
+        $normStatus = strtolower(trim(str_replace('_', ' ', $asset['condition_status'])));
+        $isDamaged = ($normStatus === 'damaged');
+        $status = $isDamaged ? 'Reported' : 'Scheduled';
+        $priority = $isDamaged ? 'High' : 'Medium';
+        $type = $isDamaged ? 'Emergency' : 'Corrective';
+        $title = ($isDamaged ? "Repair Damaged Asset: " : "Maintenance Service: ") . $asset['name'] . " (" . $asset['asset_id'] . ")";
+        $desc = !empty($asset['description']) ? $asset['description'] : "Asset flagged as {$asset['condition_status']} in Asset Inventory.";
+        $loc = !empty($asset['location']) ? $asset['location'] : 'Main Facility';
+
+        $ins = $pdo->prepare("
+            INSERT INTO maintenance_requests 
+                (request_id, utility_asset_id, title, maintenance_type, source, description, priority, location, status, progress_percent, created_at, updated_at)
+            VALUES 
+                (?, ?, ?, ?, 'Asset Inventory Auto-Sync', ?, ?, ?, ?, 0, NOW(), NOW())
+        ");
+        $ins->execute([$reqId, $asset['id'], $title, $type, $desc, $priority, $loc, $status]);
+        $newId = (int)$pdo->lastInsertId();
+
+        try {
+            $pdo->prepare("
+                INSERT INTO maintenance_status_logs (maintenance_request_id, old_status, new_status, old_progress, new_progress, changed_by, notes)
+                VALUES (?, NULL, ?, 0, 0, 1, 'Auto-generated from Asset Inventory condition')
+            ")->execute([$newId, $status]);
+        } catch (Throwable $e) {}
+
+        echo "<li>Created Work Order <strong>{$reqId}</strong> for <strong>{$asset['asset_id']}</strong> ({$asset['name']}) &rarr; Status: <strong>{$status}</strong></li>\n";
+    }
+    echo "</ul>\n";
+    echo "<p><a href='maintenance_list.php' style='display:inline-block;padding:10px 18px;background:#3b82f6;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold;'>Go to Maintenance Dashboard &rarr;</a></p>\n";
 } catch (PDOException $e) {
-    echo "Error initializing maintenance tables: " . $e->getMessage() . "\n";
+    echo "<p style='color:red;'>Error initializing maintenance tables: " . htmlspecialchars($e->getMessage()) . "</p>\n";
 }
