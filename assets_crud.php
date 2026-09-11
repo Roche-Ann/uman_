@@ -237,10 +237,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } catch (Throwable $ignored) {}
 
                 $mntBtn = '';
-                if ($condition_status === 'Under Maintenance') {
+                if (in_array($condition_status, ['Under Maintenance', 'Damaged'], true)) {
                     $mntResult = ensureMaintenanceTicketForAsset($pdo, $id, $asset_id, $name, $location, $description, $userId);
                     if ($mntResult) {
-                        $mntBtn = "<br><a href='maintenance_list.php?search=" . urlencode($mntResult['request_id']) . "&open_modal_id=" . $mntResult['id'] . "' style='display:inline-flex;align-items:center;gap:6px;margin-top:8px;background:#7b1fa2;color:#fff;padding:6px 14px;border-radius:6px;font-weight:600;text-decoration:none;font-size:12.5px;'><i class='fas fa-wrench'></i> Track Work Order (" . htmlspecialchars($mntResult['request_id']) . ") &rarr;</a>";
+                        $mntBtn = "<br><a href='maintenance_list.php?search=" . urlencode($mntResult['request_id']) . "' style='display:inline-flex;align-items:center;gap:6px;margin-top:8px;background:#3762c8;color:#fff;padding:6px 14px;border-radius:6px;font-weight:600;text-decoration:none;font-size:12.5px;'><i class='fas fa-wrench'></i> Track Work Order (" . htmlspecialchars($mntResult['request_id']) . ") &rarr;</a>";
                     }
                 }
 
@@ -376,10 +376,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             } catch (Throwable $ignored) {}
 
                             $mntBtn = '';
-                            if ($condition_status === 'Under Maintenance') {
+                            if (in_array($condition_status, ['Under Maintenance', 'Damaged'], true)) {
                                 $mntResult = ensureMaintenanceTicketForAsset($pdo, $childId, $childAssetId, $name, $location, $status_notes, $userId);
                                 if ($mntResult) {
-                                    $mntBtn = "<br><a href='maintenance_list.php?search=" . urlencode($mntResult['request_id']) . "&open_modal_id=" . $mntResult['id'] . "' style='display:inline-flex;align-items:center;gap:6px;margin-top:8px;background:#7b1fa2;color:#fff;padding:6px 14px;border-radius:6px;font-weight:600;text-decoration:none;font-size:12.5px;'><i class='fas fa-wrench'></i> Track Work Order (" . htmlspecialchars($mntResult['request_id']) . ") &rarr;</a>";
+                                    $mntBtn = "<br><a href='maintenance_list.php?search=" . urlencode($mntResult['request_id']) . "' style='display:inline-flex;align-items:center;gap:6px;margin-top:8px;background:#3762c8;color:#fff;padding:6px 14px;border-radius:6px;font-weight:600;text-decoration:none;font-size:12.5px;'><i class='fas fa-wrench'></i> Track Work Order (" . htmlspecialchars($mntResult['request_id']) . ") &rarr;</a>";
                                 }
                             }
 
@@ -498,10 +498,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     } catch (Throwable $ignored) {}
 
                     $mntBtn = '';
-                    if ($condition_status === 'Under Maintenance') {
+                    if (in_array($condition_status, ['Under Maintenance', 'Damaged'], true)) {
                         $mntResult = ensureMaintenanceTicketForAsset($pdo, $id, $asset_id, $name, $location, $status_notes, $userId);
                         if ($mntResult) {
-                            $mntBtn = "<br><a href='maintenance_list.php?search=" . urlencode($mntResult['request_id']) . "&open_modal_id=" . $mntResult['id'] . "' style='display:inline-flex;align-items:center;gap:6px;margin-top:8px;background:#7b1fa2;color:#fff;padding:6px 14px;border-radius:6px;font-weight:600;text-decoration:none;font-size:12.5px;'><i class='fas fa-wrench'></i> Track Work Order (" . htmlspecialchars($mntResult['request_id']) . ") &rarr;</a>";
+                            $mntBtn = "<br><a href='maintenance_list.php?search=" . urlencode($mntResult['request_id']) . "' style='display:inline-flex;align-items:center;gap:6px;margin-top:8px;background:#3762c8;color:#fff;padding:6px 14px;border-radius:6px;font-weight:600;text-decoration:none;font-size:12.5px;'><i class='fas fa-wrench'></i> Track Work Order (" . htmlspecialchars($mntResult['request_id']) . ") &rarr;</a>";
                         }
                     }
 
@@ -1776,8 +1776,8 @@ if (!empty($search) || $status_filter) {
                                                     </td>
                                                     <td style="text-align:right;">
                                                         <button class="btn-icon btn-icon-view" onclick='viewAsset(<?php echo json_encode($asset); ?>)' title="View Details"><i class="fas fa-eye"></i></button>
-                                                        <?php if ($asset['condition_status'] === 'Under Maintenance'): ?>
-                                                            <a href="maintenance_list.php?utility_asset_id=<?php echo $asset['id']; ?>" class="btn-icon" style="color:#7b1fa2;border-color:#e1bee7;background:#f3e5f5;" title="Open Maintenance Tracker"><i class="fas fa-wrench"></i></a>
+                                                        <?php if (in_array($asset['condition_status'], ['Under Maintenance', 'Damaged'], true)): ?>
+                                                            <a href="maintenance_list.php?search=<?php echo urlencode($asset['asset_id']); ?>" class="btn-icon" style="color:#3762c8;border-color:rgba(55,98,200,0.3);background:rgba(55,98,200,0.1);" title="Open Maintenance Tracker"><i class="fas fa-wrench"></i></a>
                                                         <?php endif; ?>
                                                         <?php if ($currentTab === 'retired'): ?>
                                                             <button class="btn-icon" style="color:#10b981;border-color:#a7f3d0;background:#ecfdf5;" onclick='openReactivateModal(<?php echo json_encode($asset); ?>)' title="Restore to Operational"><i class="fas fa-undo"></i></button>
@@ -2450,8 +2450,8 @@ if (!empty($search) || $status_filter) {
 
         // Maintenance Button in View Modal
         const mntBtn = document.getElementById('view-maintenance-btn');
-        if (asset.condition_status === 'Under Maintenance') {
-            mntBtn.href = 'maintenance_list.php?utility_asset_id=' + asset.id;
+        if (asset.condition_status === 'Under Maintenance' || asset.condition_status === 'Damaged') {
+            mntBtn.href = 'maintenance_list.php?search=' + encodeURIComponent(asset.asset_id);
             mntBtn.style.display = 'inline-flex';
         } else {
             mntBtn.style.display = 'none';

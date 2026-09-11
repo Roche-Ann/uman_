@@ -74,6 +74,14 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
         $unreadNotifCount = (int)$stmt->fetchColumn();
     } catch (Throwable $e) {}
 }
+
+// Fetch active maintenance count for employee operations
+$activeMaintenanceCount = 0;
+if (isset($pdo)) {
+    try {
+        $activeMaintenanceCount = (int)$pdo->query("SELECT COUNT(*) FROM maintenance_requests WHERE status NOT IN ('Completed', 'Unrepairable', 'Cancelled')")->fetchColumn();
+    } catch (Throwable $e) {}
+}
 ?>
 <link rel="stylesheet" href="<?php echo $sidebarBase; ?>assets/css/responsive.css">
 <script>
@@ -2980,12 +2988,38 @@ if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
                 </ul>
             </li>
 
-            <!-- Inspection Requests -->
-            <li>
-                <a href="<?php echo $sidebarBase; ?>upad_integration.php" class="nav-link<?php echo sidebarActive('upad_integration.php', $currentPage); ?>">
-                    <i class="fas fa-city"></i>
-                    <span class="link-label">Inspection Requests</span>
-                </a>
+            <!-- Operations Dropdown -->
+            <?php 
+            $isOperationsActive = in_array($currentPage, ['maintenance_list.php', 'upad_integration.php']);
+            ?>
+            <li class="sidebar-dropdown-wrapper">
+                <button type="button" class="sidebar-dropdown-toggle<?php echo $isOperationsActive ? ' active' : ''; ?>" onclick="toggleSidebarDropdown(this)">
+                    <i class="fas fa-tools icon-main"></i>
+                    <span class="link-label">Operations</span>
+                    <?php if ($activeMaintenanceCount > 0): ?>
+                        <span class="badge badge-warning sidebar-mini-badge" style="background:#f59e0b; color:#fff; font-size:10px; font-weight:700; padding:2px 7px; border-radius:10px; margin-left:auto; margin-right:8px;"><?php echo $activeMaintenanceCount; ?></span>
+                    <?php endif; ?>
+                    <i class="fas fa-chevron-right chevron-icon<?php echo $isOperationsActive ? ' rotate' : ''; ?>"></i>
+                </button>
+                <ul class="sidebar-dropdown-menu<?php echo $isOperationsActive ? ' open' : ''; ?>">
+                    <li>
+                        <a href="<?php echo $sidebarBase; ?>maintenance_list.php" class="dropdown-link<?php echo ($currentPage === 'maintenance_list.php') ? ' active' : ''; ?>" style="display:flex; align-items:center; justify-content:space-between;">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <i class="fas fa-wrench"></i>
+                                <span>Maintenance</span>
+                            </div>
+                            <?php if ($activeMaintenanceCount > 0): ?>
+                                <span class="badge" style="background:rgba(245,158,11,0.2); color:#f59e0b; font-size:10px; font-weight:700; padding:1px 6px; border-radius:8px;"><?php echo $activeMaintenanceCount; ?></span>
+                            <?php endif; ?>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="<?php echo $sidebarBase; ?>upad_integration.php" class="dropdown-link<?php echo sidebarActive('upad_integration.php', $currentPage); ?>">
+                            <i class="fas fa-city"></i>
+                            <span>Inspection Requests</span>
+                        </a>
+                    </li>
+                </ul>
             </li>
 
             <!-- Utilities Dropdown -->
