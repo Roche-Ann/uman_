@@ -72,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $fileName = uniqid('asset_', true) . '.' . $fileExtension;
         $targetFilePath = $targetDir . $fileName;
         if (move_uploaded_file($file['tmp_name'], $targetFilePath)) {
-            return $targetFilePath;
+            return str_replace('\\', '/', $targetFilePath);
         }
         return null;
     }
@@ -734,7 +734,13 @@ $whereClause = !empty($conditions) ? 'WHERE ' . implode(' AND ', $conditions) : 
 
 // Fetch all matching assets (no pagination at row level yet)
 $allAssetsQuery = "
-    SELECT a.*, t.name as type_name, t.id as type_id_val
+    SELECT a.*, t.name as type_name, t.id as type_id_val,
+           COALESCE(
+               (SELECT ai.image_path FROM asset_images ai 
+                WHERE ai.utility_asset_id = a.id OR (a.parent_asset_id IS NOT NULL AND ai.utility_asset_id = a.parent_asset_id) 
+                ORDER BY (ai.utility_asset_id = a.id) DESC, ai.id DESC LIMIT 1),
+               ''
+           ) as asset_image_path
     FROM utility_assets a
     LEFT JOIN asset_types t ON a.asset_type_id = t.id
     $whereClause
@@ -743,6 +749,16 @@ $allAssetsQuery = "
 $allStmt = $pdo->prepare($allAssetsQuery);
 $allStmt->execute($params);
 $allAssets = $allStmt->fetchAll();
+
+foreach ($allAssets as &$asset) {
+    if (empty($asset['image_path']) && !empty($asset['asset_image_path'])) {
+        $asset['image_path'] = $asset['asset_image_path'];
+    }
+    if (!empty($asset['image_path'])) {
+        $asset['image_path'] = str_replace('\\', '/', $asset['image_path']);
+    }
+}
+unset($asset);
 
 // Group assets by category
 $groupedAssets = [];
@@ -2132,6 +2148,10 @@ if (!empty($search) || $status_filter) {
                     <div class="form-group">
                         <label>Upload New Image (Replaces current)</label>
                         <input type="file" name="image" class="form-control" accept="image/*">
+                        <div id="edit-image-preview-wrap" style="margin-top:8px; display:none; align-items:center; gap:10px;">
+                            <img id="edit-image-preview" src="" style="width:44px; height:44px; object-fit:cover; border-radius:6px; border:1px solid #cbd5e1;">
+                            <span style="font-size:11.5px; color:#64748b;">Current photo attached</span>
+                        </div>
                     </div>
                 </div>
 
@@ -2162,8 +2182,11 @@ if (!empty($search) || $status_filter) {
             <button class="modal-close" onclick="closeModal('viewModal')">&times;</button>
         </div>
         <div class="modal-body" style="padding:0;">
-            <div id="view-image-container" style="width:100%; height:200px; background:#f1f2f6; display:none; justify-content:center; align-items:center; overflow:hidden;">
-                <img id="view-image" src="" style="width:100%; height:100%; object-fit:cover;">
+            <div id="view-image-container" style="width:100%; height:230px; background:#0f172a; display:none; justify-content:center; align-items:center; overflow:hidden; position:relative;">
+                <img id="view-image" src="" alt="Asset Photo" style="max-width:100%; max-height:100%; object-fit:contain;">
+                <a id="view-image-link" href="#" target="_blank" title="Open Full Photo in New Tab" style="position:absolute; bottom:12px; right:12px; background:rgba(0,0,0,0.65); color:#ffffff; padding:5px 12px; border-radius:6px; font-size:11.5px; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:6px; backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,0.2);">
+                    <i class="fas fa-external-link-alt"></i> Full Photo
+                </a>
             </div>
             <div style="padding:24px;">
                 <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px;">
@@ -2415,6 +2438,20 @@ if (!empty($search) || $status_filter) {
         document.getElementById('edit-office').value = asset.responsible_office || '';
         document.getElementById('edit-description').value = asset.description || '';
 
+        // Image preview in edit modal
+        const editPreviewWrap = document.getElementById('edit-image-preview-wrap');
+        const editPreviewImg = document.getElementById('edit-image-preview');
+        const editImgSrc = (asset.image_path || asset.asset_image_path || '').toString().trim();
+        if (editPreviewWrap && editPreviewImg) {
+            if (editImgSrc !== '') {
+                editPreviewImg.src = editImgSrc.replace(/\\/g, '/');
+                editPreviewWrap.style.display = 'flex';
+            } else {
+                editPreviewWrap.style.display = 'none';
+                editPreviewImg.src = '';
+            }
+        }
+
         // --- Partial-split / merge-notice wiring ---
         const qty   = parseInt(asset.quantity) || 1;
         const isChild = !!asset.parent_asset_id;
@@ -2561,11 +2598,19 @@ if (!empty($search) || $status_filter) {
         // Image Handling
         const imgContainer = document.getElementById('view-image-container');
         const img = document.getElementById('view-image');
-        if (asset.image_path) {
-            img.src = asset.image_path;
+        const imgLink = document.getElementById('view-image-link');
+        let imageSrc = (asset.image_path || asset.asset_image_path || '').toString().trim();
+        if (imageSrc !== '') {
+            imageSrc = imageSrc.replace(/\\/g, '/');
+            img.src = imageSrc;
+            if (imgLink) imgLink.href = imageSrc;
             imgContainer.style.display = 'flex';
+            img.onerror = function() {
+                imgContainer.style.display = 'none';
+            };
         } else {
             imgContainer.style.display = 'none';
+            img.src = '';
         }
 
         // Maintenance Button in View Modal
