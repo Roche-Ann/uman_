@@ -19,17 +19,106 @@ if (!function_exists('ensureMaintenanceSchema')) {
         try {
             $pdo->query("SELECT 1 FROM maintenance_requests LIMIT 1");
         } catch (Throwable $e) {
-            $sqlPath = __DIR__ . '/sql/utility_maintenance.sql';
-            if (file_exists($sqlPath)) {
-                $sql = file_get_contents($sqlPath);
-                $pdo->exec($sql);
-            }
+            try {
+                $pdo->exec("
+                    CREATE TABLE IF NOT EXISTS `maintenance_requests` (
+                      `id` int(11) NOT NULL AUTO_INCREMENT,
+                      `request_id` varchar(50) NOT NULL,
+                      `utility_asset_id` int(11) DEFAULT NULL,
+                      `title` varchar(255) NOT NULL,
+                      `maintenance_type` enum('Corrective','Preventive','Emergency','Routine') NOT NULL DEFAULT 'Corrective',
+                      `source` varchar(100) NOT NULL DEFAULT 'Asset Monitoring',
+                      `description` text DEFAULT NULL,
+                      `priority` enum('Low','Medium','High','Emergency') NOT NULL DEFAULT 'Medium',
+                      `assigned_to` varchar(150) DEFAULT NULL,
+                      `location` varchar(255) DEFAULT NULL,
+                      `status` enum('Reported','Scheduled','In Progress','On Hold','Testing','Completed','Unrepairable','Cancelled') NOT NULL DEFAULT 'Reported',
+                      `progress_percent` int(11) NOT NULL DEFAULT 0,
+                      `scheduled_date` date DEFAULT NULL,
+                      `started_at` datetime DEFAULT NULL,
+                      `completed_at` datetime DEFAULT NULL,
+                      `notes` text DEFAULT NULL,
+                      `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+                      `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+                      PRIMARY KEY (`id`),
+                      UNIQUE KEY `idx_request_id` (`request_id`),
+                      KEY `idx_asset_id` (`utility_asset_id`),
+                      KEY `idx_status` (`status`)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+                ");
+                $pdo->exec("
+                    CREATE TABLE IF NOT EXISTS `maintenance_status_logs` (
+                      `id` int(11) NOT NULL AUTO_INCREMENT,
+                      `maintenance_request_id` int(11) NOT NULL,
+                      `old_status` varchar(50) DEFAULT NULL,
+                      `new_status` varchar(50) NOT NULL,
+                      `old_progress` int(11) NOT NULL DEFAULT 0,
+                      `new_progress` int(11) NOT NULL DEFAULT 0,
+                      `changed_by` int(11) NOT NULL DEFAULT 1,
+                      `notes` text DEFAULT NULL,
+                      `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+                      PRIMARY KEY (`id`),
+                      KEY `idx_req_log` (`maintenance_request_id`)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+                ");
+            } catch (Throwable $ignored) {}
         }
         $done = true;
     }
 }
 
+if (!function_exists('syncOrphanedDamagedAssets')) {
+    function syncOrphanedDamagedAssets($pdo, $userId = 1): void {
+        try {
+            $stmt = $pdo->query("
+                SELECT a.id, a.asset_id, a.name, a.location, a.condition_status, a.description, a.quantity
+                FROM utility_assets a
+                WHERE a.condition_status IN ('Damaged', 'Under Maintenance')
+                  AND NOT EXISTS (
+                      SELECT 1 FROM maintenance_requests m 
+                      WHERE m.utility_asset_id = a.id 
+                        AND m.status NOT IN ('Completed', 'Unrepairable', 'Cancelled')
+                  )
+            ");
+            $orphans = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            if (!$orphans) return;
+
+            $year = date('Y');
+            foreach ($orphans as $asset) {
+                $seqRow = $pdo->query("SELECT COUNT(*) FROM maintenance_requests WHERE request_id LIKE 'MNT-$year-%'")->fetchColumn();
+                $seq = intval($seqRow) + 1;
+                $reqId = sprintf("MNT-%s-%04d", $year, $seq);
+                
+                $isDamaged = ($asset['condition_status'] === 'Damaged');
+                $status = $isDamaged ? 'Reported' : 'Scheduled';
+                $priority = $isDamaged ? 'High' : 'Medium';
+                $type = $isDamaged ? 'Emergency' : 'Corrective';
+                $title = ($isDamaged ? "Repair Damaged Asset: " : "Maintenance: ") . $asset['name'] . " (" . $asset['asset_id'] . ")";
+                $desc = !empty($asset['description']) ? $asset['description'] : "Asset flagged as {$asset['condition_status']} in Asset Inventory. Auto-generated work order.";
+                $loc = !empty($asset['location']) ? $asset['location'] : 'Main Facility';
+
+                $ins = $pdo->prepare("
+                    INSERT INTO maintenance_requests 
+                        (request_id, utility_asset_id, title, maintenance_type, source, description, priority, location, status, progress_percent, created_at, updated_at)
+                    VALUES 
+                        (?, ?, ?, ?, 'Asset Inventory Auto-Sync', ?, ?, ?, ?, 0, NOW(), NOW())
+                ");
+                $ins->execute([$reqId, $asset['id'], $title, $type, $desc, $priority, $loc, $status]);
+                $newId = (int)$pdo->lastInsertId();
+
+                try {
+                    $pdo->prepare("
+                        INSERT INTO maintenance_status_logs (maintenance_request_id, old_status, new_status, old_progress, new_progress, changed_by, notes)
+                        VALUES (?, NULL, ?, 0, 0, ?, 'Auto-generated from Asset Inventory condition')
+                    ")->execute([$newId, $status, $userId]);
+                } catch (Throwable $e) {}
+            }
+        } catch (Throwable $e) {}
+    }
+}
+
 ensureMaintenanceSchema();
+syncOrphanedDamagedAssets($pdo, $userId ?? 1);
 
 $userType = $_SESSION['user_type'] ?? '';
 $userId   = intval($_SESSION['user_id'] ?? 1);
@@ -189,23 +278,70 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // 2-Way Asset Synchronization
             if ($assetId) {
-                $targetAssetStatus = null;
                 if ($newStatus === 'Completed') {
-                    $targetAssetStatus = 'Operational';
-                } elseif ($newStatus === 'Unrepairable') {
-                    $targetAssetStatus = 'Decommissioned';
-                } elseif (in_array($newStatus, ['Reported', 'Scheduled', 'In Progress', 'On Hold', 'Testing'])) {
-                    $targetAssetStatus = 'Under Maintenance';
-                }
+                    // Check if asset is a child offshoot (e.g. SS-0001-M1)
+                    $aCheck = $pdo->prepare("SELECT id, asset_id, parent_asset_id, quantity, name FROM utility_assets WHERE id = ?");
+                    $aCheck->execute([$assetId]);
+                    $assetRow = $aCheck->fetch(PDO::FETCH_ASSOC);
 
-                if ($targetAssetStatus) {
-                    $pdo->prepare("UPDATE utility_assets SET condition_status = ? WHERE id = ?")->execute([$targetAssetStatus, $assetId]);
+                    if ($assetRow && !empty($assetRow['parent_asset_id'])) {
+                        $childQty = intval($assetRow['quantity']);
+                        $parentId = intval($assetRow['parent_asset_id']);
+                        $childCode = $assetRow['asset_id'];
+
+                        // Merge quantity back into parent asset
+                        $pdo->prepare("UPDATE utility_assets SET quantity = quantity + ? WHERE id = ?")
+                            ->execute([$childQty, $parentId]);
+
+                        $parentCodeStmt = $pdo->prepare("SELECT asset_id FROM utility_assets WHERE id = ?");
+                        $parentCodeStmt->execute([$parentId]);
+                        $parentCode = $parentCodeStmt->fetchColumn() ?: 'Parent';
+
+                        try {
+                            $pdo->prepare("
+                                INSERT INTO asset_status_logs (utility_asset_id, action_type, old_status, new_status, changed_by, notes)
+                                VALUES (?, 'split_merged', 'Under Maintenance', 'Operational (Merged)', ?, ?)
+                            ")->execute([$parentId, $userId, "{$childQty} unit(s) of {$childCode} repaired via Work Order {$ticket['request_id']} and merged back into {$parentCode}."]);
+                        } catch (Throwable $e) {}
+
+                        try {
+                            $pdo->prepare("INSERT INTO asset_notifications (type, message) VALUES (?, ?)")
+                                ->execute(['status_changed', "Work Order {$ticket['request_id']}: {$childQty} unit(s) of {$childCode} repaired and merged back into {$parentCode}."]);
+                        } catch (Throwable $e) {}
+
+                        // Clean up child offshoot row
+                        $pdo->prepare("DELETE FROM utility_assets WHERE id = ?")->execute([$assetId]);
+                    } else {
+                        // Regular asset restored to Operational
+                        $pdo->prepare("UPDATE utility_assets SET condition_status = 'Operational' WHERE id = ?")->execute([$assetId]);
+                        try {
+                            $pdo->prepare("
+                                INSERT INTO asset_status_logs (utility_asset_id, old_status, new_status, changed_by, notes)
+                                VALUES (?, 'Under Maintenance', 'Operational', ?, ?)
+                            ")->execute([$assetId, $userId, "Restored to Operational via Work Order {$ticket['request_id']}."]);
+                        } catch (Throwable $e) {}
+                        try {
+                            $pdo->prepare("INSERT INTO asset_notifications (type, message) VALUES (?, ?)")
+                                ->execute(['status_changed', "Work Order {$ticket['request_id']}: Asset restored to Operational status."]);
+                        } catch (Throwable $e) {}
+                    }
+                } elseif ($newStatus === 'Unrepairable') {
+                    $pdo->prepare("UPDATE utility_assets SET condition_status = 'Retired' WHERE id = ?")->execute([$assetId]);
                     try {
                         $pdo->prepare("
                             INSERT INTO asset_status_logs (utility_asset_id, old_status, new_status, changed_by, notes)
-                            VALUES (?, ?, ?, ?, ?)
-                        ")->execute([$assetId, $oldStatus, $targetAssetStatus, $userId, "Synced from Maintenance Work Order {$ticket['request_id']} (Status: {$newStatus})"]);
+                            VALUES (?, 'Under Maintenance', 'Retired', ?, ?)
+                        ")->execute([$assetId, $userId, "Decommissioned via Work Order {$ticket['request_id']} (Unrepairable)."]);
                     } catch (Throwable $e) {}
+                } elseif (in_array($newStatus, ['Scheduled', 'In Progress', 'On Hold', 'Testing'])) {
+                    $pdo->prepare("UPDATE utility_assets SET condition_status = 'Under Maintenance' WHERE id = ?")->execute([$assetId]);
+                } elseif ($newStatus === 'Reported') {
+                    $aCheck = $pdo->prepare("SELECT condition_status FROM utility_assets WHERE id = ?");
+                    $aCheck->execute([$assetId]);
+                    $currCond = $aCheck->fetchColumn();
+                    if ($currCond !== 'Damaged') {
+                        $pdo->prepare("UPDATE utility_assets SET condition_status = 'Under Maintenance' WHERE id = ?")->execute([$assetId]);
+                    }
                 }
             }
 

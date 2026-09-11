@@ -101,9 +101,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         return $prefix;
     }
 
-    function ensureMaintenanceTicketForAsset($pdo, $assetDbId, $assetCode, $assetName, $location, $notes, $userId) {
+    function ensureMaintenanceTicketForAsset($pdo, $assetDbId, $assetCode, $assetName, $location, $notes, $userId, $conditionStatus = 'Under Maintenance') {
         try {
-            $chk = $pdo->prepare("SELECT id, request_id FROM maintenance_requests WHERE utility_asset_id = ? AND status NOT IN ('Completed', 'Closed', 'Cancelled') ORDER BY id DESC LIMIT 1");
+            // Ensure maintenance schema exists
+            try {
+                $pdo->query("SELECT 1 FROM maintenance_requests LIMIT 1");
+            } catch (Throwable $e) {
+                try {
+                    $pdo->exec("
+                        CREATE TABLE IF NOT EXISTS `maintenance_requests` (
+                          `id` int(11) NOT NULL AUTO_INCREMENT,
+                          `request_id` varchar(50) NOT NULL,
+                          `utility_asset_id` int(11) DEFAULT NULL,
+                          `title` varchar(255) NOT NULL,
+                          `maintenance_type` enum('Corrective','Preventive','Emergency','Routine') NOT NULL DEFAULT 'Corrective',
+                          `source` varchar(100) NOT NULL DEFAULT 'Asset Monitoring',
+                          `description` text DEFAULT NULL,
+                          `priority` enum('Low','Medium','High','Emergency') NOT NULL DEFAULT 'Medium',
+                          `assigned_to` varchar(150) DEFAULT NULL,
+                          `location` varchar(255) DEFAULT NULL,
+                          `status` enum('Reported','Scheduled','In Progress','On Hold','Testing','Completed','Unrepairable','Cancelled') NOT NULL DEFAULT 'Reported',
+                          `progress_percent` int(11) NOT NULL DEFAULT 0,
+                          `scheduled_date` date DEFAULT NULL,
+                          `started_at` datetime DEFAULT NULL,
+                          `completed_at` datetime DEFAULT NULL,
+                          `notes` text DEFAULT NULL,
+                          `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+                          `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+                          PRIMARY KEY (`id`),
+                          UNIQUE KEY `idx_request_id` (`request_id`),
+                          KEY `idx_asset_id` (`utility_asset_id`),
+                          KEY `idx_status` (`status`)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+                    ");
+                    $pdo->exec("
+                        CREATE TABLE IF NOT EXISTS `maintenance_status_logs` (
+                          `id` int(11) NOT NULL AUTO_INCREMENT,
+                          `maintenance_request_id` int(11) NOT NULL,
+                          `old_status` varchar(50) DEFAULT NULL,
+                          `new_status` varchar(50) NOT NULL,
+                          `old_progress` int(11) NOT NULL DEFAULT 0,
+                          `new_progress` int(11) NOT NULL DEFAULT 0,
+                          `changed_by` int(11) NOT NULL DEFAULT 1,
+                          `notes` text DEFAULT NULL,
+                          `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+                          PRIMARY KEY (`id`),
+                          KEY `idx_req_log` (`maintenance_request_id`)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+                    ");
+                } catch (Throwable $ignored) {}
+            }
+
+            $chk = $pdo->prepare("SELECT id, request_id FROM maintenance_requests WHERE utility_asset_id = ? AND status NOT IN ('Completed', 'Closed', 'Cancelled', 'Unrepairable') ORDER BY id DESC LIMIT 1");
             $chk->execute([$assetDbId]);
             $existing = $chk->fetch(PDO::FETCH_ASSOC);
             if ($existing) {
@@ -114,27 +163,82 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $seqRow = $pdo->query("SELECT COUNT(*) FROM maintenance_requests WHERE request_id LIKE 'MNT-$year-%'")->fetchColumn();
             $seq = intval($seqRow) + 1;
             $reqId = sprintf("MNT-%s-%04d", $year, $seq);
-            $title = "Maintenance for " . $assetName . " (" . $assetCode . ")";
-            $desc = !empty($notes) ? $notes : "Asset {$assetCode} placed under maintenance.";
+
+            $isDamaged = ($conditionStatus === 'Damaged');
+            $status = $isDamaged ? 'Reported' : 'Scheduled';
+            $priority = $isDamaged ? 'High' : 'Medium';
+            $mType = $isDamaged ? 'Emergency' : 'Corrective';
+            $title = ($isDamaged ? "Repair Damaged Asset: " : "Maintenance: ") . $assetName . " (" . $assetCode . ")";
+            $desc = !empty($notes) ? $notes : "Asset {$assetCode} placed under {$conditionStatus} in Asset Inventory.";
 
             $stmt = $pdo->prepare("
                 INSERT INTO maintenance_requests
                     (request_id, utility_asset_id, title, maintenance_type, source, description, priority, location, status, progress_percent, created_at, updated_at)
-                VALUES (?, ?, ?, 'Corrective', 'Asset Monitoring', ?, 'Medium', ?, 'Reported', 0, NOW(), NOW())
+                VALUES (?, ?, ?, ?, 'Asset Inventory', ?, ?, ?, ?, 0, NOW(), NOW())
             ");
-            $stmt->execute([$reqId, $assetDbId, $title, $desc, $location]);
+            $stmt->execute([$reqId, $assetDbId, $title, $mType, $desc, $priority, $location ?: 'Unspecified Location', $status]);
             $newMntId = (int)$pdo->lastInsertId();
 
             try {
                 $pdo->prepare("
-                    INSERT INTO maintenance_status_logs (maintenance_request_id, old_status, new_status, changed_by, notes)
-                    VALUES (?, NULL, 'Reported', ?, 'Auto-generated from Asset Management')
-                ")->execute([$newMntId, $userId]);
+                    INSERT INTO maintenance_status_logs (maintenance_request_id, old_status, new_status, old_progress, new_progress, changed_by, notes)
+                    VALUES (?, NULL, ?, 0, 0, ?, 'Auto-generated from Asset Inventory')
+                ")->execute([$newMntId, $status, $userId]);
             } catch (Throwable $e) {}
 
             return ['id' => $newMntId, 'request_id' => $reqId, 'is_new' => true];
         } catch (Throwable $e) {
             return null;
+        }
+    }
+
+    if (!function_exists('syncOrphanedDamagedAssets')) {
+        function syncOrphanedDamagedAssets($pdo, $userId = 1): void {
+            try {
+                $stmt = $pdo->query("
+                    SELECT a.id, a.asset_id, a.name, a.location, a.condition_status, a.description, a.quantity
+                    FROM utility_assets a
+                    WHERE a.condition_status IN ('Damaged', 'Under Maintenance')
+                      AND NOT EXISTS (
+                          SELECT 1 FROM maintenance_requests m 
+                          WHERE m.utility_asset_id = a.id 
+                            AND m.status NOT IN ('Completed', 'Unrepairable', 'Cancelled')
+                      )
+                ");
+                $orphans = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                if (!$orphans) return;
+
+                $year = date('Y');
+                foreach ($orphans as $asset) {
+                    $seqRow = $pdo->query("SELECT COUNT(*) FROM maintenance_requests WHERE request_id LIKE 'MNT-$year-%'")->fetchColumn();
+                    $seq = intval($seqRow) + 1;
+                    $reqId = sprintf("MNT-%s-%04d", $year, $seq);
+                    
+                    $isDamaged = ($asset['condition_status'] === 'Damaged');
+                    $status = $isDamaged ? 'Reported' : 'Scheduled';
+                    $priority = $isDamaged ? 'High' : 'Medium';
+                    $type = $isDamaged ? 'Emergency' : 'Corrective';
+                    $title = ($isDamaged ? "Repair Damaged Asset: " : "Maintenance: ") . $asset['name'] . " (" . $asset['asset_id'] . ")";
+                    $desc = !empty($asset['description']) ? $asset['description'] : "Asset flagged as {$asset['condition_status']} in Asset Inventory. Auto-generated work order.";
+                    $loc = !empty($asset['location']) ? $asset['location'] : 'Main Facility';
+
+                    $ins = $pdo->prepare("
+                        INSERT INTO maintenance_requests 
+                            (request_id, utility_asset_id, title, maintenance_type, source, description, priority, location, status, progress_percent, created_at, updated_at)
+                        VALUES 
+                            (?, ?, ?, ?, 'Asset Inventory Auto-Sync', ?, ?, ?, ?, 0, NOW(), NOW())
+                    ");
+                    $ins->execute([$reqId, $asset['id'], $title, $type, $desc, $priority, $loc, $status]);
+                    $newId = (int)$pdo->lastInsertId();
+
+                    try {
+                        $pdo->prepare("
+                            INSERT INTO maintenance_status_logs (maintenance_request_id, old_status, new_status, old_progress, new_progress, changed_by, notes)
+                            VALUES (?, NULL, ?, 0, 0, ?, 'Auto-generated from Asset Inventory condition')
+                        ")->execute([$newId, $status, $userId]);
+                    } catch (Throwable $e) {}
+                }
+            } catch (Throwable $e) {}
         }
     }
 
@@ -238,7 +342,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $mntBtn = '';
                 if (in_array($condition_status, ['Under Maintenance', 'Damaged'], true)) {
-                    $mntResult = ensureMaintenanceTicketForAsset($pdo, $id, $asset_id, $name, $location, $description, $userId);
+                    $mntResult = ensureMaintenanceTicketForAsset($pdo, $id, $asset_id, $name, $location, $description, $userId, $condition_status);
                     if ($mntResult) {
                         $mntBtn = "<br><a href='maintenance_list.php?search=" . urlencode($mntResult['request_id']) . "' style='display:inline-flex;align-items:center;gap:6px;margin-top:8px;background:#3762c8;color:#fff;padding:6px 14px;border-radius:6px;font-weight:600;text-decoration:none;font-size:12.5px;'><i class='fas fa-wrench'></i> Track Work Order (" . htmlspecialchars($mntResult['request_id']) . ") &rarr;</a>";
                     }
@@ -330,6 +434,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $pdo->prepare("INSERT INTO asset_notifications (type, message) VALUES (?, ?)")
                                     ->execute(['status_changed', "Asset {$asset_id}: {$total_qty} unit(s) restored and merged back into {$parentCode}."]);
                             } catch (Throwable $ignored) {}
+                            try {
+                                $pdo->prepare("UPDATE maintenance_requests SET status = 'Completed', progress_percent = 100, completed_at = NOW(), updated_at = NOW() WHERE utility_asset_id = ?")->execute([$id]);
+                            } catch (Throwable $ignored) {}
                             $pdo->prepare("DELETE FROM utility_assets WHERE id = ?")->execute([$id]);
                             $_SESSION['flash_success'] = "{$total_qty} unit(s) of {$asset_id} restored to Operational and merged back into {$parentCode}.";
                         } catch (PDOException $e) {
@@ -377,7 +484,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                             $mntBtn = '';
                             if (in_array($condition_status, ['Under Maintenance', 'Damaged'], true)) {
-                                $mntResult = ensureMaintenanceTicketForAsset($pdo, $childId, $childAssetId, $name, $location, $status_notes, $userId);
+                                $mntResult = ensureMaintenanceTicketForAsset($pdo, $childId, $childAssetId, $name, $location, $status_notes, $userId, $condition_status);
                                 if ($mntResult) {
                                     $mntBtn = "<br><a href='maintenance_list.php?search=" . urlencode($mntResult['request_id']) . "' style='display:inline-flex;align-items:center;gap:6px;margin-top:8px;background:#3762c8;color:#fff;padding:6px 14px;border-radius:6px;font-weight:600;text-decoration:none;font-size:12.5px;'><i class='fas fa-wrench'></i> Track Work Order (" . htmlspecialchars($mntResult['request_id']) . ") &rarr;</a>";
                                 }
@@ -499,10 +606,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     $mntBtn = '';
                     if (in_array($condition_status, ['Under Maintenance', 'Damaged'], true)) {
-                        $mntResult = ensureMaintenanceTicketForAsset($pdo, $id, $asset_id, $name, $location, $status_notes, $userId);
+                        $mntResult = ensureMaintenanceTicketForAsset($pdo, $id, $asset_id, $name, $location, $status_notes, $userId, $condition_status);
                         if ($mntResult) {
                             $mntBtn = "<br><a href='maintenance_list.php?search=" . urlencode($mntResult['request_id']) . "' style='display:inline-flex;align-items:center;gap:6px;margin-top:8px;background:#3762c8;color:#fff;padding:6px 14px;border-radius:6px;font-weight:600;text-decoration:none;font-size:12.5px;'><i class='fas fa-wrench'></i> Track Work Order (" . htmlspecialchars($mntResult['request_id']) . ") &rarr;</a>";
                         }
+                    } elseif ($condition_status === 'Operational') {
+                        try {
+                            $pdo->prepare("
+                                UPDATE maintenance_requests 
+                                SET status = 'Completed', progress_percent = 100, completed_at = NOW(), updated_at = NOW() 
+                                WHERE utility_asset_id = ? AND status NOT IN ('Completed', 'Unrepairable', 'Cancelled')
+                            ")->execute([$id]);
+                        } catch (Throwable $ignored) {}
                     }
 
                     $_SESSION['flash_success'] = "Asset <strong>{$asset_id}</strong> updated successfully!" . $mntBtn;
@@ -565,6 +680,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     }
+}
+
+// Auto-sync any existing Damaged or Under Maintenance assets with Maintenance module
+if (function_exists('syncOrphanedDamagedAssets')) {
+    syncOrphanedDamagedAssets($pdo, $userId);
 }
 
 // ------------------------------------------------------------------------
