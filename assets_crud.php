@@ -2184,6 +2184,10 @@ if (!empty($search) || $status_filter) {
         <div class="modal-body" style="padding:0;">
             <div id="view-image-container" style="width:100%; height:230px; background:#0f172a; display:none; justify-content:center; align-items:center; overflow:hidden; position:relative;">
                 <img id="view-image" src="" alt="Asset Photo" style="max-width:100%; max-height:100%; object-fit:contain;">
+                <div id="view-image-fallback" style="display:none; color:#cbd5e1; font-size:12px; text-align:center; padding:20px;">
+                    <i class="fas fa-exclamation-triangle" style="font-size:24px; color:#f59e0b; margin-bottom:8px; display:block;"></i>
+                    <span>Photo record exists, but file is not found on server</span>
+                </div>
                 <a id="view-image-link" href="#" target="_blank" title="Open Full Photo in New Tab" style="position:absolute; bottom:12px; right:12px; background:rgba(0,0,0,0.65); color:#ffffff; padding:5px 12px; border-radius:6px; font-size:11.5px; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:6px; backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,0.2);">
                     <i class="fas fa-external-link-alt"></i> Full Photo
                 </a>
@@ -2226,12 +2230,21 @@ if (!empty($search) || $status_filter) {
                         <td style="font-weight:600; color:#64748b;">Description</td>
                         <td id="view-desc-text"></td>
                     </tr>
+                    <tr>
+                        <td style="font-weight:600; color:#64748b;">Asset Photo</td>
+                        <td id="view-photo-status-text"></td>
+                    </tr>
                 </table>
             </div>
         </div>
         <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center;">
-            <a id="view-maintenance-btn" href="#" class="btn btn-primary" style="display:none; background:#7b1fa2; border-color:#7b1fa2; text-decoration:none;"><i class="fas fa-tools"></i> Open Maintenance Work Order</a>
-            <button type="button" class="btn btn-outline" onclick="closeModal('viewModal')">Close</button>
+            <button type="button" class="btn btn-outline" onclick="closeModal('viewModal'); if(window.currentViewAsset) editAsset(window.currentViewAsset);" style="display:inline-flex; align-items:center; gap:6px; font-size:12.5px;">
+                <i class="fas fa-edit"></i> Edit Details / Photo
+            </button>
+            <div style="display:inline-flex; gap:8px;">
+                <a id="view-maintenance-btn" href="#" class="btn btn-primary" style="display:none; background:#7b1fa2; border-color:#7b1fa2; text-decoration:none;"><i class="fas fa-tools"></i> Open Maintenance Work Order</a>
+                <button type="button" class="btn btn-outline" onclick="closeModal('viewModal')">Close</button>
+            </div>
         </div>
     </div>
 </div>
@@ -2441,10 +2454,14 @@ if (!empty($search) || $status_filter) {
         // Image preview in edit modal
         const editPreviewWrap = document.getElementById('edit-image-preview-wrap');
         const editPreviewImg = document.getElementById('edit-image-preview');
-        const editImgSrc = (asset.image_path || asset.asset_image_path || '').toString().trim();
+        let editRaw = (asset.image_path || asset.asset_image_path || '').toString().trim();
+        let editImgSrc = editRaw.replace(/\\/g, '/');
+        if (editImgSrc.includes('uploads/assets/')) {
+            editImgSrc = 'uploads/assets/' + editImgSrc.split('uploads/assets/').pop();
+        }
         if (editPreviewWrap && editPreviewImg) {
             if (editImgSrc !== '') {
-                editPreviewImg.src = editImgSrc.replace(/\\/g, '/');
+                editPreviewImg.src = editImgSrc;
                 editPreviewWrap.style.display = 'flex';
             } else {
                 editPreviewWrap.style.display = 'none';
@@ -2574,7 +2591,10 @@ if (!empty($search) || $status_filter) {
         document.getElementById('add-form').submit();
     }
 
+    let currentViewAsset = null;
+
     function viewAsset(asset) {
+        window.currentViewAsset = asset;
         document.getElementById('view-name').textContent = asset.name;
         document.getElementById('view-type').textContent = asset.type_name;
         document.getElementById('view-asset-id-text').textContent = asset.asset_id;
@@ -2599,18 +2619,41 @@ if (!empty($search) || $status_filter) {
         const imgContainer = document.getElementById('view-image-container');
         const img = document.getElementById('view-image');
         const imgLink = document.getElementById('view-image-link');
-        let imageSrc = (asset.image_path || asset.asset_image_path || '').toString().trim();
+        const imgFallback = document.getElementById('view-image-fallback');
+        const photoStatusText = document.getElementById('view-photo-status-text');
+
+        let rawImg = (asset.image_path || asset.asset_image_path || '').toString().trim();
+        let imageSrc = rawImg.replace(/\\/g, '/');
+        if (imageSrc.includes('uploads/assets/')) {
+            imageSrc = 'uploads/assets/' + imageSrc.split('uploads/assets/').pop();
+        }
+
         if (imageSrc !== '') {
-            imageSrc = imageSrc.replace(/\\/g, '/');
+            img.style.display = 'block';
+            if (imgFallback) imgFallback.style.display = 'none';
             img.src = imageSrc;
-            if (imgLink) imgLink.href = imageSrc;
+            if (imgLink) {
+                imgLink.href = imageSrc;
+                imgLink.style.display = 'inline-flex';
+            }
             imgContainer.style.display = 'flex';
+            
             img.onerror = function() {
-                imgContainer.style.display = 'none';
+                img.style.display = 'none';
+                if (imgLink) imgLink.style.display = 'none';
+                if (imgFallback) imgFallback.style.display = 'block';
             };
+
+            if (photoStatusText) {
+                photoStatusText.innerHTML = '<span style="color:#059669; font-weight:600;"><i class="fas fa-check-circle"></i> Photo Attached</span> &bull; <a href="' + encodeURI(imageSrc) + '" target="_blank" style="color:#3762c8; font-weight:600; text-decoration:none; margin-left:4px;"><i class="fas fa-external-link-alt"></i> Full Photo</a>';
+            }
         } else {
             imgContainer.style.display = 'none';
             img.src = '';
+            if (imgFallback) imgFallback.style.display = 'none';
+            if (photoStatusText) {
+                photoStatusText.innerHTML = '<span style="color:#94a3b8; font-style:italic;">No photo attached</span> <button type="button" onclick="closeModal(\'viewModal\'); if(window.currentViewAsset) editAsset(window.currentViewAsset);" style="background:none; border:none; color:#3762c8; font-weight:600; font-size:12px; cursor:pointer; margin-left:8px; padding:0; text-decoration:underline;"><i class="fas fa-camera"></i> Attach photo via Edit</button>';
+            }
         }
 
         // Maintenance Button in View Modal
