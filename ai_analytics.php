@@ -1018,17 +1018,17 @@ $pipelineData = json_encode([
 
         /* ===== DARK THEME OVERRIDES ===== */
         .dark-theme .card {
-            background: rgba(30, 41, 59, 0.9) !important;
-            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            background: rgba(10, 18, 35, 0.92) !important;
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
             color: #f8fafc !important;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6) !important;
         }
         .dark-theme .dashboard-header h1 {
             color: #f8fafc !important;
         }
 
         .dark-theme .box {
-            background: #1e293b !important;
+            background: rgba(15, 23, 42, 0.85) !important;
             border: 1px solid #334155 !important;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
             color: #f8fafc !important;
@@ -1048,7 +1048,7 @@ $pipelineData = json_encode([
             color: #f8fafc !important;
         }
         .dark-theme .tab-btn.active {
-            background: #3762c8 !important;
+            background: #3b82f6 !important;
             color: #ffffff !important;
         }
         .dark-theme .rec-item {
@@ -1062,7 +1062,7 @@ $pipelineData = json_encode([
             color: #cbd5e1 !important;
         }
         .dark-theme .risk-table th {
-            background: #0f172a !important;
+            background: #151f32 !important;
             color: #94a3b8 !important;
             border-bottom-color: #334155 !important;
         }

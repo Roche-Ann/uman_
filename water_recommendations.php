@@ -308,13 +308,13 @@ $recommendations = $recordsStmt->fetchAll();
         .page-link.active { background: #0284c7; color: #fff; border-color: #0284c7; font-weight: 600; }
 
         /* -- Dark Mode -- */
-        .dark-theme .card { background: rgba(15,23,42,0.92); border-color: rgba(255,255,255,0.08); }
+        .dark-theme .card { background: rgba(10, 18, 35, 0.92); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6); }
         .dark-theme .dashboard-header h1 { color: #f8fafc; }
         .dark-theme .dashboard-header p { color: #94a3b8; }
-        .dark-theme .filter-bar { background: #1e293b; border-color: #334155; }
+        .dark-theme .filter-bar { background: rgba(15, 23, 42, 0.85); border-color: #334155; }
         .dark-theme .filter-group label { color: #94a3b8; }
         .dark-theme .filter-control { background: #0f172a; border-color: #334155; color: #cbd5e1; }
-        .dark-theme .rec-item { background: #1e293b; border-color: #334155; }
+        .dark-theme .rec-item { background: rgba(15, 23, 42, 0.85); border-color: #334155; }
         .dark-theme .rec-content h3 { color: #f8fafc; }
         .dark-theme .rec-desc { color: #cbd5e1; }
         .dark-theme .rec-meta i { color: #94a3b8; }

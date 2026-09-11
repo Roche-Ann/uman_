@@ -256,15 +256,15 @@ function pageUrl(int $p, string $search, string $date, string $type): string {
         .page-link.active{background:#3762c8;color:#fff;border-color:#3762c8;}
         .page-link.disabled{opacity:.4;pointer-events:none;}
         /* Dark mode */
-        .dark-theme .card{background:rgba(15,23,42,.95)!important;border-color:rgba(255,255,255,.08)!important;}
+        .dark-theme .card{background:rgba(10, 18, 35, 0.92)!important;border:1px solid rgba(255, 255, 255, 0.08)!important;box-shadow:0 6px 24px rgba(0, 0, 0, 0.6)!important;}
         .dark-theme .page-header h1{color:#f8fafc!important;} .dark-theme .page-header .subtitle{color:#94a3b8!important;}
-        .dark-theme .filter-bar{background:#1e293b!important;border-color:#334155!important;}
+        .dark-theme .filter-bar{background:rgba(15, 23, 42, 0.85)!important;border-color:#334155!important;}
         .dark-theme .filter-group label{color:#94a3b8!important;}
         .dark-theme .form-control{background:#151f32!important;border-color:#475569!important;color:#f8fafc!important;}
         .dark-theme .day-label{border-bottom-color:#334155!important;} .dark-theme .day-label .day-date{color:#f8fafc!important;}
         .dark-theme .day-label .day-count{background:#334155!important;color:#94a3b8!important;}
         .dark-theme .timeline::before{background:#334155!important;}
-        .dark-theme .tl-card{background:#1e293b!important;border-color:#334155!important;}
+        .dark-theme .tl-card{background:rgba(15, 23, 42, 0.85)!important;border-color:#334155!important;}
         .dark-theme .tl-asset-name{color:#f8fafc!important;} .dark-theme .tl-asset-id{color:#64748b!important;}
         .dark-theme .tl-meta .tl-user{color:#94a3b8!important;}
         .dark-theme .diff-table th{background:#151f32!important;color:#64748b!important;border-bottom-color:#334155!important;}

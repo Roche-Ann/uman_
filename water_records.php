@@ -226,19 +226,19 @@ $records = $recordsStmt->fetchAll();
         .page-link.active { background: #0284c7; color: #fff; border-color: #0284c7; font-weight: 600; }
 
         /* -- Dark Mode -- */
-        .dark-theme .card { background: rgba(15,23,42,0.92); border-color: rgba(255,255,255,0.08); }
+        .dark-theme .card { background: rgba(10, 18, 35, 0.92); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6); }
         .dark-theme .dashboard-header h1 { color: #f8fafc; }
         .dark-theme .dashboard-header p { color: #94a3b8; }
-        .dark-theme .form-card { background: #1e293b; border-color: #334155; }
+        .dark-theme .form-card { background: rgba(15, 23, 42, 0.85); border-color: #334155; }
         .dark-theme .form-card-title { color: #f8fafc; border-bottom-color: #334155; }
         .dark-theme .form-group label { color: #94a3b8; }
         .dark-theme .form-control { background: #0f172a; border-color: #334155; color: #cbd5e1; }
         .dark-theme .form-control:focus { border-color: #0284c7; }
         .dark-theme .form-control:disabled, .dark-theme .form-control[readonly] { background: #0f172a; color: #64748b; border-color: #1e293b; }
-        .dark-theme .panel { background: #1e293b; border-color: #334155; }
-        .dark-theme .table th { background: #0f172a; border-bottom-color: #334155; color: #94a3b8; }
-        .dark-theme .table td { border-bottom-color: #1e293b; color: #cbd5e1; }
-        .dark-theme .table tbody tr:hover td { background: #0f172a; }
+        .dark-theme .panel { background: rgba(15, 23, 42, 0.85); border-color: #334155; }
+        .dark-theme .table th { background: #151f32; border-bottom: 2px solid #334155; color: #94a3b8; }
+        .dark-theme .table td { border-bottom: 1px solid #334155; color: #cbd5e1; }
+        .dark-theme .table tbody tr:hover td { background: rgba(255, 255, 255, 0.04); }
         .dark-theme .table-search input { background: #0f172a; border-color: #334155; color: #cbd5e1; }
         .dark-theme .table-search input:focus { border-color: #0284c7; }
         .dark-theme .page-link { border-color: #334155; color: #94a3b8; }
