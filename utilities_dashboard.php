@@ -603,34 +603,39 @@ $upadStatusData = json_encode([
 
         /* Dark Theme Support */
         .dark-theme body::before {
-            background: rgba(5, 10, 22, 0.85);
+            background: rgba(5, 10, 22, 0.80) !important;
         }
         .dark-theme .card {
-            background: rgba(15, 23, 42, 0.92);
-            border-color: rgba(255, 255, 255, 0.08);
-            color: #f8fafc;
+            background: rgba(10, 18, 35, 0.92) !important;
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6) !important;
+            color: #f8fafc !important;
         }
         .dark-theme .dashboard-header h1 {
-            color: #f8fafc;
+            color: #f8fafc !important;
         }
         .dark-theme .tab-buttons {
-            border-bottom-color: #334155;
+            border-bottom-color: #334155 !important;
         }
         .dark-theme .tab-btn {
-            color: #94a3b8;
+            background: #1e293b !important;
+            border: 1px solid #334155 !important;
+            color: #cbd5e1 !important;
         }
         .dark-theme .tab-btn:hover {
-            background: #1e293b;
-            color: #f8fafc;
+            background: #334155 !important;
+            color: #ffffff !important;
         }
         .dark-theme .tab-btn.active {
-            background: #2563eb;
-            color: #fff;
+            background: #3b82f6 !important;
+            color: #ffffff !important;
+            border-color: #3b82f6 !important;
         }
         .dark-theme .box {
-            background: #1e293b;
-            border-color: #334155;
-            color: #f8fafc;
+            background: rgba(15, 23, 42, 0.85) !important;
+            border: 1px solid #334155 !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+            color: #f8fafc !important;
         }
         .dark-theme .box h3 {
             color: #f8fafc;

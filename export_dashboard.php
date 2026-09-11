@@ -66,23 +66,25 @@ $userName = $_SESSION['user_name'] ?? $_SESSION['full_name'] ?? 'LGU Coordinator
             border: 1px solid #e2e8f0;
         }
 
-        /* ===== DARK THEME OVERRIDES ===== */
+        /* ===== DARK THEME OVERRIDES (Matches maintenance_list.php deep navy shade) ===== */
         .dark-theme .card {
-            background: rgba(30, 41, 59, 0.9) !important;
-            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            background: rgba(10, 18, 35, 0.92) !important;
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
             color: #f8fafc !important;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6) !important;
         }
         .dark-theme .dashboard-header h1 {
             color: #f8fafc !important;
         }
         .dark-theme .export-card {
-            background: #1e293b !important;
+            background: rgba(15, 23, 42, 0.85) !important;
             border: 1px solid #334155 !important;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
         }
         .dark-theme .export-card:hover {
             border-color: #3b82f6 !important;
+            background: rgba(30, 41, 59, 0.9) !important;
+        }
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
         }
         .dark-theme .export-card h3 {

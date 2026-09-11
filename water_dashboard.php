@@ -768,17 +768,25 @@ $locationsAvail = $pdo->query("
         /* ── Pulse animation for AI icon ── */
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
 
-        /* ── Dark theme overrides (inherited from sidebar) ── */
-        .dark-theme .card { background: rgba(15,23,42,0.95) !important; }
+        /* ── Dark theme overrides (Matches maintenance_list.php deep navy shade) ── */
+        .dark-theme .card { 
+            background: rgba(10, 18, 35, 0.92) !important; 
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6) !important;
+        }
         .dark-theme .box,
         .dark-theme .table-section,
         .dark-theme .advisory-card,
         .dark-theme .top-item,
-        .dark-theme .filter-bar { background: #1e293b !important; border-color: #334155 !important; }
+        .dark-theme .filter-bar { 
+            background: rgba(15, 23, 42, 0.85) !important; 
+            border: 1px solid #334155 !important; 
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+        }
         .dark-theme .box-title,
         .dark-theme .dashboard-header h1 { color: #f8fafc !important; }
         .dark-theme .box-header { border-bottom-color: #334155 !important; }
-        .dark-theme thead th { background: #0f172a !important; color: #94a3b8 !important; border-bottom-color: #334155 !important; }
+        .dark-theme thead th { background: #151f32 !important; color: #94a3b8 !important; border-bottom: 2px solid #334155 !important; font-weight: 600 !important; }
         .dark-theme tbody td { color: #cbd5e1 !important; border-bottom-color: #334155 !important; }
         .dark-theme tbody tr:hover td { background: rgba(255,255,255,0.04) !important; }
         .dark-theme .filter-bar select,

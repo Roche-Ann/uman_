@@ -819,13 +819,13 @@ if (!empty($search) || $status_filter) {
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 
         .dark-theme body::before {
-            background: rgba(15, 23, 42, 0.85) !important;
+            background: rgba(5, 10, 22, 0.80) !important;
         }
         .dark-theme .card {
-            background: rgba(30, 41, 59, 0.9) !important;
-            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            background: rgba(10, 18, 35, 0.92) !important;
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
             color: #f8fafc !important;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6) !important;
         }
 
         /* Review changes modal and comparison table CSS */
@@ -1541,14 +1541,14 @@ if (!empty($search) || $status_filter) {
             color: #f8fafc !important;
         }
         .dark-theme .filter-container {
-            background: #1e293b !important;
+            background: rgba(15, 23, 42, 0.85) !important;
             border: 1px solid #334155 !important;
-            box-shadow: none !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
         }
         .dark-theme .table-section {
-            background: #1e293b !important;
+            background: rgba(15, 23, 42, 0.85) !important;
             border: 1px solid #334155 !important;
-            box-shadow: none !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
         }
         .dark-theme .form-control {
             background: #0f172a !important;
@@ -1642,7 +1642,7 @@ if (!empty($search) || $status_filter) {
             border-bottom: 2px solid #2563eb !important;
         }
         .dark-theme .child-table thead tr {
-            background: #1e293b !important;
+            background: #151f32 !important;
         }
         .dark-theme .child-table thead th {
             color: #94a3b8 !important;
@@ -1652,7 +1652,7 @@ if (!empty($search) || $status_filter) {
             border-bottom-color: #1e293b !important;
         }
         .dark-theme .child-table tbody tr:hover {
-            background: #1e293b !important;
+            background: rgba(255, 255, 255, 0.04) !important;
         }
         .dark-theme .child-table td {
             color: #cbd5e1 !important;

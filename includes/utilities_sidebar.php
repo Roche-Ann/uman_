@@ -2345,23 +2345,32 @@ if (isset($pdo)) {
         background: rgba(255, 255, 255, 0.18);
     }
 
-    /* Page-level container/card dark modes */
-    .dark-theme .card {
-        background: rgba(30, 41, 59, 0.9) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    /* Page-level container/card dark modes (Matches Maintenance & UPAD deep dark navy theme) */
+    .dark-theme body::before {
+        background: rgba(5, 10, 22, 0.80) !important;
+    }
+    .dark-theme body {
+        color: #f1f5f9 !important;
+    }
+    .dark-theme .card,
+    .dark-theme .page-wrapper {
+        background: rgba(10, 18, 35, 0.92) !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
         color: #f8fafc !important;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6) !important;
     }
     .dark-theme .card h1, .dark-theme .card h2, .dark-theme .card h3, .dark-theme .card h4, .dark-theme .card h5, .dark-theme .card h6,
     .dark-theme .dashboard-header h1, .dark-theme .dashboard-header h2, .dark-theme .main-content h1, .dark-theme .main-content h2,
-    .dark-theme .main-content h3, .dark-theme .main-content h4, .dark-theme .main-content h5 {
+    .dark-theme .main-content h3, .dark-theme .main-content h4, .dark-theme .main-content h5,
+    .dark-theme .page-header h1, .dark-theme .page-header h2 {
         color: #f8fafc !important;
     }
-    .dark-theme p, .dark-theme .card p, .dark-theme .text-muted, .dark-theme label, .dark-theme td, .dark-theme .form-label {
+    .dark-theme p, .dark-theme .card p, .dark-theme .text-muted, .dark-theme label, .dark-theme td, .dark-theme .form-label,
+    .dark-theme .page-header p, .dark-theme .dashboard-header p {
         color: #cbd5e1 !important;
     }
 
-    /* Cards and Grids (Stats Cards - Keep colorful gradients in dark mode) */
+    /* Cards and Grids (Stats Cards - Rich Saturated Gradients in dark mode) */
     .dark-theme .stat-card {
         color: #ffffff !important;
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
@@ -2369,6 +2378,8 @@ if (isset($pdo)) {
     .dark-theme .stat-card.assets,
     .dark-theme .stat-card.completed,
     .dark-theme .stat-card.fulfilled,
+    .dark-theme .stat-card.inprogress,
+    .dark-theme .stat-card.operational,
     .dark-theme .stat-card.green         { background: linear-gradient(135deg, #1a6b38, #25a259) !important; }
 
     .dark-theme .stat-card.incidents     { background: linear-gradient(135deg, #7a2f0d, #c0440f) !important; }
@@ -2383,10 +2394,11 @@ if (isset($pdo)) {
     .dark-theme .stat-card.purple        { background: linear-gradient(135deg, #4c1d7a, #7c3dbf) !important; }
 
     .dark-theme .stat-card.pending,
+    .dark-theme .stat-card.needs-inspection,
     .dark-theme .stat-card.amber         { background: linear-gradient(135deg, #7a5c0d, #c4920e) !important; }
 
     .dark-theme .stat-card.progress,
-    .dark-theme .stat-card.teal          { background: linear-gradient(135deg, #0d4a7a, #1580cc) !important; }
+    .dark-theme .stat-card.teal          { background: linear-gradient(135deg, #0d5c7a, #0284c7) !important; }
 
     .dark-theme .stat-card.emergency,
     .dark-theme .stat-card.failed,
@@ -2415,18 +2427,22 @@ if (isset($pdo)) {
     .dark-theme table {
         border-color: #334155 !important;
     }
-    .dark-theme th {
-        background-color: #1e293b !important;
-        color: #f8fafc !important;
+    .dark-theme th,
+    .dark-theme thead th {
+        background: #151f32 !important;
+        color: #94a3b8 !important;
         border-bottom: 2px solid #334155 !important;
+        font-weight: 600 !important;
     }
-    .dark-theme td {
+    .dark-theme td,
+    .dark-theme tbody td {
         background-color: transparent !important;
         color: #cbd5e1 !important;
         border-bottom: 1px solid #334155 !important;
     }
-    .dark-theme tr:hover td {
-        background-color: rgba(255, 255, 255, 0.04) !important;
+    .dark-theme tr:hover td,
+    .dark-theme tbody tr:hover td {
+        background: rgba(255, 255, 255, 0.04) !important;
     }
 
     /* Inputs, Selects, and Textareas */
@@ -2435,14 +2451,64 @@ if (isset($pdo)) {
     .dark-theme input[type="password"], 
     .dark-theme input[type="number"], 
     .dark-theme input[type="date"], 
+    .dark-theme input[type="search"],
     .dark-theme select, 
-    .dark-theme textarea {
-        background: #1e293b !important;
+    .dark-theme textarea,
+    .dark-theme .form-control {
+        background: #0f172a !important;
         border: 1px solid #475569 !important;
         color: #f8fafc !important;
     }
+    .dark-theme .form-control:focus,
+    .dark-theme select:focus,
+    .dark-theme input:focus {
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25) !important;
+    }
     .dark-theme input::placeholder, .dark-theme textarea::placeholder {
         color: #64748b !important;
+    }
+
+    /* Filter Tabs & Navigation Pills */
+    .dark-theme .filter-tab,
+    .dark-theme .tab-btn,
+    .dark-theme .inventory-tab,
+    .dark-theme .tab {
+        background: #1e293b !important;
+        border: 1px solid #334155 !important;
+        color: #cbd5e1 !important;
+    }
+    .dark-theme .filter-tab:hover,
+    .dark-theme .tab-btn:hover,
+    .dark-theme .inventory-tab:hover,
+    .dark-theme .tab:hover {
+        background: #334155 !important;
+        color: #ffffff !important;
+    }
+    .dark-theme .filter-tab.active,
+    .dark-theme .tab-btn.active,
+    .dark-theme .inventory-tab.active,
+    .dark-theme .tab.active {
+        background: #3b82f6 !important;
+        color: #ffffff !important;
+        border-color: #3b82f6 !important;
+    }
+    .dark-theme .filter-tab .tab-badge,
+    .dark-theme .inventory-tab .tab-badge,
+    .dark-theme .tab .count-chip {
+        background: rgba(255, 255, 255, 0.15) !important;
+        color: #f8fafc !important;
+    }
+
+    /* Buttons */
+    .dark-theme .btn-outline {
+        background: #1e293b !important;
+        border-color: #475569 !important;
+        color: #cbd5e1 !important;
+    }
+    .dark-theme .btn-outline:hover {
+        background: #334155 !important;
+        color: #ffffff !important;
     }
 
     /* Lists and items */
@@ -2453,7 +2519,7 @@ if (isset($pdo)) {
     .dark-theme .list-group-item,
     .dark-theme .activity-item,
     .dark-theme .log-item {
-        background: #1e293b !important;
+        background: rgba(15, 23, 42, 0.85) !important;
         border-color: #334155 !important;
         color: #f8fafc !important;
     }
@@ -2463,6 +2529,7 @@ if (isset($pdo)) {
         background: #1e293b !important;
         color: #f8fafc !important;
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6) !important;
     }
     .dark-theme .welcome-header h2 {
         color: #f8fafc !important;
@@ -2483,6 +2550,7 @@ if (isset($pdo)) {
         background: #1e293b !important;
         color: #f8fafc !important;
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6) !important;
     }
     .dark-theme .logout-modal-header h2 {
         color: #f8fafc !important;
@@ -2504,9 +2572,12 @@ if (isset($pdo)) {
     .dark-theme .form-section,
     .dark-theme .table-section,
     .dark-theme .section-box,
-    .dark-theme .filter-panel {
-        background: #1e293b !important;
-        border-color: #334155 !important;
+    .dark-theme .filter-panel,
+    .dark-theme .filter-container,
+    .dark-theme .instructions-card,
+    .dark-theme .export-card {
+        background: rgba(15, 23, 42, 0.85) !important;
+        border: 1px solid #334155 !important;
         color: #f8fafc !important;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
     }
