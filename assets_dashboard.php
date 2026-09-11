@@ -743,16 +743,6 @@ if ($damagedNoMaint > 0) {
                 <h1><i class="fas fa-chart-line"></i> Utility Asset Dashboard</h1>
                 <p style="color: #64748b; font-size: 14px; margin-top: 5px;">Manage records and track conditions of all utility assets owned or monitored by the LGU.</p>
             </div>
-            
-            <div class="header-actions">
-                <a href="assets_notifications.php" class="notification-badge" title="Notifications">
-                    <i class="fas fa-bell"></i>
-                    <?php if ($unreadNotifications > 0): ?>
-                        <span class="badge-count"><?php echo $unreadNotifications; ?></span>
-                    <?php endif; ?>
-                </a>
-                <a href="assets_crud.php" class="btn-action btn-primary"><i class="fas fa-boxes"></i> Asset Inventory</a>
-            </div>
         </div>
 
         <!-- Stats Overview Cards -->

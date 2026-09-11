@@ -1289,138 +1289,166 @@ $locationsAvail = $pdo->query("
      CHART.JS SCRIPTS
 ═══════════════════════════════════════════════════════ -->
 <script>
-/* ─── Monthly Trend Chart ─── */
 (function() {
-    const canvas = document.getElementById('trendChart');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    function getThemeColors() {
+        const isDark = document.documentElement.classList.contains('dark-theme') || document.body.classList.contains('dark-theme');
+        return {
+            isDark: isDark,
+            text: isDark ? '#f1f5f9' : '#1e293b',
+            muted: isDark ? '#94a3b8' : '#64748b',
+            grid: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'
+        };
+    }
 
-    // Gradient fill
-    const grad = ctx.createLinearGradient(0, 0, 0, 300);
-    grad.addColorStop(0, 'rgba(2, 132, 199, 0.28)');
-    grad.addColorStop(1, 'rgba(2, 132, 199, 0.01)');
+    let trendChartInstance = null;
+    let facilityChartInstance = null;
 
-    new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: <?php echo $trendLabelsJson; ?>,
-            datasets: [{
-                label: 'Total Water (m³)',
-                data: <?php echo $trendDataJson; ?>,
-                borderColor: '#0284c7',
-                backgroundColor: grad,
-                borderWidth: 2.5,
-                pointBackgroundColor: '#0284c7',
-                pointBorderColor: '#fff',
-                pointBorderWidth: 2,
-                pointRadius: 5,
-                pointHoverRadius: 7,
-                fill: true,
-                tension: 0.4,
-                spanGaps: false,
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: { mode: 'index', intersect: false },
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    backgroundColor: '#1e293b',
-                    titleColor: '#f8fafc',
-                    bodyColor: '#94a3b8',
-                    padding: 12,
-                    callbacks: {
-                        title: (items) => items[0].label + ' <?php echo $fYear; ?>',
-                        label: (item) => ' ' + Number(item.raw).toLocaleString('en-PH', {minimumFractionDigits:2}) + ' m³'
-                    }
-                }
+    /* ─── Monthly Trend Chart ─── */
+    const trendCanvas = document.getElementById('trendChart');
+    if (trendCanvas) {
+        const ctx = trendCanvas.getContext('2d');
+        const theme = getThemeColors();
+        const grad = ctx.createLinearGradient(0, 0, 0, 300);
+        grad.addColorStop(0, 'rgba(2, 132, 199, 0.28)');
+        grad.addColorStop(1, 'rgba(2, 132, 199, 0.01)');
+
+        trendChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: <?php echo $trendLabelsJson; ?>,
+                datasets: [{
+                    label: 'Total Water (m³)',
+                    data: <?php echo $trendDataJson; ?>,
+                    borderColor: '#0284c7',
+                    backgroundColor: grad,
+                    borderWidth: 2.5,
+                    pointBackgroundColor: '#0284c7',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    fill: true,
+                    tension: 0.4,
+                    spanGaps: false,
+                }]
             },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: { color: 'rgba(0,0,0,0.05)' },
-                    ticks: {
-                        font: { family: 'Poppins', size: 11 },
-                        color: '#64748b',
-                        callback: (v) => Number(v).toLocaleString() + ' m³'
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#1e293b',
+                        titleColor: '#f8fafc',
+                        bodyColor: '#94a3b8',
+                        padding: 12,
+                        callbacks: {
+                            title: (items) => items[0].label + ' <?php echo $fYear; ?>',
+                            label: (item) => ' ' + Number(item.raw).toLocaleString('en-PH', {minimumFractionDigits:2}) + ' m³'
+                        }
                     }
                 },
-                x: {
-                    grid: { display: false },
-                    ticks: { font: { family: 'Poppins', size: 11 }, color: '#64748b' }
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: theme.grid },
+                        ticks: {
+                            font: { family: 'Poppins', size: 11 },
+                            color: theme.muted,
+                            callback: (v) => Number(v).toLocaleString() + ' m³'
+                        }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { family: 'Poppins', size: 11 }, color: theme.muted }
+                    }
                 }
             }
-        }
-    });
-})();
+        });
+    }
 
-/* ─── Facility Horizontal Bar Chart ─── */
-(function() {
-    const canvas = document.getElementById('facilityChart');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    /* ─── Facility Horizontal Bar Chart ─── */
+    const facCanvas = document.getElementById('facilityChart');
+    if (facCanvas) {
+        const ctx = facCanvas.getContext('2d');
+        const theme = getThemeColors();
+        const labels = <?php echo $facLabelsJson; ?>;
+        const data   = <?php echo $facDataJson; ?>;
 
-    const labels = <?php echo $facLabelsJson; ?>;
-    const data   = <?php echo $facDataJson; ?>;
+        const colours = labels.map((_, i) => {
+            const alpha = 1 - (i * 0.08);
+            return `rgba(2, 132, 199, ${Math.max(0.35, alpha)})`;
+        });
 
-    // Colour gradient per bar based on rank
-    const colours = labels.map((_, i) => {
-        const alpha = 1 - (i * 0.08);
-        return `rgba(2, 132, 199, ${Math.max(0.35, alpha)})`;
-    });
-
-    new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Water Consumption (m³)',
-                data: data,
-                backgroundColor: colours,
-                borderRadius: 6,
-                borderSkipped: false,
-            }]
-        },
-        options: {
-            indexAxis: 'y',            // Horizontal bar
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    backgroundColor: '#1e293b',
-                    titleColor: '#f8fafc',
-                    bodyColor: '#94a3b8',
-                    padding: 12,
-                    callbacks: {
-                        label: (item) => ' ' + Number(item.raw).toLocaleString('en-PH', {minimumFractionDigits:2}) + ' m³'
-                    }
-                }
+        facilityChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Water Consumption (m³)',
+                    data: data,
+                    backgroundColor: colours,
+                    borderRadius: 6,
+                    borderSkipped: false,
+                }]
             },
-            scales: {
-                x: {
-                    beginAtZero: true,
-                    grid: { color: 'rgba(0,0,0,0.05)' },
-                    ticks: {
-                        font: { family: 'Poppins', size: 11 },
-                        color: '#64748b',
-                        callback: (v) => Number(v).toLocaleString() + ' m³'
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#1e293b',
+                        titleColor: '#f8fafc',
+                        bodyColor: '#94a3b8',
+                        padding: 12,
+                        callbacks: {
+                            label: (item) => ' ' + Number(item.raw).toLocaleString('en-PH', {minimumFractionDigits:2}) + ' m³'
+                        }
                     }
                 },
-                y: {
-                    grid: { display: false },
-                    ticks: {
-                        font: { family: 'Poppins', size: 11 },
-                        color: '#334155',
-                        callback: function(val) {
-                            const lbl = this.getLabelForValue(val);
-                            return lbl.length > 30 ? lbl.substring(0, 28) + '…' : lbl;
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        grid: { color: theme.grid },
+                        ticks: {
+                            font: { family: 'Poppins', size: 11 },
+                            color: theme.muted,
+                            callback: (v) => Number(v).toLocaleString() + ' m³'
+                        }
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: {
+                            font: { family: 'Poppins', size: 11, weight: '500' },
+                            color: theme.text,
+                            callback: function(val) {
+                                const lbl = this.getLabelForValue(val);
+                                return lbl.length > 30 ? lbl.substring(0, 28) + '…' : lbl;
+                            }
                         }
                     }
                 }
             }
+        });
+    }
+
+    /* Listen for theme change from sidebar toggle */
+    window.addEventListener('themeChanged', function() {
+        const updatedTheme = getThemeColors();
+        if (trendChartInstance) {
+            trendChartInstance.options.scales.y.grid.color = updatedTheme.grid;
+            trendChartInstance.options.scales.y.ticks.color = updatedTheme.muted;
+            trendChartInstance.options.scales.x.ticks.color = updatedTheme.muted;
+            trendChartInstance.update();
+        }
+        if (facilityChartInstance) {
+            facilityChartInstance.options.scales.x.grid.color = updatedTheme.grid;
+            facilityChartInstance.options.scales.x.ticks.color = updatedTheme.muted;
+            facilityChartInstance.options.scales.y.ticks.color = updatedTheme.text;
+            facilityChartInstance.update();
         }
     });
 })();

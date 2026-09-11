@@ -1083,8 +1083,25 @@ $pipelineData = json_encode([
         .dark-theme .pipeline-arrow {
             border-left-color: #334155 !important;
         }
+        .dark-theme .pipeline-step .step-count {
+            color: #f8fafc !important;
+        }
         .dark-theme .prog-bar {
             background: #0f172a !important;
+        }
+        .dark-theme .score-bar-label {
+            color: #f8fafc !important;
+        }
+        .dark-theme .score-bar-track {
+            background: #334155 !important;
+        }
+        .dark-theme .box strong,
+        .dark-theme strong[style*="color:#2c3e50"],
+        .dark-theme strong[style*="color: #2c3e50"] {
+            color: #f8fafc !important;
+        }
+        .dark-theme .box p {
+            color: #cbd5e1 !important;
         }
     </style>
 </head>

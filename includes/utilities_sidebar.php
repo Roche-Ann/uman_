@@ -3939,6 +3939,10 @@ function applyTheme(theme) {
         if (sheetText) sheetText.textContent = 'Light Mode';
         dntToggles.forEach(t => t.setAttribute('aria-checked', 'false'));
     }
+
+    try {
+        window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme, isDark } }));
+    } catch (e) {}
 }
 
 function toggleTheme() {
