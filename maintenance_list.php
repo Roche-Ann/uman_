@@ -1015,19 +1015,34 @@ foreach ($tickets as $t) {
         /* Kanban View (Matches UPAD sleek dark/light theme) */
         .kanban-board {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 16px;
+            grid-template-columns: repeat(6, minmax(190px, 1fr));
+            gap: 12px;
             overflow-x: auto;
-            padding-bottom: 12px;
+            padding-bottom: 16px;
+            width: 100%;
+            align-items: start;
+            scrollbar-width: thin;
+            scrollbar-color: #3b82f6 rgba(0,0,0,0.08);
+        }
+        .kanban-board::-webkit-scrollbar {
+            height: 7px;
+        }
+        .kanban-board::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.05);
+            border-radius: 10px;
+        }
+        .kanban-board::-webkit-scrollbar-thumb {
+            background: #3b82f6;
+            border-radius: 10px;
         }
         .kanban-col {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
             border-radius: 14px;
-            padding: 16px 14px;
+            padding: 14px 10px;
             display: flex;
             flex-direction: column;
-            min-width: 230px;
+            min-width: 190px;
         }
         .kanban-header {
             display: flex;
@@ -1063,10 +1078,12 @@ foreach ($tickets as $t) {
             background: #ffffff;
             border: 1px solid #cbd5e1;
             border-radius: 12px;
-            padding: 14px;
+            padding: 12px;
             box-shadow: 0 2px 6px rgba(0,0,0,0.04);
             cursor: pointer;
             transition: all 0.2s ease;
+            min-width: 0;
+            word-wrap: break-word;
         }
         .kanban-card:hover {
             transform: translateY(-2px);
@@ -1085,11 +1102,12 @@ foreach ($tickets as $t) {
             color: #3b82f6;
         }
         .card-title {
-            font-size: 13px;
+            font-size: 12.5px;
             font-weight: 600;
             color: #0f172a;
             margin-bottom: 8px;
             line-height: 1.4;
+            word-break: break-word;
         }
         .card-asset-tag {
             font-size: 11.5px;
