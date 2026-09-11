@@ -66,15 +66,8 @@ if (!function_exists('renderDayNightToggle')) {
 }
 
 // Fetch badge counts for citizen navigation
-$activeReportCount = 0;
 $unreadNotifCount = 0;
 if ($userType !== 'employee' && isset($pdo) && isset($_SESSION['user_id'])) {
-    try {
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM utility_incidents WHERE resident_id = ? AND status NOT IN ('Resolved', 'Closed')");
-        $stmt->execute([$_SESSION['user_id']]);
-        $activeReportCount = (int)$stmt->fetchColumn();
-    } catch (Throwable $e) {}
-
     try {
         $stmt = $pdo->prepare("SELECT COUNT(*) FROM incident_notifications WHERE user_id = ? AND is_read = 0");
         $stmt->execute([$_SESSION['user_id']]);

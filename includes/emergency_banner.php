@@ -142,8 +142,8 @@ try {
                 <button class="emergency-modal-btn dismiss-btn" onclick="hideEmergencyBanner(<?php echo $emergency['id']; ?>)">
                     I Understand
                 </button>
-                <a href="citizen_reports.php" class="emergency-modal-btn acknowledge-btn">
-                    Report Issue
+                <a href="citizen_advisories.php" class="emergency-modal-btn acknowledge-btn">
+                    View Advisories
                 </a>
             </div>
         </div>
