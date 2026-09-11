@@ -14,20 +14,55 @@ $userId = $_SESSION['user_id'] ?? 1;
 // 1. SELF-HEALING DATABASE MIGRATION
 // ===========================================
 try {
-    $existingCols = $pdo->query("SHOW COLUMNS FROM  maintenance_requests ")->fetchAll(PDO::FETCHFIELD);
-    if (empty($existingCols)) {
-        $existingCols = $pdo->query("SHOW COLUMNS FROM maintenance_requests")->fetchAll(PDO::FETCH_COLUMN);
-    }
+    // Ensure table exists
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS `maintenance_requests` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `request_id` VARCHAR(50) NOT NULL UNIQUE,
+            `utility_asset_id` INT NULL,
+            `title` VARCHAR(255) NULL,
+            `maintenance_type` ENUM('Corrective', 'Preventive', 'Routine', 'Emergency', 'Inspection Followup') NOT NULL DEFAULT 'Corrective',
+            `source` VARCHAR(100) NOT NULL DEFAULT 'Asset Monitoring',
+            `description` TEXT NOT NULL,
+            `priority` ENUM('Low', 'Medium', 'High', 'Emergency') NOT NULL DEFAULT 'Medium',
+            `location` TEXT NOT NULL,
+            `status` ENUM('Reported', 'Under Review', 'Scheduled', 'In Progress', 'On Hold', 'Completed', 'Cancelled', 'Created', 'Forwarded', 'Accepted by Maintenance System', 'Closed') NOT NULL DEFAULT 'Reported',
+            `progress_percent` INT NOT NULL DEFAULT 0,
+            `assigned_personnel` VARCHAR(150) NULL,
+            `assigned_team` VARCHAR(100) NULL,
+            `scheduled_start_date` DATETIME NULL,
+            `target_completion_date` DATETIME NULL,
+            `actual_completion_date` DATETIME NULL,
+            `findings` TEXT NULL,
+            `root_cause` TEXT NULL,
+            `action_taken` TEXT NULL,
+            `parts_replaced` TEXT NULL,
+            `maintenance_notes` TEXT NULL,
+            `follow_up_needed` TINYINT(1) DEFAULT 0,
+            `follow_up_reason` TEXT NULL,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX(`utility_asset_id`),
+            INDEX(`status`),
+            INDEX(`priority`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ");
 
-    // Update status column to support full maintenance lifecycle
-    $pdo->exec("ALTER TABLE maintenance_requests MODIFY COLUMN status ENUM('Reported', 'Under Review', 'Scheduled', 'In Progress', 'On Hold', 'Completed', 'Cancelled', 'Created', 'Forwarded', 'Accepted by Maintenance System', 'Closed') NOT NULL DEFAULT 'Reported'");
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS `maintenance_status_logs` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `maintenance_request_id` INT NOT NULL,
+            `old_status` VARCHAR(50) NULL,
+            `new_status` VARCHAR(50) NOT NULL,
+            `changed_by` INT NOT NULL,
+            `changed_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            `notes` TEXT NULL,
+            INDEX(`maintenance_request_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ");
 
-    // Migrate old legacy status values
-    $pdo->exec("UPDATE maintenance_requests SET status = 'Reported' WHERE status = 'Created'");
-    $pdo->exec("UPDATE maintenance_requests SET status = 'Scheduled' WHERE status IN ('Forwarded', 'Accepted by Maintenance System')");
-    $pdo->exec("UPDATE maintenance_requests SET status = 'Completed' WHERE status = 'Closed'");
+    $existingCols = $pdo->query("SHOW COLUMNS FROM maintenance_requests")->fetchAll(PDO::FETCH_COLUMN);
 
-    // Add new columns if missing
     if (!in_array('title', $existingCols)) {
         $pdo->exec("ALTER TABLE maintenance_requests ADD COLUMN title VARCHAR(255) NULL AFTER utility_asset_id");
     }
@@ -62,24 +97,18 @@ try {
         $pdo->exec("ALTER TABLE maintenance_requests ADD COLUMN action_taken TEXT NULL AFTER root_cause");
     }
     if (!in_array('parts_replaced', $existingCols)) {
-        $pdo->exec("ALTER TABLE maintenance_requests ADD COLUMN parts_replaced TEaT NULL AFTER action_taken");
+        $pdo->exec("ALTER TABLE maintenance_requests ADD COLUMN parts_replaced TEXT NULL AFTER action_taken");
     }
     if (!in_array('maintenance_notes', $existingCols)) {
-        $pdo->exec("ALTER TABLE maintenance_requests ADD COLUMN maintenance_notes TEaT NULL AFTER parts_replaced");
-    }
-    if (!in_array('follow_up_needed', $existingCols)) {
-        $pdo->exec("ALTER TABLE maintenance_requests ADD COLUMN follow_up_needed TINYINT(1) DEFAULT 0 AFTER maintenance_notes");
-    }
-    if (!in_array('follow_up_reason', $existingCols)) {
-        $pdo->exec("ALTER TABLE maintenance_requests ADD COLUMN follow_up_reason TEXT NULL AFTER follow_up_needed");
+        $pdo->exec("ALTER TABLE maintenance_requests ADD COLUMN maintenance_notes TEXT NULL AFTER parts_replaced");
     }
 } catch (Throwable $e) {
-    // silently continue
+    // Silently continue
 }
 
-// =========================================
+// ===========================================
 // 2. AJAX ENDPOINTS
-// ==========================================
+// ===========================================
 if (isset($_GET['fetch_logs_id'])) {
     header('Content-Type: application/json');
     $id = intval($_GET['fetch_logs_id']);
@@ -100,82 +129,210 @@ if (isset($_GET['fetch_record_id'])) {
     header('Content-Type: application/json');
     $id = intval($_GET['fetch_record_id']);
     $stmt = $pdo->prepare("
-        SELECT‹Š‹K›˜[YH\È\ÜÙ]Û˜[YKK][]WÝ\H\È\ÜÙ]Ý\KK›ØØ][Ûˆ\È\ÜÙ]ÛØØ][Û‹K˜ÛÛ™][Û—ÜÝ]\ÃBˆ”“ÓHXZ[[˜[˜ÙWÜ™\]Y\ÝÈƒBˆQ•“ÒSˆ][]WØ\ÜÙ]ÈHÓˆ‹][]WØ\ÜÙ]ÚYHKšYBˆÒT‘H‹šYHÃBˆŠNÃBˆ	Ý]O™^XÝ]JÉYJNÃBˆ	™XÈH	Ý]O™™]Ú
-ÎŽ‘‘UÒÐTÔÓÐÊNÃBˆXÚÈœÛÛ—Ù[˜ÛÙJ	™XÈÎˆÉÙ\œ›Ü‰ÈOˆ	Ô™XÛÜ™›Ý›Ý[™	×JNÃBˆ^]
+        SELECT 
+            r.*,
+            a.name as asset_name,
+            a.asset_id as asset_code,
+            a.location as asset_location_default,
+            a.condition_status as asset_condition,
+            t.name as asset_category
+        FROM maintenance_requests r
+        LEFT JOIN utility_assets a ON r.utility_asset_id = a.id
+        LEFT JOIN asset_types t ON a.asset_type_id = t.id
+        WHERE r.id = ?
+    ");
+    $stmt->execute([$id]);
+    $record = $stmt->fetch(PDO::FETCH_ASSOC);
+    echo json_encode($record ?: ['error' => 'Record not found']);
+    exit();
+}
 
-NÃBŸCBƒB‹ËÈOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOCB‹ËÈËˆÔÕPÕSÓˆS‘T”ÃB‹ËÈOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOCB™\œ›ÜˆH	ÉÎÃB‰ÝXØÙ\ÜÈH	ÉÎÃBƒBšYˆ
-	ÔÑT•‘T–ÉÔ‘TUQTÕÓQUÑ	×HOOH	ÔÔÕ	ÊHÃBˆ	XÝ[ÛˆH	ÔÔÕÉØXÝ[Û‰×HÏÈ	ÉÎÃBƒBˆYˆ
-	XÝ[ÛˆOOH	ØÜ™X]IÊHÃBˆ	\ÜÙ]ÚYHY[\J	ÔÔÕÉÝ][]WØ\ÜÙ]ÚY	×JHÈ[˜[
-	ÔÔÕÉÝ][]WØ\ÜÙ]ÚY	×JHˆ[ÃBˆ	]HHš[J	ÔÔÕÉÝ]I×HÏÈ	ÉÊNÃBˆ	XZ[[˜[˜ÙWÝ\HH	ÔÔÕÉÛXZ[[˜[˜ÙWÝ\I×HÏÈ	ÐÛÜœ™XÝ]™IÎÃBˆ	ÛÝ\˜ÙHH	ÔÔÕÉÜÛÝ\˜ÙI×HÏÈ	Ð\ÜÙ][Ûš]Üš[™ÉÎÃBˆ	š[Üš]HH	ÔÔÕÉÜš[Üš]I×HÏÈ	ÓYY][IÎÃBˆ	ØØ][ÛˆHš[J	ÔÔÕÉÛØØ][Û‰×HÏÈ	ÉÊNÃBˆ	\ØÜš\[ÛˆHš[J	ÔÔÕÉÙ\ØÜš\[Û‰×HÏÈ	ÉÊNÃBˆ	\ÜÚYÛ™YÜ\œÛÛ›™[Hš[J	ÔÔÕÉØ\ÜÚYÛ™YÜ\œÛÛ›™[	×HÏÈ	ÉÊNÃBˆ	\ÜÚYÛ™YÝX[HHš[J	ÔÔÕÉØ\ÜÚYÛ™YÝX[I×HÏÈ	ÉÊNÃBˆ	ØÚY[YÜÝ\Ù]HHY[\J	ÔÔÕÉÜØÚY[YÜÝ\Ù]I×JHÈ	ÔÔÕÉÜØÚY[YÜÝ\Ù]I×Hˆ[ÃBˆ	\™Ù]ØÛÛ\][Û—Ù]HHY[\J	ÔÔÕÉÝ\™Ù]ØÛÛ\][Û—Ù]I×JHÈ	ÔÔÕÉÝ\™Ù]ØÛÛ\][Û—Ù]I×Hˆ[ÃBˆ	Ý]\ÈHY[\J	ÔÔÕÉÜÝ]\É×JHÈ	ÔÔÕÉÜÝ]\É×Hˆ
-	ØÚY[YÜÝ\Ù]HÈ	ÔØÚY[Y	Èˆ	Ô™\ÜY	ÊNÃBˆ	›ÙÜ™\Ü×Ü\˜Ù[H[˜[
-	ÔÔÕÉÜ›ÙÜ™\Ü×Ü\˜Ù[	×HÏÈ
-NÃBƒBˆYˆ
-[\J	]JH[\J	\ØÜš\[ÛŠH[\J	ØØ][ÛŠJHÃBˆ	\œ›ÜˆH	ÔX\ÙHš[[ˆ[™\]Z\™YšY[È
-]K\ØÜš\[Û‹[™ØØ][ÛŠK‰ÎÃBˆH[ÙHÃBˆžHÃBˆËÈÙ[™\˜]H[š\]YH™\]Y\ÝQˆS•VVVSSKVBˆ	™Yš^H	ÓS•IÈˆ]J	Ö[IÊHˆ	ËIÎÃBˆ	Ý]H	ËOœ™\\™J”ÑSPÕÓÕS•
+// ===========================================
+// 3. POST ACTION HANDLERS
+// ===========================================
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = $_POST['action'] ?? '';
 
-ŠH”“ÓHXZ[[˜[˜ÙWÜ™\]Y\ÝÈÒT‘H™\]Y\ÝÚYRÑHÈŠNÃBˆ	Ý]O™^XÝ]JÉ™Yš^ˆ	ÉI×JNÃBˆ	ÛÝ[H	Ý]O™™]ÚÛÛ[[Š
-H
-ÈNÃBˆ	™\]Y\ÝÚYH	™Yš^ˆÝ—ÜY
-	ÛÝ[	Ì	ËÕ—ÔQÓQ•
-NÃBƒBˆËÈ[œÙ\XZ[[˜[˜ÙH™\]Y\ÝBˆ	Ý]H	ËOœ™\\™JƒBˆS”ÑT•S•ÈXZ[[˜[˜ÙWÜ™\]Y\ÝÈ
-Bˆ™\]Y\ÝÚY][]WØ\ÜÙ]ÚY]KXZ[[˜[˜ÙWÝ\KÛÝ\˜ÙK\ØÜš\[Û‹Bˆš[Üš]KØØ][Û‹Ý]\Ë›ÙÜ™\Ü×Ü\˜Ù[\ÜÚYÛ™YÜ\œÛÛ›™[\ÜÚYÛ™YÝX[KBˆØÚY[YÜÝ\Ù]K\™Ù]ØÛÛ\][Û—Ù]CBˆ
-HSQTÈ
-ËËËËËËËËËËËËËÊCBˆŠNÃBˆ	Ý]O™^XÝ]JÃBˆ	™\]Y\ÝÚY	\ÜÙ]ÚY	]K	XZ[[˜[˜ÙWÝ\K	ÛÝ\˜ÙK	\ØÜš\[Û‹Bˆ	š[Üš]K	ØØ][Û‹	Ý]\Ë	›ÙÜ™\Ü×Ü\˜Ù[	\ÜÚYÛ™YÜ\œÛÛ›™[	\ÜÚYÛ™YÝX[KBˆ	ØÚY[YÜÝ\Ù]K	\™Ù]ØÛÛ\][Û—Ù]CBˆJNÃBˆ	\šYH	ËO›\Ý[œÙ\Y
+    // --- CREATE NEW WORK ORDER ---
+    if ($action === 'create') {
+        $asset_id = !empty($_POST['utility_asset_id']) ? intval($_POST['utility_asset_id']) : null;
+        $title = trim($_POST['title'] ?? '');
+        $maintenance_type = $_POST['maintenance_type'] ?? 'Corrective';
+        $priority = $_POST['priority'] ?? 'Medium';
+        $source = $_POST['source'] ?? 'Asset Monitoring';
+        $status = $_POST['status'] ?? 'Reported';
+        $location = trim($_POST['location'] ?? '');
+        $description = trim($_POST['description'] ?? '');
+        $scheduled_start = !empty($_POST['scheduled_start_date']) ? $_POST['scheduled_start_date'] : null;
+        $target_comp = !empty($_POST['target_completion_date']) ? $_POST['target_completion_date'] : null;
+        $assigned_lead = trim($_POST['assigned_personnel'] ?? '');
+        $assigned_team = trim($_POST['assigned_team'] ?? '');
 
-NÃBƒBˆËÈÙÈ[š]X[Ý]\ÃBˆ	ËOœ™\\™JƒBˆS”ÑT•S•ÈXZ[[˜[˜ÙWÜÝ]\×ÛÙÜÈ
-XZ[[˜[˜ÙWÜ™\]Y\ÝÚYÛÜÝ]\Ë™]×ÜÝ]\ËÚ[™ÙYØžK›Ý\ÊHBˆSQTÈ
-Ë•SËËÊCBˆŠKO™^XÝ]JÉ\šY	Ý]\Ë	\Ù\’Y“XZ[[˜[˜ÙH\ÚÈ™YÚ\Ý\™Yˆ[š]X[Ý]\ÎˆÉÝ]\ßKˆ—JNÃBƒBˆËÈÜ™X]H[šÈ™XÛÜ™[ˆXZ[[˜[˜ÙWØ\ÜÙ]Û[šÜÈYˆ\ÜÙ]ÜXÚYšYYBˆYˆ
-	\ÜÙ]ÚY
-HÃBˆ	ËOœ™\\™JƒBˆS”ÑT•QÓ“Ô‘HS•ÈXZ[[˜[˜ÙWØ\ÜÙ]Û[šÜÈ
-XZ[[˜[˜ÙWÜ™\]Y\ÝÚY][]WØ\ÜÙ]ÚY
-HBˆSQTÈ
-ËÊCBˆŠKO™^XÝ]JÉ\šY	\ÜÙ]ÚYJNÃBƒBˆËÈ\]H\ÜÙ]ÛÛ™][ÛˆYˆYÚš[Üš]HÜˆ\™Ù[BˆYˆ
-[—Ø\œ˜^J	š[Üš]KÉÒYÚ	Ë	Ñ[Y\™Ù[˜ÞI×JJHÃBˆ	ËOœ™\\™J•TUH][]WØ\ÜÙ]ÈÑUÛÛ™][Û—ÜÝ]\ÈH	Õ[™\ˆXZ[[˜[˜ÙIÈÒT‘HYHÈŠKO™^XÝ]JÉ\ÜÙ]ÚYJNÃBˆCBˆCBƒBˆËÈÙÈÈ\ÝÜžHX›CBˆ	ËOœ™\\™JƒBˆS”ÑT•S•ÈXZ[[˜[˜ÙWÚ\ÝÜžH
-XZ[[˜[˜ÙWÜ™\]Y\ÝÚYXÝ[Û‹\™›Ü›YYØžK]Z[ÊHBˆSQTÈ
-Ë	Õ\ÚÈÜ™X]Y	ËËÊCBˆŠKO™^XÝ]JÉ\šY	\Ù\’Y“XZ[[˜[˜ÙHÛÜšÈÜ™\ˆ	Þ	]_IÈ
-ÉXZ[[˜[˜ÙWÝ\_JHÜ™X]Y[™X\šÙYÉÝ]\ßKˆ—JNÃBƒBˆËÈ[\›˜[›ÝYšXØ][ÛƒBˆ	ËOœ™\\™JƒBˆS”ÑT•S•ÈXZ[[˜[˜ÙWÛ›ÝYšXØ][ÛœÈ
-\Ù\—ÚYY\ÜØYÙJHBˆSQTÈ
-ËÊCBˆŠKO™^XÝ]JÉ\Ù\’Y“™]ÈXZ[[˜[˜ÙH\ÚÈÞÉ™\]Y\ÝÚYWH	ÞÉ]_IÈ™YÚ\Ý\™Yˆ—JNÃBƒBˆ	ÝXØÙ\ÜÈH“XZ[[˜[˜ÙH\ÚÈÞÉ™\]Y\ÝÚYWHÝXØÙ\ÜÙ[HÜ™X]YHŽÃBˆHØ]Ú
-Ñ^Ù\[Ûˆ	JHÃBˆ	\œ›ÜˆH‘˜Z[YÈÜ™X]HXZ[[˜[˜ÙH\ÚÎˆˆˆ	KO™Ù]Y\ÜØYÙJ
-NÃBˆCBˆCBˆH[ÙZYˆ
-	XÝ[ÛˆOOH	Ý\]WÜÝ]\ÉÊHÃBˆ	YH[˜[
-	ÔÔÕÉÚY	×HÏÈ
-NÃBˆ	™]ÔÝ]\ÈH	ÔÔÕÉÜÝ]\É×HÏÈ	Ô™\ÜY	ÎÃBˆ	›ÙÜ™\Ü×Ü\˜Ù[HX^
-Z[ŠL[˜[
-	ÔÔÕÉÜ›ÙÜ™\Ü×Ü\˜Ù[	×HÏÈ
-JJNÃBˆ	\ÜÚYÛ™YÜ\œÛÛ›™[Hš[J	ÔÔÕÉØ\ÜÚYÛ™YÜ\œÛÛ›™[	×HÏÈ	ÉÊNÃBˆ	\ÜÚYÛ™YÝX[HHš[J	ÔÔÕÉØ\ÜÚYÛ™YÝX[I×HÏÈ	ÉÊNÃBˆ	ØÚY[YÜÝ\Ù]HHY[\J	ÔÔÕÉÜØÚY[YÜÝ\Ù]I×JHÈ	ÔÔÕÉÜØÚY[YÜÝ\Ù]I×Hˆ[ÃBˆ	\™Ù]ØÛÛ\][Û—Ù]HHY[\J	ÔÔÕÉÝ\™Ù]ØÛÛ\][Û—Ù]I×JHÈ	ÔÔÕÉÝ\™Ù]ØÛÛ\][Û—Ù]I×Hˆ[ÃBˆ	XÝX[ØÛÛ\][Û—Ù]HHY[\J	ÔÔÕÉØXÝX[ØÛÛ\][Û—Ù]I×JHÈ	ÔÔÕÉØXÝX[ØÛÛ\][Û—Ù]I×Hˆ[ÃBˆ	š[™[™ÜÈHš[J	ÔÔÕÉÙš[™[™ÜÉ×HÏÈ	ÉÊNÃBˆ	›ÛÝØØ]\ÙHHš[J	ÔÔÕÉÜ›ÛÝØØ]\ÙI×HÏÈ	ÉÊNÃBˆ	XÝ[Û—ÝZÙ[ˆHš[J	ÔÔÕÉØXÝ[Û—ÝZÙ[‰×HÏÈ	ÉÊNÃBˆ	\×Ü™\XÙYHš[J	ÔÔÕÉÜ\×Ü™\XÙY	×HÏÈ	ÉÊNÃBˆ	XZ[[˜[˜ÙWÛ›Ý\ÈHš[J	ÔÔÕÉÛXZ[[˜[˜ÙWÛ›Ý\É×HÏÈ	ÉÊNÃBˆ	Ý]\×Û›ÝHHš[J	ÔÔÕÉÜÝ]\×Û›ÝI×HÏÈ	ÔÝ]\È\]YžHXÚšXÚX[‹‰ÊNÃBˆ	›ÛÝ×Ý\Û™YYYH\ÜÙ]
-	ÔÔÕÉÙ›ÛÝ×Ý\Û™YYY	×JHÈHˆÃBˆ	›ÛÝ×Ý\Ü™X\ÛÛˆHš[J	ÔÔÕÉÙ›ÛÝ×Ý\Ü™X\ÛÛ‰×HÏÈ	ÉÊNÃBƒBˆYˆ
-	Yˆ
-HÃBˆžHÃBˆËÈ™]ÚÝ\œ™[™XÛÜ™Bˆ	Ý]H	ËOœ™\\™J”ÑSPÕ
-ˆ”“ÓHXZ[[˜[˜ÙWÜ™\]Y\ÝÈÒT‘HYHÈŠNÃBˆ	Ý]O™^XÝ]JÉYJNÃBˆ	Ý\œ™[H	Ý]O™™]Ú
-ÎŽ‘‘UÒÐTÔÓÐÊNÃBƒBˆYˆ
-	Ý\œ™[
-HÃBˆ	ÛÝ]\ÈH	Ý\œ™[ÉÜÝ]\É×NÃBƒBˆËÈ]]ËXY\Ý›ÙÜ™\ÜÈ[™ÛÛ\][Ûˆ]HYˆÛÛ\]YBˆYˆ
-	™]ÔÝ]\ÈOOH	ÐÛÛ\]Y	ÊHÃBˆ	›ÙÜ™\Ü×Ü\˜Ù[HLÃBˆYˆ
-[\J	XÝX[ØÛÛ\][Û—Ù]IÊJHÃBˆ	XÝX[ØÛÛ\][Û—Ù]HH]J	ÖK[KYšNœÉÊNÃBˆCBˆH[ÙZYˆ
-	™]ÔÝ]\ÈOOH	Ò[ˆ›ÙÜ™\ÜÉÉIˆ	›ÙÜ™\Ü×Ü\˜Ù[OOH
-HÃBˆ	›ÙÜ™\Ü×Ü\˜Ù[HNÃBˆCBƒBˆËÈ\]HXZ[ˆXZ[[˜[˜ÙH™XÛÜ™Bˆ	\]TÝ]H	ËOœ™\\™JƒBˆTUHXZ[[˜[˜ÙWÜ™\]Y\ÝÈÑUBˆÝ]\ÈHËBˆ›ÙÜ™\Ü×Ü\˜Ù[HËBˆ\ÜÚYÛ™YÜ\œÛÛ›™[HËBˆ\ÜÚYÛ™YÝX[HHËBˆØÚY[YÜÝ\Ù]HHËBˆ\™Ù]ØÛÛ\][Û—Ù]HHËBˆXÝX[ØÛÛ\][Û—Ù]HHËBˆš[™[™ÜÈHËBˆ›ÛÝØØ]\ÙHHËBˆXÝ[Û—ÝZÙ[ˆHËBˆ\×Ü™\XÙYHËBˆXZ[[˜[˜ÙWÛ›Ý\ÈHËBˆ›ÛÝ×Ý\Û™YYYHËBˆ›ÛÝ×Ý\Ü™X\ÛÛˆHÃBˆÒT‘HYHÃBˆŠNÃBˆ	\]TÝ]O™^XÝ]JÃBˆ	™]ÔÝ]\ËBˆ	›ÙÜ™\Ü×Ü\˜Ù[Bˆ	\ÜÚYÛ™YÜ\œÛÛ›™[Bˆ	\ÜÚYÛ™YÝX[KBˆ	ØÚY[YÜÝ\Ù]KBˆ	\™Ù]ØÛÛ\][Û—Ù]KBˆ	XÝX[ØÛÛ\][Û—Ù]KBˆ	š[™[™ÜËBˆ	›ÛÝØØ]\ÙKBˆ	XÝ[Û—ÝZÙ[‹Bˆ	\×Ü™\XÙYBˆ	XZ[[˜[˜ÙWÛ›Ý\ËBˆ	›ÛÝ×Ý\Û™YYYBˆ	›ÛÝ×Ý\Ü™X\ÛÛ‹Bˆ	YBˆJNÃBƒBˆËÈ[œÙ\Ý]\ÈÙÈYˆÝ]\ÈÚ[™ÙYÜˆ›Ý\ÈÚ]™[ƒBˆ	ÙÓ›ÝHH	Ý]\×Û›ÝHÎˆ”›ÙÜ™\ÜÈ\]YÈÉ›ÙÜ™\Ü×Ü\˜Ù[KˆÝ]\ÎˆÉ™]ÔÝ]\ßKˆŽÃBˆ	ËOœ™\\™JƒBˆS”ÑT•S•ÈXZ[[˜[˜ÙWÜÝ]\×ÛÙÜÈ
-XZ[[˜[˜ÙWÜ™\]Y\ÝÚYÛÜÝ]\Ë™]×ÜÝ]\ËÚ[™ÙYØžK›Ý\ÊCBˆSQTÈ
-ËËËËÊCBˆŠKO™^XÝ]JÉY	ÛÝ]\Ë	™]ÔÝ]\Ë	\Ù\’Y	ÙÓ›ÝWJNÃBƒBˆËÈ[œÙ\\ÝÜžH[žCBˆ	ËOœ™\\™JƒBˆS”ÑT•S•ÈXZ[[˜[˜ÙWÚ\ÝÜžH
-XZ[[˜[˜ÙWÜ™\]Y\ÝÚYXÝ[Û‹\™›Ü›YYØžK]Z[ÊCBˆSQTÈ
-Ë	Ô›ÙÜ™\ÜÈ\]IËËÊCBˆŠKO™^XÝ]JÉY	\Ù\’Y”Ý]\ÎˆÉÛÝ]\ßHOˆÉ™]ÔÝ]\ßH
-›ÙÜ™\ÜÎˆÉ›ÙÜ™\Ü×Ü\˜Ù[IJKˆ›Ý\ÎˆÉÙÓ›Ý_H—JNÃBƒBˆËÈ\]H\ÜÙ]ÛÛ™][ÛˆYˆÛÛ\]YÜˆÛ™ÛÚ[™ÃBˆYˆ
-Y[\J	Ý\œ™[ÉÝ][]WØ\ÜÙ]ÚY	×JJHÃBˆYˆ
-	™]ÔÝ]\ÈOOH	ÐÛÛ\]Y	ÊHÃBˆ	ËOœ™\\™J•TUH][]WØ\ÜÙ]ÈÑUÛÛ™][Û—ÜÝ]\ÈH	ÑÛÛÙ	ÈÒT‘HYHÈŠKO™^XÝ]JÉÝ\œ™[ÉÝ][]WØ\ÜÙ]ÚY	×WJNÃBˆH[ÙZYˆ
-	™]ÔÝ]\ÈOOH	Ò[ˆ›ÙÜ™\ÜÉÊHÃBˆ	ËOœ™\\™J•TUH][]WØ\ÜÙ]ÈÑUÛÛ™][Û—ÜÝ]\ÈH	Õ[™\ˆXZ[[˜[˜ÙIÈÒT‘HYHÈŠKO™^XÝ]JÉÝ\œ™[ÉÝ][]WØ\ÜÙ]ÚY	×WJNÃBˆCBˆCBƒBˆ	ÝXØÙ\ÜÈH“XZ[[˜[˜ÙH\ÚÈÞÉÝ\œ™[ÉÝ™\]Y\ÝÚY	×_WH\]YÝXØÙ\ÜÙ[HHŽÃBˆH[ÙHÃBˆ	\œ›ÜˆH“XZ[[˜[˜ÙH\ÚÈ›Ý›Ý[™ˆŽÃBˆCBˆHØ]Ú
-Ñ^Ù\[Ûˆ	JHÃBˆ	\œ›ÜˆH•\]H˜Z[Yˆˆˆ	KO™Ù]Y\ÜØYÙJ
-NÃBˆCBˆCBˆH[ÙZYˆ
-	XÝ[ÛˆOOH	Ù[]IÊHÃBˆ	YH[˜[
-	ÔÔÕÉÚY	×HÏÈ
-NÃBˆYˆ
-	Yˆ
-HÃBˆžHÃBˆ	Ý]H	ËOœ™\\™J”ÑSPÕ™\]Y\ÝÚY”“ÓHXZ[[˜[˜ÙWÜ™\]Y\ÝÈÒT‘HYHÈŠNÃBˆ	Ý]O™^XÝ]JÉYJNÃBˆ	™\HH	Ý]O™™]Ú
+        if (!empty($title) && !empty($location)) {
+            try {
+                $year = date('Y');
+                $seqRow = $pdo->query("SELECT COUNT(*) FROM maintenance_requests WHERE request_id LIKE 'MNT-$year-%'")->fetchColumn();
+                $seq = intval($seqRow) + 1;
+                $reqId = sprintf("MNT-%s-%04d", $year, $seq);
 
-NÃBˆBˆYˆ
-	™\JHÃBˆ	ËOœ™\\™J‘SUH”“ÓHXZ[[˜[˜ÙWÜ™\]Y\ÝÈÒT‘HYHÈŠKO™^XÝ]JÉYJNÃBˆ	ÝXØÙ\ÜÈH“XZ[[˜[˜ÙH™XÛÜ™ÞÉ™\VÉÜ™\]Y\ÝÚY	×_WH[]YˆŽÃBˆCBˆHØ]Ú
-Ñ^Ù\[Ûˆ	JHÃBˆ	\œ›ÜˆH‘˜Z[YÈ[]Nˆˆˆ	KO™Ù]Y\ÜØYÙJ
-NÃBˆCBˆCBˆCBŸCB
-// =========================================
+                $stmt = $pdo->prepare("
+                    INSERT INTO maintenance_requests 
+                        (request_id, utility_asset_id, title, maintenance_type, source, description, priority, location, status, progress_percent, assigned_personnel, assigned_team, scheduled_start_date, target_completion_date, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, NOW(), NOW())
+                ");
+                $stmt->execute([$reqId, $asset_id, $title, $maintenance_type, $source, $description, $priority, $location, $status, $assigned_lead, $assigned_team, $scheduled_start, $target_comp]);
+                $newId = $pdo->lastInsertId();
+
+                // Status log
+                $pdo->prepare("
+                    INSERT INTO maintenance_status_logs (maintenance_request_id, old_status, new_status, changed_by, notes)
+                    VALUES (?, NULL, ?, ?, 'Work order created')
+                ")->execute([$newId, $status, $userId]);
+
+                // Update asset condition to Under Maintenance if linked
+                if ($asset_id && $status !== 'Completed') {
+                    $pdo->prepare("UPDATE utility_assets SET condition_status = 'Under Maintenance' WHERE id = ?")->execute([$asset_id]);
+                    try {
+                        $pdo->prepare("INSERT INTO asset_status_logs (utility_asset_id, action_type, old_status, new_status, changed_by, notes) VALUES (?, 'status_changed', 'Operational', 'Under Maintenance', ?, ?)")
+                            ->execute([$asset_id, $userId, "Work order {$reqId} created."]);
+                    } catch (Throwable $e) {}
+                }
+
+                $_SESSION['flash_success'] = "Maintenance task <strong>{$reqId}</strong> created successfully.";
+            } catch (PDOException $e) {
+                $_SESSION['flash_error'] = "Failed to create task: " . $e->getMessage();
+            }
+        } else {
+            $_SESSION['flash_error'] = "Please provide both a Title and Location for the maintenance task.";
+        }
+        header('Location: maintenance_list.php');
+        exit();
+    }
+
+    // --- UPDATE WORK ORDER & PROGRESS ---
+    if ($action === 'update_status') {
+        $id = intval($_POST['id'] ?? 0);
+        $new_status = $_POST['status'] ?? 'Reported';
+        $progress_percent = max(0, min(100, intval($_POST['progress_percent'] ?? 0)));
+        $scheduled_start = !empty($_POST['scheduled_start_date']) ? $_POST['scheduled_start_date'] : null;
+        $target_comp = !empty($_POST['target_completion_date']) ? $_POST['target_completion_date'] : null;
+        $actual_comp = !empty($_POST['actual_completion_date']) ? $_POST['actual_completion_date'] : null;
+        $assigned_lead = trim($_POST['assigned_personnel'] ?? '');
+        $assigned_team = trim($_POST['assigned_team'] ?? '');
+        $findings = trim($_POST['findings'] ?? '');
+        $root_cause = trim($_POST['root_cause'] ?? '');
+        $action_taken = trim($_POST['action_taken'] ?? '');
+        $parts_replaced = trim($_POST['parts_replaced'] ?? '');
+        $status_note = trim($_POST['status_note'] ?? '');
+
+        if ($new_status === 'Completed' && $progress_percent < 100) {
+            $progress_percent = 100;
+        }
+        if ($progress_percent === 100 && $new_status !== 'Cancelled') {
+            $new_status = 'Completed';
+        }
+        if ($new_status === 'Completed' && empty($actual_comp)) {
+            $actual_comp = date('Y-m-d H:i:s');
+        }
+
+        if ($id > 0) {
+            try {
+                $currStmt = $pdo->prepare("
+                    SELECT r.*, a.id as asset_db_id, a.parent_asset_id, a.asset_id as asset_code, a.quantity as asset_qty 
+                    FROM maintenance_requests r 
+                    LEFT JOIN utility_assets a ON r.utility_asset_id = a.id 
+                    WHERE r.id = ?
+                ");
+                $currStmt->execute([$id]);
+                $curr = $currStmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($curr) {
+                    $old_status = $curr['status'];
+
+                    $upd = $pdo->prepare("
+                        UPDATE maintenance_requests 
+                        SET status = ?, progress_percent = ?, scheduled_start_date = ?, target_completion_date = ?, actual_completion_date = ?, assigned_personnel = ?, assigned_team = ?, findings = ?, root_cause = ?, action_taken = ?, parts_replaced = ?, updated_at = NOW()
+                        WHERE id = ?
+                    ");
+                    $upd->execute([
+                        $new_status, $progress_percent, $scheduled_start, $target_comp, $actual_comp,
+                        $assigned_lead, $assigned_team, $findings, $root_cause, $action_taken, $parts_replaced, $id
+                    ]);
+
+                    // Log to maintenance_status_logs
+                    $logNote = $status_note ?: "Progress: {$progress_percent}%. Status: {$new_status}.";
+                    $pdo->prepare("
+                        INSERT INTO maintenance_status_logs (maintenance_request_id, old_status, new_status, changed_by, notes)
+                        VALUES (?, ?, ?, ?, ?)
+                    ")->execute([$id, $old_status, $new_status, $userId, $logNote]);
+
+                    // BIDIRECTIONAL AUTO-SYNC TO ASSET INVENTORY
+                    if (!empty($curr['utility_asset_id'])) {
+                        $assetDbId = intval($curr['utility_asset_id']);
+                        $assetCode = $curr['asset_code'] ?: "Asset #{$assetDbId}";
+
+                        if ($new_status === 'Completed') {
+                            // If child offshoot, merge back into parent asset
+                            if (!empty($curr['parent_asset_id'])) {
+                                $parentId = intval($curr['parent_asset_id']);
+                                $offshootQty = intval($curr['asset_qty'] ?? 1);
+
+                                $pdo->prepare("UPDATE utility_assets SET quantity = quantity + ? WHERE id = ?")->execute([$offshootQty, $parentId]);
+                                try {
+                                    $pdo->prepare("INSERT INTO asset_status_logs (utility_asset_id, action_type, old_status, new_status, changed_by, notes) VALUES (?, 'split_merged', 'Under Maintenance', 'Operational (Merged)', ?, ?)")
+                                        ->execute([$assetDbId, $userId, "Maintenance completed: {$offshootQty} unit(s) restored and merged back into parent asset."]);
+                                    $pdo->prepare("INSERT INTO asset_notifications (type, message) VALUES ('status_changed', ?)")
+                                        ->execute(["Maintenance completed: {$offshootQty} unit(s) of {$assetCode} restored and merged back."]);
+                                } catch (Throwable $e) {}
+                                $pdo->prepare("DELETE FROM utility_assets WHERE id = ?")->execute([$assetDbId]);
+                            } else {
+                                // Regular asset restored to Operational
+                                $pdo->prepare("UPDATE utility_assets SET condition_status = 'Operational' WHERE id = ?")->execute([$assetDbId]);
+                                try {
+                                    $pdo->prepare("INSERT INTO asset_status_logs (utility_asset_id, action_type, old_status, new_status, changed_by, notes) VALUES (?, 'status_changed', 'Under Maintenance', 'Operational', ?, ?)")
+                                        ->execute([$assetDbId, $userId, "Maintenance task {$curr['request_id']} completed. Asset restored to Operational."]);
+                                    $pdo->prepare("INSERT INTO asset_notifications (type, message) VALUES ('status_changed', ?)")
+                                        ->execute(["Asset {$assetCode} maintenance completed and marked as Operational."]);
+                                } catch (Throwable $e) {}
+                            }
+                            $_SESSION['flash_success'] = "Work order <strong>{$curr['request_id']}</strong> marked as <strong>Completed</strong>! Linked asset automatically restored to <strong>Operational</strong>.";
+                        } else {
+                            $_SESSION['flash_success'] = "Work order <strong>{$curr['request_id']}</strong> updated successfully (Progress: {$progress_percent}%).";
+                        }
+                    } else {
+                        $_SESSION['flash_success'] = "Work order <strong>{$curr['request_id']}</strong> updated successfully (Progress: {$progress_percent}%).";
+                    }
+                }
+            } catch (PDOException $e) {
+                $_SESSION['flash_error'] = "Update failed: " . $e->getMessage();
+            }
+        }
+        header('Location: maintenance_list.php');
+        exit();
+    }
+
+    // --- DELETE WORK ORDER ---
+    if ($action === 'delete') {
+        $id = intval($_POST['id'] ?? 0);
+        if ($id > 0) {
+            try {
+                $pdo->prepare("DELETE FROM maintenance_requests WHERE id = ?")->execute([$id]);
+                $_SESSION['flash_success'] = "Maintenance task deleted.";
+            } catch (PDOException $e) {
+                $_SESSION['flash_error'] = "Failed to delete task: " . $e->getMessage();
+            }
+        }
+        header('Location: maintenance_list.php');
+        exit();
+    }
+}
+
+// Flash Messages
+$error = $_SESSION['flash_error'] ?? '';
+$success = $_SESSION['flash_success'] ?? '';
+unset($_SESSION['flash_error'], $_SESSION['flash_success']);
+
+// ===========================================
 // 4. STATS SUMMARY AGGREGATION
 // ===========================================
 function getCount($pdo, $sql, $params = []) {
@@ -194,9 +351,9 @@ $statActive = getCount($pdo, "SELECT COUNT(*) FROM maintenance_requests WHERE st
 $statCompleted = getCount($pdo, "SELECT COUNT(*) FROM maintenance_requests WHERE status IN ('Completed', 'Closed')");
 $statOverdue = getCount($pdo, "SELECT COUNT(*) FROM maintenance_requests WHERE status NOT IN ('Completed', 'Cancelled', 'Closed') AND target_completion_date IS NOT NULL AND target_completion_date < NOW()");
 
-// ==========================================
-// 5. QUERY FILTERS & PGINATION
-// ==========================================
+// ===========================================
+// 5. QUERY FILTERS & PAGINATION
+// ===========================================
 $search = trim($_GET['search'] ?? '');
 $status_filter = $_GET['status'] ?? '';
 $source_filter = $_GET['source'] ?? '';
@@ -212,7 +369,7 @@ $conditions = [];
 $params = [];
 
 if (!empty($search)) {
-    $conditions[] = "(r.title LIKE ? OR r.request_id LIKE ? OR"r.description LIKE ? OR"r.location LIKE ? OR"r.assigned_personnel LIKE ? OR a.name LIKE ? OR a.asset_id LIKE ?)";
+    $conditions[] = "(r.title LIKE ? OR r.request_id LIKE ? OR r.description LIKE ? OR r.location LIKE ? OR r.assigned_personnel LIKE ? OR a.name LIKE ? OR a.asset_id LIKE ?)";
     $sw = '%' . $search . '%';
     $params = array_merge($params, [$sw, $sw, $sw, $sw, $sw, $sw, $sw]);
 }
@@ -266,28 +423,36 @@ $dataStmt = $pdo->prepare("
     SELECT 
         r.*,
         a.name as asset_name,
-        a.utility_type as asset_type,
+        a.asset_id as asset_code,
         a.location as asset_location_default,
-        a.condition_status as asset_condition
+        a.condition_status as asset_condition,
+        t.name as asset_category
     FROM maintenance_requests r
     LEFT JOIN utility_assets a ON r.utility_asset_id = a.id
+    LEFT JOIN asset_types t ON a.asset_type_id = t.id
     $whereClause
     ORDER BY 
         CASE 
-            WHEN r.priority = 'Emergency' AND"r.status NOT IN ('Completed', 'Cancelled') THEN 1
+            WHEN r.priority = 'Emergency' AND r.status NOT IN ('Completed', 'Cancelled') THEN 1
             WHEN r.priority = 'High' AND r.status NOT IN ('Completed', 'Cancelled') THEN 2
             WHEN r.status = 'In Progress' THEN 3
             WHEN r.status = 'Scheduled' THEN 4
-            WHEN r.status IN ('Reported', 'Under Review') THEN 5
+            WHEN r.status = 'Reported' THEN 5
             ELSE 6
-        END ASC,
-        r.created_at DESC\n    LIMIT $limit OFFSET $offset
+        END,
+        r.created_at DESC
+    LIMIT $limit OFFSET $offset
 ");
 $dataStmt->execute($params);
-$requestsList = $dataStmt->fetchAll(PDO::FETCH_ASSOC);
+$requests = $dataStmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Retrieve all assets for dropdown in modals
-$assetsList = $pdo->query("SELECT id, name, asset_id, location, condition_status FROM utility_assets ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
+// Fetch assets list for the Create Modal dropdown
+$assetsList = $pdo->query("
+    SELECT a.id, a.asset_id, a.name, a.location, a.condition_status, t.name as category_name
+    FROM utility_assets a
+    LEFT JOIN asset_types t ON a.asset_type_id = t.id
+    ORDER BY a.name ASC
+")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -357,257 +522,243 @@ $assetsList = $pdo->query("SELECT id, name, asset_id, location, condition_status
             color: #1e293b;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
             border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
             margin-bottom: 30px;
         }
 
-        .dashboard-header {
+        .page-title {
             display: flex;
-            zjustify-content: space-between;
             align-items: center;
-            margin-bottom: 25px;
-            flex-wrap: wrap;
-            gap: 20px;
+            gap: 16px;
         }
 
-        .header-title h1 {
-            color: #0f172a;
-            font-size: 28px;
+        .page-title-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+        }
+
+        .page-title h1 {
+            font-size: 26px;
             font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 12px;
+            color: #0f172a;
+            letter-spacing: -0.5px;
         }
 
-        .header-title h1 i {
-            color: #2563eb;
-        }
-
-        .header-title p {
+        .page-title p {
+            font-size: 13.5px;
             color: #64748b;
-            font-size: 14px;
-            margin-top: 4px;
+            margin-top: 2px;
         }
 
         .header-actions {
             display: flex;
             gap: 12px;
+            align-items: center;
             flex-wrap: wrap;
         }
 
         .btn {
             padding: 10px 20px;
             border-radius: 10px;
+            font-size: 14px;
             font-weight: 600;
-            font-size: 13.5px;
-            border: none;
             cursor: pointer;
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            border: none;
             display: inline-flex;
             align-items: center;
             gap: 8px;
+            transition: all 0.2s ease;
             text-decoration: none;
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #2563eb, #1d4ed8);
-            color: #ffffff;
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+            background: #2563eb;
+            color: white;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
         }
 
         .btn-primary:hover {
-            background: linear-gradient(135deg, #1d4ed8, #1e40af);
-            transform: translateY(-1px);
-            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
-            color: #ffffff;
-        }
-
-        .btn-test {
-            background: #10b9b1;
-            color: #ffffff;
-        }
-
-        .btn-success {
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: #ffffff;
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
-        }
-
-        .btn-success:hover {
-            background: linear-gradient(135deg, #059669, #047857);
-            color: #ffffff;
-            transform: translateY(-1px);
+            background: #1d4ed8;
+            transform: translateY(-2px);
         }
 
         .btn-outline {
-            background: #ffffff;
-            border: 1px solid #cbd5e1;
+            background: white;
             color: #475569;
+            border: 1px solid #cbd5e1;
         }
 
         .btn-outline:hover {
             background: #f8fafc;
             color: #0f172a;
-            border-color: #94a3b8;
         }
 
-        .btn-danger-outline {
-            background: transparent;
-            border: 1px solid #fecaca;
-            color: #ef4444;
+        .btn-success {
+            background: #10b981;
+            color: white;
         }
 
-        .btn-danger-outline:hover {
-            background: #fef2f2;
-            color: #dc2626;
-            border-color: #f87171;
-        }
-
-        .btn-sm {
-            padding: 6px 12px;
-            font-size: 12px;
-            border-radius: 8px;
+        .btn-success:hover {
+            background: #059669;
         }
 
         /* Stats Grid */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 18px;
-            margin-bottom: 25px;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 16px;
+            margin-bottom: 28px;
         }
 
         .stat-card {
-            background: #ffffff;
-            padding: 18px 22px;
+            background: white;
             border-radius: 14px;
+            padding: 18px 20px;
+            border: 1px solid #e2e8f0;
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-            border: 1px solid #e2e8f0;
-            transition: transform 0.2s, box-shadow 0.2s;
+            gap: 16px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+            transition: transform 0.2s ease;
         }
 
         .stat-card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(0,0,0,0.08);
-        }
-
-        .stat-card .info .label {
-            font-size: 12.5px;
-            color: #64748b;
-            font-weight: 500;
-        }
-
-        .stat-card .info .val {
-            font-size: 26px;
-            font-weight: 700;
-            color: #0f172a;
-            margin-top: 2px;
         }
 
         .stat-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 12px;
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 20px;
+            font-size: 18px;
+            flex-shrink: 0;
         }
 
-        .stat-blue .stat-icon { background: #eff6ff; color: #2563eb; }
-        .stat-amber .stat-icon { background: #fffbeb; color: #d97706; }
-        .stat-purple .stat-icon { background: #faf5ff; color: #9333ea; }
-        .stat-green .stat-icon { background: #f0fdf4; color: #16a34a; }
-        .stat-red .stat-icon { background: #fef2f2; color: #dc2626; }
+        .stat-icon.total { background: #eff6ff; color: #2563eb; }
+        .stat-icon.reported { background: #fef3c7; color: #d97706; }
+        .stat-icon.active { background: #e0e7ff; color: #4f46e5; }
+        .stat-icon.completed { background: #ecfdf5; color: #059669; }
+        .stat-icon.overdue { background: #fee2e2; color: #dc2626; }
 
-        /* Filter Panel */
-        .filter-panel {
+        .stat-info h3 {
+            font-size: 22px;
+            font-weight: 700;
+            color: #0f172a;
+            line-height: 1.2;
+        }
+
+        .stat-info p {
+            font-size: 12px;
+            color: #64748b;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Filter Toolbar */
+        .filter-toolbar {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
             border-radius: 14px;
-            padding: 18px 20px;
-            margin-bottom: 25px;
-            display: grid;
-            grid-template-columns: 2fr 1fr 1fr 1fr 1fr auto;
+            padding: 16px 20px;
+            margin-bottom: 24px;
+        }
+
+        .filter-form {
+            display: flex;
             gap: 12px;
             align-items: center;
+            flex-wrap: wrap;
         }
 
-        @media (max-width: 1200px) {
-            .filter-panel {
-                grid-template-columns: 1fr 1fr;
-            }
+        .search-box {
+            flex: 1;
+            min-width: 240px;
+            position: relative;
         }
 
-        @media (max-width: 768px) {
-            .filter-panel {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .form-control, .form-select {
+        .search-box input {
             width: 100%;
-            padding: 9px 13px;
-            border-radius: 9px;
+            padding: 9px 14px 9px 38px;
+            border-radius: 8px;
             border: 1px solid #cbd5e1;
             font-size: 13.5px;
-            color: #334155;
-            background-color: #ffffff;
             outline: none;
-            transition: border-color 0.2s, box-shadow 0.2s;
+            background: white;
         }
 
-        .form-control:focus, .form-select:focus {
-            border-color: #2563eb;
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+        .search-box i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+            font-size: 14px;
         }
 
-        /* Table Design */
-        .table-responsive {
+        .filter-select {
+            padding: 9px 14px;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+            font-size: 13.5px;
+            background: white;
+            color: #334155;
+            outline: none;
+            min-width: 130px;
+        }
+
+        /* Table */
+        .table-container {
             width: 100%;
             overflow-x: auto;
             border-radius: 12px;
             border: 1px solid #e2e8f0;
-            background: #ffffff;
+            background: white;
         }
 
-        table {
+        .maintenance-table {
             width: 100%;
             border-collapse: collapse;
-            text-align: left;
             font-size: 13.5px;
+            text-align: left;
         }
 
-        thead {
+        .maintenance-table th {
             background: #f8fafc;
-            border-bottom: 2px solid #e2e8f0;
-        }
-
-        th {
-            padding: 14px 16px;
-            color: #475569;
+            padding: 14px 18px;
             font-weight: 600;
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            color: #475569;
+            border-bottom: 1px solid #e2e8f0;
             white-space: nowrap;
         }
 
-        td {
-            padding: 14px 16px;
+        .maintenance-table td {
+            padding: 14px 18px;
             border-bottom: 1px solid #f1f5f9;
             color: #334155;
             vertical-align: middle;
         }
 
-        tbody tr:hover {
-            background-color: #f8fafc;
-        }
-
-        tbody tr:last-child td {
-            border-bottom: none;
+        .maintenance-table tr:hover {
+            background: #f8fafc;
         }
 
         /* Badges */
@@ -616,62 +767,48 @@ $assetsList = $pdo->query("SELECT id, name, asset_id, location, condition_status
             align-items: center;
             gap: 5px;
             padding: 4px 10px;
-            border-radius: 9999px;
+            border-radius: 20px;
             font-size: 11.5px;
             font-weight: 600;
-            letter-spacing: 0.2px;
             white-space: nowrap;
         }
 
-        .badge-reported { background: #fef3c7; color: #b45309; }
-        .badge-review { background: #e0e7ff; color: #4338ca; }
-        .badge-scheduled { background: #e0f2fe; color: #0369a1; }
-        .badge-progress { background: #f3e8ff; color: #7e22ce; }
-        .badge-hold { background: #ffedd5; color: #c2410c; }
+        .badge-reported { background: #fef3c7; color: #92400e; }
+        .badge-review { background: #e0e7ff; color: #3730a3; }
+        .badge-scheduled { background: #eff6ff; color: #1d4ed8; }
+        .badge-progress { background: #f3e8ff; color: #6b21a8; }
+        .badge-hold { background: #ffedd5; color: #9a3412; }
         .badge-completed { background: #dcfce7; color: #15803d; }
         .badge-cancelled { background: #f1f5f9; color: #64748b; }
 
         .badge-pLow { background: #f1f5f9; color: #475569; }
-        .badge-pMed { background: #e0f2fe; color: #0284c7; }
-        .badge-pHigh { background: #fee2e2; color: #dc2626; font-weight: 700; }
-        .badge-pEmg { background: #dc2626; color: #ffffff; font-weight: 700; }
+        .badge-pMed { background: #e0f2fe; color: #0369a1; }
+        .badge-pHigh { background: #fed7aa; color: #c2410c; }
+        .badge-pEmg { background: #fee2e2; color: #b91c1c; }
 
         .badge-type {
             background: #f1f5f9;
-            color: #334155;
-            border: 1px solid #cbd5e1;
-            font-size: 11px;
-            padding: 2px 8px;
+            color: #475569;
+            padding: 3px 8px;
             border-radius: 6px;
-        }
-
-        .overdue-tag {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            color: #dc2626;
-            background: #fee2e2;
-            padding: 2px 7px;
-            border-radius: 4px;
             font-size: 11px;
-            font-weight: 700;
-            margin-top: 3px;
+            font-weight: 600;
         }
 
-        /* Mini progress bar */
+        /* Progress Bar */
         .progress-bar-container {
             width: 100px;
-            height: 6px;
+            height: 7px;
             background: #e2e8f0;
-            border-radius: 99px;
+            border-radius: 10px;
             overflow: hidden;
-            margin-top: 4px;
+            margin-top: 5px;
         }
 
         .progress-bar-fill {
             height: 100%;
-            background: linear-gradient(90deg, #3b82f6, #10b981);
-            border-radius: 99px;
+            background: #2563eb;
+            border-radius: 10px;
             transition: width 0.3s ease;
         }
 
@@ -686,82 +823,54 @@ $assetsList = $pdo->query("SELECT id, name, asset_id, location, condition_status
             width: 32px;
             height: 32px;
             border-radius: 8px;
-            border: 1px solid #e2e8f0;
-            background: #ffffff;
-            color: #475569;
             display: inline-flex;
             align-items: center;
             justify-content: center;
+            border: 1px solid #cbd5e1;
+            background: white;
+            color: #475569;
             cursor: pointer;
-            transition: all 0.2s;
-            font-size: 13px;
+            transition: all 0.15s ease;
             text-decoration: none;
+            font-size: 13px;
         }
 
         .action-btn:hover {
             background: #f8fafc;
+            color: #0f172a;
+            border-color: #94a3b8;
+        }
+
+        .action-btn.btn-update {
             color: #2563eb;
             border-color: #bfdbfe;
+            background: #eff6ff;
         }
 
         .action-btn.btn-update:hover {
-            background: #eff6ff;
-            color: #2563eb;
-            border-color: #93c5fd;
+            background: #2563eb;
+            color: white;
+        }
+
+        .action-btn.btn-del {
+            color: #ef4444;
+            border-color: #fecaca;
+            background: #fef2f2;
         }
 
         .action-btn.btn-del:hover {
-            background: #fef2f2;
-            color: #ef4444;
-            border-color: #fca5a5;
+            background: #ef4444;
+            color: white;
         }
 
-        /* Alert notifications */
-        .alert {
-            padding: 14px 18px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            display: flex;
+        .overdue-tag {
+            color: #dc2626;
+            font-size: 11px;
+            font-weight: 700;
+            display: inline-flex;
             align-items: center;
-            gap: 12px;
-            font-size: 14px;
-            font-weight: 500;
-        }
-
-        .alert-success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
-        .alert-error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
-
-        /* Pagination */
-        .pagination {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 20px;
-            flex-wrap: wrap;
-            gap: 12px;
-        }
-
-        .pagination-links {
-            display: flex;
-            gap: 6px;
-        }
-
-        .page-link {
-            padding: 6px 12px;
-            border-radius: 8px;
-            background: #ffffff;
-            border: 1px solid #cbd5e1;
-            color: #475569;
-            text-decoration: none;
-            font-size: 13px;
-            font-weight: 600;
-            transition: all 0.2s;
-        }
-
-        .page-link:hover, .page-link.active {
-            background: #2563eb;
-            color: #ffffff;
-            border-color: #2563eb;
+            gap: 3px;
+            margin-top: 2px;
         }
 
         /* Modals */
@@ -769,8 +878,8 @@ $assetsList = $pdo->query("SELECT id, name, asset_id, location, condition_status
             position: fixed;
             top: 0;
             left: 0;
-            width: 100vw;
-            height: 100vh;
+            width: 100%;
+            height: 100%;
             background: rgba(15, 23, 42, 0.6);
             backdrop-filter: blur(4px);
             z-index: 9999;
@@ -785,27 +894,28 @@ $assetsList = $pdo->query("SELECT id, name, asset_id, location, condition_status
         }
 
         .modal-box {
-            background: #ffffff;
+            background: white;
             border-radius: 18px;
             width: 100%;
-            max-width: 780px;
+            max-width: 600px;
             max-height: 90vh;
             overflow-y: auto;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.25);
-            animation: modalPop 0.25s ease-out;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            border: 1px solid #e2e8f0;
+            animation: modalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        .modal-box-lg {
-            max-width: 900px;
+        .modal-box.modal-box-lg {
+            max-width: 750px;
         }
 
         @keyframes modalPop {
-            from { transform: scale(0.95); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
+            0% { transform: scale(0.95); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
         }
 
         .modal-header {
-            padding: 22px 28px;
+            padding: 20px 24px;
             border-bottom: 1px solid #e2e8f0;
             display: flex;
             justify-content: space-between;
@@ -824,26 +934,26 @@ $assetsList = $pdo->query("SELECT id, name, asset_id, location, condition_status
         .modal-close-btn {
             background: transparent;
             border: none;
-            font-size: 20px;
+            font-size: 22px;
             color: #94a3b8;
             cursor: pointer;
-            transition: color 0.2s;
+            line-height: 1;
         }
 
         .modal-close-btn:hover {
-            color: #ef4444;
+            color: #0f172a;
         }
 
         .modal-body {
-            padding: 28px;
+            padding: 24px;
         }
 
         .modal-footer {
-            padding: 18px 28px;
+            padding: 16px 24px;
             border-top: 1px solid #e2e8f0;
             display: flex;
             justify-content: flex-end;
-            gap: 12px;
+            gap: 10px;
             background: #f8fafc;
             border-radius: 0 0 18px 18px;
         }
@@ -863,285 +973,308 @@ $assetsList = $pdo->query("SELECT id, name, asset_id, location, condition_status
         }
 
         .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            margin-bottom: 14px;
+            margin-bottom: 16px;
         }
 
         .form-group label {
+            display: block;
             font-size: 12.5px;
             font-weight: 600;
-            color: #475569;
+            color: #334155;
+            margin-bottom: 6px;
         }
 
-        .form-group label span.req {
+        .form-group label .req {
             color: #ef4444;
         }
 
-        .form-group small {
-            font-size: 11.5px;
-            color: #64748b;
+        .form-control, .form-select {
+            width: 100%;
+            padding: 9px 12px;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+            font-size: 13.5px;
+            outline: none;
+            color: #1e293b;
+            background: white;
         }
 
-        textarea.form-control {
-            resize: vertical;
-            min-height: 80px;
+        .form-control:focus, .form-select:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
 
-        /* Timeline in modal */
-        .timeline-container {
+        .timeline-list {
             position: relative;
-            padding-left: 24px;
-            margin-top: 10px;
+            padding-left: 20px;
         }
 
-        .timeline-container::before {
-            content: '';
+        .timeline-list::before {
+            content: "";
             position: absolute;
             left: 7px;
             top: 6px;
             bottom: 6px;
             width: 2px;
-            background: #cbd5e1;
+            background: #e2e8f0;
         }
 
         .timeline-item {
             position: relative;
-            margin-bottom: 20px;
+            margin-bottom: 18px;
         }
 
-        .timeline-dot {
+        .timeline-bullet {
             position: absolute;
-            left: -24px;
+            left: -20px;
             top: 4px;
-            width: 16px;
-            height: 16px;
+            width: 14px;
+            height: 14px;
             border-radius: 50%;
-            background: #3b82f6;
-            border: 3px solid #ffffff;
-            box-shadow: 0 0 0 2px #3b82f6;
+            background: #2563eb;
+            border: 3px solid white;
+            box-shadow: 0 0 0 2px #2563eb;
         }
 
         .timeline-content {
             background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 10px;
             padding: 12px 16px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            font-size: 13px;
         }
 
-        .timeline-header {
-            display: flex;
-            justify-content: space-between;
-            font-size: 12px;
+        .timeline-meta {
+            font-size: 11px;
             color: #64748b;
             margin-bottom: 4px;
+            display: flex;
+            justify-content: space-between;
         }
 
-        .timeline-title {
-            font-weight: 700;
-            color: #0f172a;
+        .alert {
+            padding: 14px 18px;
+            border-radius: 10px;
+            margin-bottom: 20px;
             font-size: 13.5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
-        .timeline-notes {
+        .alert-success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+        .alert-error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 24px;
             font-size: 13px;
+            color: #64748b;
+        }
+
+        .page-links {
+            display: flex;
+            gap: 4px;
+        }
+
+        .page-link {
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+            background: white;
             color: #334155;
-            margin-top: 6px;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
         }
 
-        /* Dark Theme Support */
+        .page-link.active {
+            background: #2563eb;
+            color: white;
+            border-color: #2563eb;
+        }
+
+        .page-link:hover:not(.active) {
+            background: #f8fafc;
+        }
+
+        /* ===== DARK THEME OVERRIDES ===== */
         .dark-theme .glass-card {
-            background: rgba(30, 41, 59, 0.94);
-            border-color: rgba(255, 255, 255, 0.08);
+            background: rgba(30, 41, 59, 0.95);
+            border-color: rgba(255, 255, 255, 0.1);
             color: #f8fafc;
         }
-
-        .dark-theme .header-title h1 { color: #f8fafc; }
-        .dark-theme .header-title p { color: #94a3b8; }
-        .dark-theme .stat-card {
-            background: #1e293b;
-            border-color: #334155;
-        }
-        .dark-theme .stat-card .info .val { color: #f8fafc; }
-        .dark-theme .stat-card .info .label { color: #94a3b8; }
-        .dark-theme .filter-panel { background: #0f172a; border-color: #334155; }
-        .dark-theme .form-control, .dark-theme .form-select {
-            background: #1e293b;
-            border-color: #475569;
-            color: #f8fafc;
-        }
-        .dark-theme .table-responsive { background: #1e293b; border-color: #334155; }
-        .dark-theme thead { background: #0f172a; border-color: #334155; }
-        .dark-theme th { color: #94a3b8; }
-        .dark-theme td { border-color: #334155; color: #cbd5e1; }
-        .dark-theme tbody tr:hover { background-color: #0f172a; }
-        .dark-theme .action-btn { background: #0f172a; border-color: #334155; color: #cbd5e1; }
-        .dark-theme .btn-outline { background: #1e293b; border-color: #475569; color: #cbd5e1; }
-        .dark-theme .modal-box { background: #1e293b; color: #f8fafc; }
+        .dark-theme .page-title h1 { color: #f8fafc; }
+        .dark-theme .stat-card { background: #1e293b; border-color: #334155; }
+        .dark-theme .stat-info h3 { color: #f8fafc; }
+        .dark-theme .filter-toolbar { background: #0f172a; border-color: #334155; }
+        .dark-theme .search-box input, .dark-theme .filter-select { background: #1e293b; border-color: #334155; color: #f8fafc; }
+        .dark-theme .table-container { background: #1e293b; border-color: #334155; }
+        .dark-theme .maintenance-table th { background: #0f172a; border-color: #334155; color: #94a3b8; }
+        .dark-theme .maintenance-table td { border-color: #334155; color: #cbd5e1; }
+        .dark-theme .maintenance-table tr:hover { background: #0f172a; }
+        .dark-theme .modal-box { background: #1e293b; border-color: #334155; color: #f8fafc; }
         .dark-theme .modal-header { border-color: #334155; }
         .dark-theme .modal-header h3 { color: #f8fafc; }
         .dark-theme .modal-footer { background: #0f172a; border-color: #334155; }
-        .dark-theme .form-group label { color: #cbd5e1; }
-        .dark-theme .timeline-content { background: #0f172a; border-color: #334155; }
-        .dark-theme .timeline-title { color: #f8fafc; }
-        .dark-theme .timeline-notes { color: #cbd5e1; }
+        .dark-theme .form-control, .dark-theme .form-select { background: #0f172a; border-color: #334155; color: #f8fafc; }
+        .dark-theme .timeline-content { background: #0f172a; border-color: #334155; color: #cbd5e1; }
+        .dark-theme .action-btn { background: #0f172a; border-color: #334155; color: #cbd5e1; }
     </style>
 </head>
 <body>
 
 <?php include 'includes/utilities_sidebar.php'; ?>
 
-<main class="main-content" id="mainContent">
+<main class="main-content">
     <div class="glass-card">
-        <!-- Header -->
-        <div class="dashboard-header">
-            <div class="header-title">
-                <h1><i class="fas fa-tools"></i> Maintenance Tracking & Management</h1>
-                <p>Track, schedule, update, and monitor maintenance work orders on registered municipal utility assets.</p>
+        
+        <!-- Flash Alert -->
+        <?php if ($error): ?>
+            <div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> <?php echo htmlspecialchars($error); ?></div>
+        <?php endif; ?>
+        <?php if ($success): ?>
+            <div class="alert alert-success"><i class="fas fa-check-circle"></i> <?php echo $success; ?></div>
+        <?php endif; ?>
+
+        <!-- Page Header -->
+        <div class="page-header">
+            <div class="page-title">
+                <div class="page-title-icon">
+                    <i class="fas fa-tools"></i>
+                </div>
+                <div>
+                    <h1>Maintenance Operations & Tracking</h1>
+                    <p>Track, assign, and update equipment repairs and work order progress</p>
+                </div>
             </div>
+
             <div class="header-actions">
-                <a href="maintenance_assets_view.php" class="btn btn-outline">
-                    <i class="fas fa-layer-group"></i> Assets View
-                </a>
                 <a href="maintenance_dashboard.php" class="btn btn-outline">
-                    <i class="fas fa-chart-pie"></i> Analytics
+                    <i class="fas fa-chart-pie"></i> Dashboard
                 </a>
                 <button type="button" class="btn btn-primary" onclick="openCreateModal()">
-                    <i class="fas fa-plus-circle"></i> New Maintenance Task
+                    <i class="fas fa-plus"></i> New Work Order
                 </button>
             </div>
         </div>
 
-        <!-- Feedback Messages -->
-        <?php if ($success): ?>
-            <div class="alert alert-success">
-                <i class="fas fa-check-circle fa-lg"></i>
-                <span><?php echo htmlspecialchars($success); ?></span>
-            </div>
-        <?php endif; ?>
-
-        <?php if ($error): ?>
-            <div class="alert alert-error">
-                <i class="fai fa-exclamation-triangle fa-lg"></i>
-                <span><?php echo htmlspecialchars($error); ?></span>
-            </div>
-        <?php endif; ?>
-
-        <!-- Stats Overview -->
+        <!-- Stats Overview Cards -->
         <div class="stats-grid">
-            <div class="stat-card stat-blue">
-                <div class="info">
-                    <div class="label">Total Tasks</div>
-                    <div class="val"><?php echo number_format($statTotal); ?></div>
+            <div class="stat-card">
+                <div class="stat-icon total"><i class="fas fa-tasks"></i></div>
+                <div class="stat-info">
+                    <h3><?php echo number_format($statTotal); ?></h3>
+                    <p>Total Tasks</p>
                 </div>
-                <div class="stat-icon"><i class="fas fa-clipboard-list"></i></div>
             </div>
-            <div class="stat-card stat-amber">
-                <div class="info">
-                    <div class="label">Reported / In Review</div>
-                    <div class="val"><?php echo number_format($statReported); ?></div>
+
+            <div class="stat-card">
+                <div class="stat-icon reported"><i class="fas fa-clipboard-list"></i></div>
+                <div class="stat-info">
+                    <h3><?php echo number_format($statReported); ?></h3>
+                    <p>Reported / Review</p>
                 </div>
-                <div class="stat-icon"><i class="fai fa-inbox"></i></div>
             </div>
-            <div class="stat-card stat-purple">
-                <div class="info">
-                    <div class="label">Active / In Progress</div>
-                    <div class="val"><?php echo number_format($statActive); ?></div>
+
+            <div class="stat-card">
+                <div class="stat-icon active"><i class="fas fa-wrench"></i></div>
+                <div class="stat-info">
+                    <h3><?php echo number_format($statActive); ?></h3>
+                    <p>In Progress / Active</p>
                 </div>
-                <div class="stat-icon"><i class="fai fa-wrench"></i></div>
             </div>
-            <div class="stat-card stat-green">
-                <div class="info">
-                    <div class="label">Completed</div>
-                    <div class="val"><?php echo number_format($statCompleted); ?></div>
+
+            <div class="stat-card">
+                <div class="stat-icon completed"><i class="fas fa-check-double"></i></div>
+                <div class="stat-info">
+                    <h3><?php echo number_format($statCompleted); ?></h3>
+                    <p>Completed Tasks</p>
                 </div>
-                <div class="stat-icon"><i class="fas fa-check-double"></i></div>
             </div>
-            <div class="stat-card stat-red">
-                <div class="info">
-                    <div class="label">Overdue Tasks</div>
-                    <div class="val"><?php echo number_format($statOverdue); ?></div>
+
+            <div class="stat-card">
+                <div class="stat-icon overdue"><i class="fas fa-clock"></i></div>
+                <div class="stat-info">
+                    <h3><?php echo number_format($statOverdue); ?></h3>
+                    <p>Overdue Tasks</p>
                 </div>
-                <div class="stat-icon"><i class="fas fa-clock"></i></div>
             </div>
         </div>
 
-        <!-- Filter Panel -->
-        <form method="GET" class="filter-panel">
-            <input type="text" name="search" class="form-control" placeholder="Search code, title, asset, technician, location..." value="<?php echo htmlspecialchars($search); ?>">
-            
-            <select name="status" class="form-select">
-                <option value="">All Statuses</option>
-                <option value="Reported" <?php echo $status_filter === 'Reported' ? 'selected' : ''; ?>Reported</option>
-                <option value="Under Review" <?php echo $status_filter === 'Under Review' ? 'selected' : ''; ?>Under Review</option>
-                <option value="Scheduled" <?php echo $status_filter === 'Scheduled' ? 'selected' : ''; ?>Scheduled</option>
-                <option value="In Progress" <?php echo $status_filter === 'In Progress' ? 'selected' : ''; ?>In Progress</option>
-                <option value="On Hold" <?php echo $status_filter === 'On Hold' ? 'selected' : ''; ?>On Hold</option>
-                <option value="Completed" <?php echo $status_filter === 'Completed' ? 'selected' : ''; ?>Completed</option>
-                <option value="Cancelled" <?php echo $status_filter === 'Cancelled' ? 'selected' : ''; ?>Cancelled</option>
-                <option value="Overdue" <?php echo $status_filter === 'Overdue' ? 'selected' : ''; ?>Overdue Only</option>
-            </select>
+        <!-- Filter Toolbar -->
+        <div class="filter-toolbar">
+            <form method="GET" class="filter-form">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" name="search" placeholder="Search reference, title, technician, location, asset..." value="<?php echo htmlspecialchars($search); ?>">
+                </div>
 
-            <select name="priority" class="form-select">
-                <option value="">All Priorities</option>
-                <option value="Low" <?php echo $priority_filter === 'Low' ? 'selected' : ''; ?>Low</option>
-                <option value="Medium" <?php echo $priority_filter === 'Medium' ? 'selected' : ''; ?>Medium</option>
-                <option value="High" <?php echo $priority_filter === 'High' ? 'selected' : ''; ?>High</option>
-                <option value="Emergency" <?php echo $priority_filter === 'Emergency' ? 'selected' : ''; ?>Emergency</option>
-            </select>
+                <select name="status" class="filter-select">
+                    <option value="">All Statuses</option>
+                    <option value="Active" <?php echo $status_filter === 'Active' ? 'selected' : ''; ?>>Active (Scheduled/In Progress)</option>
+                    <option value="Reported" <?php echo $status_filter === 'Reported' ? 'selected' : ''; ?>>Reported</option>
+                    <option value="Under Review" <?php echo $status_filter === 'Under Review' ? 'selected' : ''; ?>>Under Review</option>
+                    <option value="Scheduled" <?php echo $status_filter === 'Scheduled' ? 'selected' : ''; ?>>Scheduled</option>
+                    <option value="In Progress" <?php echo $status_filter === 'In Progress' ? 'selected' : ''; ?>>In Progress</option>
+                    <option value="On Hold" <?php echo $status_filter === 'On Hold' ? 'selected' : ''; ?>>On Hold</option>
+                    <option value="Completed" <?php echo $status_filter === 'Completed' ? 'selected' : ''; ?>>Completed</option>
+                    <option value="Overdue" <?php echo $status_filter === 'Overdue' ? 'selected' : ''; ?>>Overdue Tasks</option>
+                </select>
 
-            <select name="maintenance_type" class="form-select">
-                <option value="">All Types</option>
-                <option value="Corrective" <?php echo $type_filter === 'Corrective' ? 'selected' : ''; ?>Corrective</option>
-                <option value="Preventive" <?php echo $type_filter === 'Preventive' ? 'selected' : ''; ?>Preventive</option>
-                <option value="Routine" <?php echo $type_filter === 'Routine' ? 'selected' : ''; ?>Routine</option>
-                <option value="Emergency" <?php echo $type_filter === 'Emergency' ? 'selected' : ''; ?>Emergency</option>
-                <option value="Inspection Followup" <?php echo $type_filter === 'Inspection Followup' ? 'selected' : ''; ?>Inspection Followup	</option>
-            </select>
+                <select name="priority" class="filter-select">
+                    <option value="">All Priorities</option>
+                    <option value="Low" <?php echo $priority_filter === 'Low' ? 'selected' : ''; ?>>Low</option>
+                    <option value="Medium" <?php echo $priority_filter === 'Medium' ? 'selected' : ''; ?>>Medium</option>
+                    <option value="High" <?php echo $priority_filter === 'High' ? 'selected' : ''; ?>>High</option>
+                    <option value="Emergency" <?php echo $priority_filter === 'Emergency' ? 'selected' : ''; ?>>Emergency</option>
+                </select>
 
-            <select name="source" class="form-select">
-                <option value="">All Sources</option>
-                <option value="Asset Monitoring" <?php echo $source_filter === 'Asset Monitoring' ? 'selected' : ''; ?>Asset Monitoring</option>
-                <option value="Resident Report" <?php echo $source_filter === 'Resident Report' ? 'selected' : ''; ?>Resident Report</option>
-                <option value="Emergency Alert" <?php echo $source_filter === 'Emergency Alert' ? 'selected' : ''; ?>Emergency Alert</option>
-                <option value="Scheduled Routine" <?php echo $source_filter === 'Scheduled Routine' ? 'selected' : ''; ?>Scheduled Routine</option>
-                <option value="Inspection" <?php echo $source_filter === 'Inspection' ? 'selected' : ''; ?>Inspection</option>
-            </select>
+                <select name="maintenance_type" class="filter-select">
+                    <option value="">All Types</option>
+                    <option value="Corrective" <?php echo $type_filter === 'Corrective' ? 'selected' : ''; ?>>Corrective</option>
+                    <option value="Preventive" <?php echo $type_filter === 'Preventive' ? 'selected' : ''; ?>>Preventive</option>
+                    <option value="Routine" <?php echo $type_filter === 'Routine' ? 'selected' : ''; ?>>Routine</option>
+                    <option value="Emergency" <?php echo $type_filter === 'Emergency' ? 'selected' : ''; ?>>Emergency</option>
+                </select>
 
-            <div style="display: flex; gap: 8px;">
-                <button type="submit" class="btn btn-primary btn-sm"><i class="fai fa-filter"></i> Apply</button>
-                <a href="maintenance_list.php" class="btn btn-outline btn-sm"><i class="fas fa-redo"></i> Reset</a>
-            </div>
-        </form>
+                <button type="submit" class="btn btn-outline" style="padding: 9px 16px;"><i class="fas fa-filter"></i> Filter</button>
+                <?php if (!empty($search) || !empty($status_filter) || !empty($priority_filter) || !empty($type_filter) || $asset_filter > 0): ?>
+                    <a href="maintenance_list.php" class="btn btn-outline" style="padding: 9px 16px; color:#ef4444;"><i class="fas fa-times"></i> Reset</a>
+                <?php endif; ?>
+            </form>
+        </div>
 
-        <!-- Tasks Table -->
-        <div class="table-responsive">
-            <table>
+        <!-- Maintenance Table -->
+        <div class="table-container">
+            <table class="maintenance-table">
                 <thead>
                     <tr>
-                        <th>Code & Title</th>
+                        <th>Work Order</th>
                         <th>Target Asset</th>
-                        <th>Type / Source</th>
+                        <th>Type & Source</th>
                         <th>Priority</th>
-                        <th>Schedule / Target</th>
+                        <th>Timeline</th>
                         <th>Assigned Crew</th>
-                        <th>Progress & Status</th>
+                        <th>Status & Progress</th>
                         <th style="text-align: right;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php if (empty($requestsList)): ?>
+                    <?php if (empty($requests)): ?>
                         <tr>
-                            <td colspan="8" style="text-align: center; padding: 45px; color: #94a3b8;">
-                                <i class="fas fa-folder-open fa-3x" style="margin-bottom: 12px; display: block; color: #cbd5e1;"></i>
-                                No maintenance records matching the selected criteria.
+                            <td colspan="8" style="text-align: center; padding: 40px; color: #94a3b8;">
+                                <i class="fas fa-inbox" style="font-size: 36px; margin-bottom: 12px; display: block;"></i>
+                                No maintenance work orders found matching your criteria.
                             </td>
                         </tr>
                     <?php else: ?>
-                        <?php foreach ($requestsList as $req): 
-                            $isOverdue = (!in_array($req['status'], ['Completed', 'Cancelled', 'Closed']) && !empty($req['target_completion_date']) && strtotime($req['target_completion_date']) < time());
+                        <?php foreach ($requests as $req): 
                             $progress = intval($req['progress_percent'] ?? 0);
+                            $isOverdue = (!in_array($req['status'], ['Completed', 'Cancelled', 'Closed']) && !empty($req['target_completion_date']) && strtotime($req['target_completion_date']) < time());
                             
                             // Status badge mapping
                             $statusClass = 'badge-reported';
@@ -1161,25 +1294,27 @@ $assetsList = $pdo->query("SELECT id, name, asset_id, location, condition_status
                             <tr>
                                 <td>
                                     <div style="font-weight: 700; color: #0f172a; font-size: 13.5px;">
-                                        <a href="maintenance_view.php?id=<?php echo $req['id']; ?>" style="color: #2563eb; text-decoration: none;">
+                                        <a href="javascript:void(0)" onclick="openUpdateModal(<?php echo $req['id']; ?>)" style="color: #2563eb; text-decoration: none;">
                                             <?php echo htmlspecialchars($req['request_id']); ?>
                                         </a>
                                     </div>
                                     <div style="font-size: 12.5px; color: #475569; margin-top: 2px; font-weight: 500;">
-                                        <?php echo htmlspecialchars($req['title'] ?: substr($req['text'] ?? $req['description'], 0, 45) . '...'); ?>
+                                        <?php echo htmlspecialchars($req['title'] ?: (substr($req['description'], 0, 45) . '...')); ?>
                                     </div>
                                     <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">
-                                        <i class="fai fa-map-marker-alt"></i> <?php echo htmlspecialchars($req['location']); ?>
+                                        <i class="fas fa-map-marker-alt"></i> <?php echo htmlspecialchars($req['location']); ?>
                                     </div>
                                 </td>
 
                                 <td>
                                     <?php if (!empty($req['asset_name'])): ?>
                                         <div style="font-weight: 600; color: #1e293b; font-size: 13px;">
-                                            <?php echo htmlspecialchars($req['asset_name']); ?>
+                                            <a href="assets_crud.php?search=<?php echo urlencode($req['asset_code']); ?>" style="color:inherit; text-decoration:none;" title="View Asset in Inventory">
+                                                <?php echo htmlspecialchars($req['asset_name']); ?>
+                                            </a>
                                         </div>
                                         <div style="font-size: 11.5px; color: #64748b;">
-                                            <?php echo htmlspecialchars($req['asset_type'] ?? 'Utility'); ?> &&bull; <span style="font-size:11px; color:#2563eb;">[<?php echo htmlspecialchars($req['asset_condition'] ?? 'Good'); ?>]</span>
+                                            <code><?php echo htmlspecialchars($req['asset_code']); ?></code> &bull; <span style="font-size:11px; color:#2563eb;">[<?php echo htmlspecialchars($req['asset_condition'] ?? 'Good'); ?>]</span>
                                         </div>
                                     <?php else: ?>
                                         <span style="color: #94a3b8; font-style: italic; font-size: 12px;">Unlinked / General</span>
@@ -1187,22 +1322,22 @@ $assetsList = $pdo->query("SELECT id, name, asset_id, location, condition_status
                                 </td>
 
                                 <td>
-                                    <span class='badge-type'><?php echo htmlspecialchars($req['maintenance_type'] ?? 'Corrective'); ?></span>
-                                   <div style="font-size: 11px; color: #64748b; margin-top: 4px;">
+                                    <span class="badge-type"><?php echo htmlspecialchars($req['maintenance_type'] ?? 'Corrective'); ?></span>
+                                    <div style="font-size: 11px; color: #64748b; margin-top: 4px;">
                                         Src: <?php echo htmlspecialchars($req['source']); ?>
-                                   </div>
+                                    </div>
                                 </td>
 
                                 <td>
-                                    <span class='badge <?php echo $priClass; ?>">
-                                        <?php if ($req['priority'] === 'Emergency'): ?><i class="fai fa-bolt"></i><?php endif; ?>
-                                        <?php echo htmlspecialchars($reqe³priority']); ?>
+                                    <span class="badge <?php echo $priClass; ?>">
+                                        <?php if ($req['priority'] === 'Emergency'): ?><i class="fas fa-bolt"></i><?php endif; ?>
+                                        <?php echo htmlspecialchars($req['priority']); ?>
                                     </span>
                                 </td>
 
                                 <td>
                                     <div style="font-size: 12.5px; font-weight: 500;">
-                                        Target: <?php echo !empty($req['target_completion_date']) ? date('M d, Y', strtotime($reqe³target_completion_date'])) : '<span style="color:#94a3b8;">Not set</span>'; ?>
+                                        Target: <?php echo !empty($req['target_completion_date']) ? date('M d, Y', strtotime($req['target_completion_date'])) : '<span style="color:#94a3b8;">Not set</span>'; ?>
                                     </div>
                                     <?php if ($isOverdue): ?>
                                         <div class="overdue-tag">
@@ -1217,7 +1352,7 @@ $assetsList = $pdo->query("SELECT id, name, asset_id, location, condition_status
 
                                 <td>
                                     <div style="font-size: 12.5px; font-weight: 600; color: #334155;">
-                                        <?php echo htmlspecialchars($req['user_personnel'] ?: ($req['assigned_personnel'] ?: 'Unassigned')); ?>
+                                        <?php echo htmlspecialchars($req['assigned_personnel'] ?: 'Unassigned'); ?>
                                     </div>
                                     <?php if (!empty($req['assigned_team'])): ?>
                                         <div style="font-size: 11px; color: #64748b;">
@@ -1227,7 +1362,7 @@ $assetsList = $pdo->query("SELECT id, name, asset_id, location, condition_status
                                 </td>
 
                                 <td>
-                                    <span class='badge <?php echo $statusClass; ?>">
+                                    <span class="badge <?php echo $statusClass; ?>">
                                         <?php echo htmlspecialchars($req['status']); ?>
                                     </span>
                                     <div class="progress-bar-container" title="<?php echo $progress; ?>% Completed">
@@ -1240,9 +1375,6 @@ $assetsList = $pdo->query("SELECT id, name, asset_id, location, condition_status
 
                                 <td style="text-align: right;">
                                     <div class="action-btn-group" style="justify-content: flex-end;">
-                                        <a href="maintenance_view.php?id=<?php echo $req['id']; ?>" class="action-btn" title="View Full Record & Diagnostics">
-                                            <i class="fai fa-eye"></i>
-                                        </a>
                                         <button type="button" class="action-btn btn-update" onclick="openUpdateModal(<?php echo $req['id']; ?>)" title="Update Work Order & Progress">
                                             <i class="fas fa-edit"></i>
                                         </button>
@@ -1268,14 +1400,11 @@ $assetsList = $pdo->query("SELECT id, name, asset_id, location, condition_status
         <!-- Pagination -->
         <?php if ($totalPages > 1): ?>
             <div class="pagination">
-                <div style="font-size: 13px; color: #64748b;">
-                    Showing <strong><?php echo $offset + 1; ?></strong> to <strong><?php echo min($totalRecords, $offset + $limit); ?></strong> of <strong><?php echo $totalRecords; ?></strong> records
-                </div>
-                <div class="pagination-links">
-                    <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-                        <a href="maintenance_list.php?page=<?php echo $i; ?>&search=<?php echo urlencode($search); ?>&status=<?php echo urlencode($status_filter); ?>&priority=<?php echo urlencode($priority_filter); ?>&maintenance_type=<?php echo urlencode($type_filter); ?>&source=<?php echo urlencode($source_filter); ?>&utility_asset_id=<?php echo $asset_filter; ?>" 
-                           class="page-link <?php echo $page === $i ? 'active' : ''; ?>">
-                            <?php echo $i; ?>
+                <div>Showing <?php echo min($totalRecords, $offset + 1); ?> - <?php echo min($totalRecords, $offset + $limit); ?> of <?php echo $totalRecords; ?> records</div>
+                <div class="page-links">
+                    <?php for ($p = 1; $p <= $totalPages; $p++): ?>
+                        <a href="?page=<?php echo $p; ?>&search=<?php echo urlencode($search); ?>&status=<?php echo urlencode($status_filter); ?>&priority=<?php echo urlencode($priority_filter); ?>&maintenance_type=<?php echo urlencode($type_filter); ?>&utility_asset_id=<?php echo $asset_filter; ?>" class="page-link <?php echo $page == $p ? 'active' : ''; ?>">
+                            <?php echo $p; ?>
                         </a>
                     <?php endfor; ?>
                 </div>
@@ -1284,16 +1413,17 @@ $assetsList = $pdo->query("SELECT id, name, asset_id, location, condition_status
 
     </div>
 </main>
-<!-- ====================================
-     MODAL: CREATE NEW MAINTENANCE TASK
-===================================== -->
+
+<!-- ===========================================
+     CREATE TASK MODAL
+=========================================== -->
 <div class="modal-backdrop" id="createModal">
     <div class="modal-box modal-box-lg">
         <form method="POST">
             <input type="hidden" name="action" value="create">
             
             <div class="modal-header">
-                <h3><i class="fai fa-plus-circle" style="color: #2563eb;"></i> Register New Maintenance Task</h3>
+                <h3><i class="fas fa-plus-circle" style="color: #2563eb;"></i> Register New Maintenance Task</h3>
                 <button type="button" class="modal-close-btn" onclick="closeModal('createModal')">&times;</button>
             </div>
 
@@ -1346,10 +1476,10 @@ $assetsList = $pdo->query("SELECT id, name, asset_id, location, condition_status
                         <label>Source of Request <span class="req">*</span></label>
                         <select name="source" class="form-select" required>
                             <option value="Asset Monitoring" selected>Asset Monitoring</option>
-                            <option value="Resident Report">Resident Report</option>
-                            <option value="Emergency Alert">Emergency Alert</option>
                             <option value="Scheduled Routine">Scheduled Routine</option>
                             <option value="Inspection">Inspection</option>
+                            <option value="Emergency Alert">Emergency Alert</option>
+                            <option value="Resident Report">Resident Report</option>
                         </select>
                     </div>
 
@@ -1366,7 +1496,7 @@ $assetsList = $pdo->query("SELECT id, name, asset_id, location, condition_status
 
                 <div class="form-group">
                     <label>Location / Facility Address <span class="req">*</span></label>
-                    <input type="text" name="location" id="create_location" class="form-control" placeholder="Specific street, station, barangay, or coordinates" required>
+                    <input type="text" name="location" id="create_location" class="form-control" placeholder="e.g. Brgy Hall Pump Station #2" required>
                 </div>
 
                 <div class="form-grid">
@@ -1384,33 +1514,33 @@ $assetsList = $pdo->query("SELECT id, name, asset_id, location, condition_status
                 <div class="form-grid">
                     <div class="form-group">
                         <label>Assigned Lead Technician</label>
-                        <input type="text" name="assigned_personnel" class="form-control" placeholder="e.g. Engr. Juan Dela Cruz">
+                        <input type="text" name="assigned_personnel" class="form-control" placeholder="Lead engineer / technician">
                     </div>
 
                     <div class="form-group">
-                        <label>Assigned Department / Crew</label>
-                        <input type="text" name="assigned_team" class="form-control" placeholder="e.g. Water Works Team A, Electrical Unit">
+                        <label>Assigned Team / Department</label>
+                        <input type="text" name="assigned_team" class="form-control" placeholder="e.g. Electrical Crew 1">
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label>Issue Description & Scope of Work <span class="req">*</span></label>
-                    <textarea name="description" class="form-control" rows="3" placeholder="Provide detailed background, observed anomalies, or specific maintenance tasks needed..." required></textarea>
+                    <label>Description & Defect Details</label>
+                    <textarea name="description" id="create_desc" class="form-control" rows="3" placeholder="Provide diagnostic details, symptoms, or observed issues..."></textarea>
                 </div>
 
             </div>
 
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline" onclick="closeModal('createModal')">Cancel</button>
-                <button type="submit" class="btn btn-primary"><i class="fai fa-save"></i> Create Maintenance Task</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Create Work Order</button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- =====================================
-     MODAL: UPDATE WORK ORDER & STATUS
-===================================== -->
+<!-- ===========================================
+     UPDATE STATUS & PROGRESS MODAL
+=========================================== -->
 <div class="modal-backdrop" id="updateModal">
     <div class="modal-box modal-box-lg">
         <form method="POST">
@@ -1424,7 +1554,7 @@ $assetsList = $pdo->query("SELECT id, name, asset_id, location, condition_status
 
             <div class="modal-body">
                 
-                <div style="background: #f1f5f9; padding: 12px 16px; border-radius: 10px; margin-bottom: 18px;">
+                <div style="background: #f1f5f9; padding: 12px 16px; border-radius: 10px; margin-bottom: 18px;" id="update_task_box">
                     <div style="font-weight: 700; color: #0f172a;" id="update_task_ref">MNT-XXXX</div>
                     <div style="font-size: 13px; color: #475569;" id="update_task_title">Task Title</div>
                 </div>
@@ -1438,7 +1568,7 @@ $assetsList = $pdo->query("SELECT id, name, asset_id, location, condition_status
                             <option value="Scheduled">Scheduled</option>
                             <option value="In Progress">In Progress</option>
                             <option value="On Hold">On Hold</option>
-                            <option value="Completed">Completed</option>
+                            <option value="Completed">Completed (Restores Asset to Operational)</option>
                             <option value="Cancelled">Cancelled</option>
                         </select>
                     </div>
@@ -1503,7 +1633,7 @@ $assetsList = $pdo->query("SELECT id, name, asset_id, location, condition_status
                 </div>
 
                 <div class="form-group">
-                    <label>Status Update Note / Timeline Log <small>(Required for audit trail)</small></label>
+                    <label>Status Update Note / Timeline Log <small>(Recorded in audit trail)</small></label>
                     <input type="text" name="status_note" class="form-control" placeholder="Brief note on what was accomplished in this update...">
                 </div>
 
@@ -1511,31 +1641,33 @@ $assetsList = $pdo->query("SELECT id, name, asset_id, location, condition_status
 
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline" onclick="closeModal('updateModal')">Cancel</button>
-                <button type="submit" class="btn btn-success"><i class="fai fa-check"></i> Save Work Order Updates</button>
+                <button type="submit" class="btn btn-success"><i class="fas fa-check"></i> Save Work Order Updates</button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- ====================================
-     MODAL: TIMELINE & AUDIT LOGS
-==================================== -->
+<!-- ===========================================
+     AUDIT LOG / TIMELINE MODAL
+=========================================== -->
 <div class="modal-backdrop" id="logsModal">
     <div class="modal-box">
         <div class="modal-header">
-            <h3><i class="fas fa-history" style="color: #2563eb;"></i> Timeline & Audit Trail - <span id="logs_task_ref"></span></h3>
+            <h3><i class="fas fa-history" style="color: #2563eb;"></i> Timeline & Audit Trail</h3>
             <button type="button" class="modal-close-btn" onclick="closeModal('logsModal')">&times;</button>
         </div>
 
         <div class="modal-body">
-            <div id="logsLoading" style="text-align: center; padding: 20px; color: #64748b;">
-                <i class="fas fa-spinner fa-spin fa-2x"></i>
-                <p style="margin-top: 10px;">Loading timeline entries...</p>
+            <div style="font-size: 13px; color: #64748b; margin-bottom: 16px;">
+                Task Ref: <strong id="logs_task_ref" style="color: #0f172a;"></strong>
             </div>
-            
-            <div class="timeline-container" id="timelineList" style="display: none;">
-                <!-- Filled via JS -->
+
+            <div id="logsLoading" style="text-align: center; padding: 20px; color: #94a3b8;">
+                <i class="fas fa-spinner fa-spin" style="font-size: 24px;"></i>
+                <p style="margin-top: 8px;">Loading audit logs...</p>
             </div>
+
+            <div class="timeline-list" id="timelineList" style="display: none;"></div>
         </div>
 
         <div class="modal-footer">
@@ -1545,7 +1677,6 @@ $assetsList = $pdo->query("SELECT id, name, asset_id, location, condition_status
 </div>
 
 <script>
-    // Modal Helpers
     function openModal(id) {
         document.getElementById(id).classList.add('active');
     }
@@ -1576,11 +1707,12 @@ $assetsList = $pdo->query("SELECT id, name, asset_id, location, condition_status
             progInput.value = 100;
             if (!compDateInput.value) {
                 const now = new Date();
-                compDateInput.value = now.toISOString().slice(0, 16);
+                const pad = n => String(n).padStart(2, '0');
+                compDateInput.value = now.getFullYear() + '-' + pad(now.getMonth()+1) + '-' + pad(now.getDate()) + 'T' + pad(now.getHours()) + ':' + pad(now.getMinutes());
             }
-        } elseif (status === 'In Progress' && parseInt(progInput.value) === 0) {
+        } else if (status === 'In Progress' && parseInt(progInput.value) === 0) {
             progInput.value = 25;
-        } elseif (status === 'Reported' || status === 'Under Review') {
+        } else if (status === 'Reported' || status === 'Under Review') {
             if (parseInt(progInput.value) > 20) {
                 progInput.value = 0;
             }
@@ -1598,7 +1730,7 @@ $assetsList = $pdo->query("SELECT id, name, asset_id, location, condition_status
                 }
 
                 document.getElementById('update_id').value = data.id;
-                document.getElementById('update_task_ref').innerText = `${data.request_id} &bull; ${data.priority} Priority`;
+                document.getElementById('update_task_ref').innerHTML = `${data.request_id} &bull; ${data.priority} Priority`;
                 document.getElementById('update_task_title').innerText = data.title || data.description;
                 document.getElementById('update_status').value = data.status || 'Reported';
                 document.getElementById('update_progress_percent').value = data.progress_percent || 0;
@@ -1652,47 +1784,45 @@ $assetsList = $pdo->query("SELECT id, name, asset_id, location, condition_status
                 list.style.display = 'block';
 
                 if (!data || data.length === 0) {
-                    list.innerHTML = '<p style="color:#94a3b8; text-align:center;">No status history recorded yet.</p>';
+                    list.innerHTML = '<p style="color: #94a3b8; font-style: italic;">No audit log events recorded yet.</p>';
                     return;
                 }
 
+                let html = '';
                 data.forEach(item => {
-                    const dateObj = new Date(item.changed_at);
-                    const formattedDate = dateObj.toLocaleString('en-US', { 
-                        month: 'short', day: 'numeric', year: 'numeric', 
-                        hour: 'numeric', minute: '2-digit', hour12: true 
-                    });
-
-                    const node = document.createElement('div');
-                    node.className = 'timeline-item';
-                    node.innerHTML = `
-                        <div class="timeline-dot"></div>
-                        <div class="timeline-content">
-                            <div class="timeline-header">
-                                <span><i class="fas fa-user-circle"></i> ${item.user_name || 'System'}</span>
-                                <span><i class="far fa-clock"></i> ${formattedDate}</span>
+                    const dateStr = new Date(item.changed_at).toLocaleString();
+                    const statusText = item.old_status ? `${item.old_status} &rarr; <strong>${item.new_status}</strong>` : `<strong>${item.new_status}</strong>`;
+                    html += `
+                        <div class="timeline-item">
+                            <div class="timeline-bullet"></div>
+                            <div class="timeline-content">
+                                <div class="timeline-meta">
+                                    <span><i class="fas fa-user"></i> ${item.user_name}</span>
+                                    <span>${dateStr}</span>
+                                </div>
+                                <div style="font-weight: 600; color: #1e293b; margin-bottom: 2px;">
+                                    ${statusText}
+                                </div>
+                                ${item.notes ? `<div style="color: #64748b; font-size: 12px; margin-top: 4px;">${item.notes}</div>` : ''}
                             </div>
-                            <div class="timeline-title">
-                                ${item.old_status ? `${item.old_status} &rarr; ` : ''} <span style="color:#2563eb;">${item.new_status}</span>
-                            </div>
-                            <div class="timeline-notes">${item.notes || 'No description provided.'}</div>
                         </div>
                     `;
-                    list.appendChild(node);
                 });
+                list.innerHTML = html;
             })
             .catch(err => {
-                document.getElementById('logsLoading').innerHTML = '<p style="color:#ef4444;">Failed to load logs.</p>';
+                console.error(err);
+                document.getElementById('logsLoading').innerHTML = '<p style="color: #ef4444;">Failed to load timeline.</p>';
             });
     }
 
-    // Close on backdrop click
-    document.querySelectorAll('.modal-backdrop').forEach(modal => {
-        modal.addEventListener('click', function(e) {
-            if (e.target === this) {
-                this.classList.remove('active');
-            }
-        });
+    // Auto-open update modal if passed in URL
+    document.addEventListener('DOMContentLoaded', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const autoOpenId = urlParams.get('open_modal_id');
+        if (autoOpenId) {
+            openUpdateModal(parseInt(autoOpenId));
+        }
     });
 </script>
 

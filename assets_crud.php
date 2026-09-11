@@ -101,6 +101,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         return $prefix;
     }
 
+    function ensureMaintenanceTicketForAsset($pdo, $assetDbId, $assetCode, $assetName, $location, $notes, $userId) {
+        try {
+            $chk = $pdo->prepare("SELECT id, request_id FROM maintenance_requests WHERE utility_asset_id = ? AND status NOT IN ('Completed', 'Closed', 'Cancelled') ORDER BY id DESC LIMIT 1");
+            $chk->execute([$assetDbId]);
+            $existing = $chk->fetch(PDO::FETCH_ASSOC);
+            if ($existing) {
+                return $existing;
+            }
+
+            $year = date('Y');
+            $seqRow = $pdo->query("SELECT COUNT(*) FROM maintenance_requests WHERE request_id LIKE 'MNT-$year-%'")->fetchColumn();
+            $seq = intval($seqRow) + 1;
+            $reqId = sprintf("MNT-%s-%04d", $year, $seq);
+            $title = "Maintenance for " . $assetName . " (" . $assetCode . ")";
+            $desc = !empty($notes) ? $notes : "Asset {$assetCode} placed under maintenance.";
+
+            $stmt = $pdo->prepare("
+                INSERT INTO maintenance_requests
+                    (request_id, utility_asset_id, title, maintenance_type, source, description, priority, location, status, progress_percent, created_at, updated_at)
+                VALUES (?, ?, ?, 'Corrective', 'Asset Monitoring', ?, 'Medium', ?, 'Reported', 0, NOW(), NOW())
+            ");
+            $stmt->execute([$reqId, $assetDbId, $title, $desc, $location]);
+            $newMntId = (int)$pdo->lastInsertId();
+
+            try {
+                $pdo->prepare("
+                    INSERT INTO maintenance_status_logs (maintenance_request_id, old_status, new_status, changed_by, notes)
+                    VALUES (?, NULL, 'Reported', ?, 'Auto-generated from Asset Management')
+                ")->execute([$newMntId, $userId]);
+            } catch (Throwable $e) {}
+
+            return ['id' => $newMntId, 'request_id' => $reqId, 'is_new' => true];
+        } catch (Throwable $e) {
+            return null;
+        }
+    }
+
     if ($action === 'create') {
         $name = trim($_POST['name'] ?? '');
         $asset_type_id = $_POST['asset_type_id'] ?? '';
@@ -199,7 +236,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ")->execute(["New asset registered: {$asset_id} ({$name}) in {$location}."]);
                 } catch (Throwable $ignored) {}
 
-                $_SESSION['flash_success'] = "Asset {$asset_id} successfully created!";
+                $mntBtn = '';
+                if ($condition_status === 'Under Maintenance') {
+                    $mntResult = ensureMaintenanceTicketForAsset($pdo, $id, $asset_id, $name, $location, $description, $userId);
+                    if ($mntResult) {
+                        $mntBtn = "<br><a href='maintenance_list.php?search=" . urlencode($mntResult['request_id']) . "&open_modal_id=" . $mntResult['id'] . "' style='display:inline-flex;align-items:center;gap:6px;margin-top:8px;background:#7b1fa2;color:#fff;padding:6px 14px;border-radius:6px;font-weight:600;text-decoration:none;font-size:12.5px;'><i class='fas fa-wrench'></i> Track Work Order (" . htmlspecialchars($mntResult['request_id']) . ") &rarr;</a>";
+                    }
+                }
+
+                $_SESSION['flash_success'] = "Asset <strong>{$asset_id}</strong> successfully created!" . $mntBtn;
                 header('Location: ' . $_SERVER['PHP_SELF']);
                 exit();
             } catch (PDOException $e) {
@@ -329,7 +374,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $pdo->prepare("INSERT INTO asset_notifications (type, message) VALUES (?, ?)")
                                     ->execute(['status_changed', "Asset {$baseAssetId}: {$affected_quantity} unit(s) split off as {$childAssetId} with status {$condition_status}."]);
                             } catch (Throwable $ignored) {}
-                            $_SESSION['flash_success'] = "{$affected_quantity} unit(s) split from {$baseAssetId} as {$childAssetId} (Status: {$condition_status}). {$newParentQty} unit(s) remain Operational.";
+
+                            $mntBtn = '';
+                            if ($condition_status === 'Under Maintenance') {
+                                $mntResult = ensureMaintenanceTicketForAsset($pdo, $childId, $childAssetId, $name, $location, $status_notes, $userId);
+                                if ($mntResult) {
+                                    $mntBtn = "<br><a href='maintenance_list.php?search=" . urlencode($mntResult['request_id']) . "&open_modal_id=" . $mntResult['id'] . "' style='display:inline-flex;align-items:center;gap:6px;margin-top:8px;background:#7b1fa2;color:#fff;padding:6px 14px;border-radius:6px;font-weight:600;text-decoration:none;font-size:12.5px;'><i class='fas fa-wrench'></i> Track Work Order (" . htmlspecialchars($mntResult['request_id']) . ") &rarr;</a>";
+                                }
+                            }
+
+                            $_SESSION['flash_success'] = "{$affected_quantity} unit(s) split from {$baseAssetId} as <strong>{$childAssetId}</strong> (Status: {$condition_status}). {$newParentQty} unit(s) remain Operational.{$mntBtn}";
                         } catch (PDOException $e) {
                             $_SESSION['flash_error'] = "Split failed: " . $e->getMessage();
                         }
@@ -443,7 +497,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                     } catch (Throwable $ignored) {}
 
-                    $_SESSION['flash_success'] = "Asset {$asset_id} updated successfully!";
+                    $mntBtn = '';
+                    if ($condition_status === 'Under Maintenance') {
+                        $mntResult = ensureMaintenanceTicketForAsset($pdo, $id, $asset_id, $name, $location, $status_notes, $userId);
+                        if ($mntResult) {
+                            $mntBtn = "<br><a href='maintenance_list.php?search=" . urlencode($mntResult['request_id']) . "&open_modal_id=" . $mntResult['id'] . "' style='display:inline-flex;align-items:center;gap:6px;margin-top:8px;background:#7b1fa2;color:#fff;padding:6px 14px;border-radius:6px;font-weight:600;text-decoration:none;font-size:12.5px;'><i class='fas fa-wrench'></i> Track Work Order (" . htmlspecialchars($mntResult['request_id']) . ") &rarr;</a>";
+                        }
+                    }
+
+                    $_SESSION['flash_success'] = "Asset <strong>{$asset_id}</strong> updated successfully!" . $mntBtn;
                     header('Location: ' . $_SERVER['PHP_SELF'] . ($condition_status === 'Retired' ? '?tab=retired' : ''));
                     exit();
                 }
@@ -1551,7 +1613,7 @@ if (!empty($search) || $status_filter) {
             <div class="alert alert-error" id="flash-error"><i class="fas fa-exclamation-circle"></i> <?php echo htmlspecialchars($error); ?></div>
         <?php endif; ?>
         <?php if ($success): ?>
-            <div class="alert alert-success" id="flash-success"><i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($success); ?></div>
+            <div class="alert alert-success" id="flash-success"><i class="fas fa-check-circle"></i> <?php echo $success; ?></div>
         <?php endif; ?>
 
         <!-- Inventory Navigation Tabs -->
@@ -1714,6 +1776,9 @@ if (!empty($search) || $status_filter) {
                                                     </td>
                                                     <td style="text-align:right;">
                                                         <button class="btn-icon btn-icon-view" onclick='viewAsset(<?php echo json_encode($asset); ?>)' title="View Details"><i class="fas fa-eye"></i></button>
+                                                        <?php if ($asset['condition_status'] === 'Under Maintenance'): ?>
+                                                            <a href="maintenance_list.php?utility_asset_id=<?php echo $asset['id']; ?>" class="btn-icon" style="color:#7b1fa2;border-color:#e1bee7;background:#f3e5f5;" title="Open Maintenance Tracker"><i class="fas fa-wrench"></i></a>
+                                                        <?php endif; ?>
                                                         <?php if ($currentTab === 'retired'): ?>
                                                             <button class="btn-icon" style="color:#10b981;border-color:#a7f3d0;background:#ecfdf5;" onclick='openReactivateModal(<?php echo json_encode($asset); ?>)' title="Restore to Operational"><i class="fas fa-undo"></i></button>
                                                         <?php endif; ?>
@@ -2021,8 +2086,9 @@ if (!empty($search) || $status_filter) {
                 </table>
             </div>
         </div>
-        <div class="modal-footer">
-            <button type="button" class="btn btn-primary" onclick="closeModal('viewModal')">Close</button>
+        <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center;">
+            <a id="view-maintenance-btn" href="#" class="btn btn-primary" style="display:none; background:#7b1fa2; border-color:#7b1fa2; text-decoration:none;"><i class="fas fa-tools"></i> Open Maintenance Work Order</a>
+            <button type="button" class="btn btn-outline" onclick="closeModal('viewModal')">Close</button>
         </div>
     </div>
 </div>
@@ -2380,6 +2446,15 @@ if (!empty($search) || $status_filter) {
             imgContainer.style.display = 'flex';
         } else {
             imgContainer.style.display = 'none';
+        }
+
+        // Maintenance Button in View Modal
+        const mntBtn = document.getElementById('view-maintenance-btn');
+        if (asset.condition_status === 'Under Maintenance') {
+            mntBtn.href = 'maintenance_list.php?utility_asset_id=' + asset.id;
+            mntBtn.style.display = 'inline-flex';
+        } else {
+            mntBtn.style.display = 'none';
         }
 
         document.getElementById('viewModal').classList.add('open');

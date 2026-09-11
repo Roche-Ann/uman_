@@ -20,9 +20,9 @@ function safeCount($pdo, $sql) {
 }
 
 $totalRequests = safeCount($pdo, "SELECT COUNT(*) FROM maintenance_requests");
-$pendingRequests = safeCount($pdo, "SELECT COUNT(*) FROM maintenance_requests WHERE status = 'Created'");
-$forwardedRequests = safeCount($pdo, "SELECT COUNT(*) FROM maintenance_requests WHERE status = 'Forwarded'");
-$inProgressRequests = safeCount($pdo, "SELECT COUNT(*) FROM maintenance_requests WHERE status = 'In Progress'");
+$pendingRequests = safeCount($pdo, "SELECT COUNT(*) FROM maintenance_requests WHERE status IN ('Reported', 'Under Review', 'Created')");
+$forwardedRequests = safeCount($pdo, "SELECT COUNT(*) FROM maintenance_requests WHERE status IN ('Scheduled', 'Forwarded')");
+$inProgressRequests = safeCount($pdo, "SELECT COUNT(*) FROM maintenance_requests WHERE status IN ('In Progress', 'On Hold')");
 $completedRequests = safeCount($pdo, "SELECT COUNT(*) FROM maintenance_requests WHERE status IN ('Completed', 'Closed')");
 $emergencyRequests = safeCount($pdo, "SELECT COUNT(*) FROM maintenance_requests WHERE priority = 'Emergency'") ?: safeCount($pdo, "SELECT COUNT(*) FROM maintenance_requests WHERE urgency = 'Emergency'");
 
