@@ -65,6 +65,66 @@ try {
     $repairTable($pdo, 'maintenance_requests');
     $repairTable($pdo, 'maintenance_status_logs');
 
+    // Ensure all required columns exist in maintenance_requests
+    try {
+        $reqCols = $pdo->query("SHOW COLUMNS FROM `maintenance_requests`")->fetchAll(PDO::FETCH_COLUMN);
+        $reqColsLower = array_map('strtolower', $reqCols);
+
+        $colsToAdd = [
+            'title'            => 'VARCHAR(255) NOT NULL DEFAULT "" AFTER `utility_asset_id`',
+            'maintenance_type' => 'VARCHAR(50) NOT NULL DEFAULT "Corrective" AFTER `title`',
+            'assigned_to'      => 'VARCHAR(150) NULL AFTER `priority`',
+            'progress_percent' => 'INT(11) NOT NULL DEFAULT 0 AFTER `status`',
+            'scheduled_date'   => 'DATE NULL AFTER `progress_percent`',
+            'started_at'       => 'DATETIME NULL AFTER `scheduled_date`',
+            'completed_at'     => 'DATETIME NULL AFTER `started_at`',
+            'notes'            => 'TEXT NULL AFTER `completed_at`',
+        ];
+
+        foreach ($colsToAdd as $col => $def) {
+            if (!in_array(strtolower($col), $reqColsLower)) {
+                try {
+                    $pdo->exec("ALTER TABLE `maintenance_requests` ADD COLUMN `$col` $def");
+                } catch (Throwable $e) {}
+            }
+        }
+    } catch (Throwable $e) {}
+
+    // Ensure all required columns exist in maintenance_status_logs
+    try {
+        $logCols = $pdo->query("SHOW COLUMNS FROM `maintenance_status_logs`")->fetchAll(PDO::FETCH_COLUMN);
+        $logColsLower = array_map('strtolower', $logCols);
+
+        $logColsToAdd = [
+            'old_progress' => 'INT(11) NOT NULL DEFAULT 0 AFTER `new_status`',
+            'new_progress' => 'INT(11) NOT NULL DEFAULT 0 AFTER `old_progress`',
+            'notes'        => 'TEXT NULL AFTER `changed_by`',
+            'created_at'   => 'TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP',
+        ];
+
+        foreach ($logColsToAdd as $col => $def) {
+            if (!in_array(strtolower($col), $logColsLower)) {
+                try {
+                    $pdo->exec("ALTER TABLE `maintenance_status_logs` ADD COLUMN `$col` $def");
+                } catch (Throwable $e) {}
+            }
+        }
+    } catch (Throwable $e) {}
+
+    // Relax ENUM restrictions on legacy tables
+    try {
+        $pdo->exec("ALTER TABLE `maintenance_requests` MODIFY COLUMN `source` VARCHAR(100) NOT NULL DEFAULT 'Asset Monitoring'");
+    } catch (Throwable $e) {}
+    try {
+        $pdo->exec("ALTER TABLE `maintenance_requests` MODIFY COLUMN `status` VARCHAR(100) NOT NULL DEFAULT 'Reported'");
+    } catch (Throwable $e) {}
+    try {
+        $pdo->exec("ALTER TABLE `maintenance_requests` MODIFY COLUMN `priority` VARCHAR(50) NOT NULL DEFAULT 'Medium'");
+    } catch (Throwable $e) {}
+    try {
+        $pdo->exec("ALTER TABLE `maintenance_requests` MODIFY COLUMN `location` VARCHAR(255) NULL");
+    } catch (Throwable $e) {}
+
     echo "<h3>Maintenance tables verified/created successfully.</h3>\n";
 
     // Auto-sync inventory assets

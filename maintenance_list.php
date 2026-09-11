@@ -78,12 +78,64 @@ if (!function_exists('ensureMaintenanceSchema')) {
             $repairTable($pdo, 'maintenance_requests');
             $repairTable($pdo, 'maintenance_status_logs');
 
+            // Ensure all required columns exist in maintenance_requests
+            try {
+                $reqCols = $pdo->query("SHOW COLUMNS FROM `maintenance_requests`")->fetchAll(PDO::FETCH_COLUMN);
+                $reqColsLower = array_map('strtolower', $reqCols);
+
+                $colsToAdd = [
+                    'title'            => 'VARCHAR(255) NOT NULL DEFAULT "" AFTER `utility_asset_id`',
+                    'maintenance_type' => 'VARCHAR(50) NOT NULL DEFAULT "Corrective" AFTER `title`',
+                    'assigned_to'      => 'VARCHAR(150) NULL AFTER `priority`',
+                    'progress_percent' => 'INT(11) NOT NULL DEFAULT 0 AFTER `status`',
+                    'scheduled_date'   => 'DATE NULL AFTER `progress_percent`',
+                    'started_at'       => 'DATETIME NULL AFTER `scheduled_date`',
+                    'completed_at'     => 'DATETIME NULL AFTER `started_at`',
+                    'notes'            => 'TEXT NULL AFTER `completed_at`',
+                ];
+
+                foreach ($colsToAdd as $col => $def) {
+                    if (!in_array(strtolower($col), $reqColsLower)) {
+                        try {
+                            $pdo->exec("ALTER TABLE `maintenance_requests` ADD COLUMN `$col` $def");
+                        } catch (Throwable $e) {}
+                    }
+                }
+            } catch (Throwable $e) {}
+
+            // Ensure all required columns exist in maintenance_status_logs
+            try {
+                $logCols = $pdo->query("SHOW COLUMNS FROM `maintenance_status_logs`")->fetchAll(PDO::FETCH_COLUMN);
+                $logColsLower = array_map('strtolower', $logCols);
+
+                $logColsToAdd = [
+                    'old_progress' => 'INT(11) NOT NULL DEFAULT 0 AFTER `new_status`',
+                    'new_progress' => 'INT(11) NOT NULL DEFAULT 0 AFTER `old_progress`',
+                    'notes'        => 'TEXT NULL AFTER `changed_by`',
+                    'created_at'   => 'TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP',
+                ];
+
+                foreach ($logColsToAdd as $col => $def) {
+                    if (!in_array(strtolower($col), $logColsLower)) {
+                        try {
+                            $pdo->exec("ALTER TABLE `maintenance_status_logs` ADD COLUMN `$col` $def");
+                        } catch (Throwable $e) {}
+                    }
+                }
+            } catch (Throwable $e) {}
+
             // Relax ENUM restrictions on legacy tables to prevent truncation warnings
             try {
                 $pdo->exec("ALTER TABLE `maintenance_requests` MODIFY COLUMN `source` VARCHAR(100) NOT NULL DEFAULT 'Asset Monitoring'");
             } catch (Throwable $e) {}
             try {
                 $pdo->exec("ALTER TABLE `maintenance_requests` MODIFY COLUMN `status` VARCHAR(100) NOT NULL DEFAULT 'Reported'");
+            } catch (Throwable $e) {}
+            try {
+                $pdo->exec("ALTER TABLE `maintenance_requests` MODIFY COLUMN `priority` VARCHAR(50) NOT NULL DEFAULT 'Medium'");
+            } catch (Throwable $e) {}
+            try {
+                $pdo->exec("ALTER TABLE `maintenance_requests` MODIFY COLUMN `location` VARCHAR(255) NULL");
             } catch (Throwable $e) {}
         } catch (Throwable $e) {}
         $done = true;
@@ -1502,33 +1554,33 @@ function getStatusBadgeClass($status) {
                                             </span>
                                         </div>
 
-                                        <div class="card-title"><?php echo htmlspecialchars($item['title']); ?></div>
+                                        <div class="card-title"><?php echo htmlspecialchars($item['title'] ?? 'Maintenance Work Order'); ?></div>
 
                                         <?php if (!empty($item['asset_name'])): ?>
                                             <div class="card-asset-tag" title="<?php echo htmlspecialchars($item['asset_name']); ?>">
                                                 <i class="fas fa-cube"></i>
-                                                <span><?php echo htmlspecialchars($item['asset_code'] ? $item['asset_code'] . ' - ' : '') . htmlspecialchars($item['asset_name']); ?></span>
+                                                <span><?php echo htmlspecialchars(($item['asset_code'] ?? '') ? $item['asset_code'] . ' - ' : '') . htmlspecialchars($item['asset_name']); ?></span>
                                             </div>
                                         <?php endif; ?>
 
                                         <div class="card-progress-box">
                                             <div class="card-progress-labels">
                                                 <span>Progress</span>
-                                                <span><?php echo intval($item['progress_percent']); ?>%</span>
+                                                <span><?php echo intval($item['progress_percent'] ?? 0); ?>%</span>
                                             </div>
                                             <div class="progress-bar-bg">
-                                                <div class="progress-bar-fill" style="width: <?php echo intval($item['progress_percent']); ?>%;"></div>
+                                                <div class="progress-bar-fill" style="width: <?php echo intval($item['progress_percent'] ?? 0); ?>%;"></div>
                                             </div>
                                         </div>
 
                                         <div class="card-footer">
                                             <div class="card-assignee">
                                                 <i class="fas fa-user-circle"></i>
-                                                <span><?php echo htmlspecialchars($item['assigned_to'] ?: 'Unassigned'); ?></span>
+                                                <span><?php echo htmlspecialchars(($item['assigned_to'] ?? '') ?: 'Unassigned'); ?></span>
                                             </div>
                                             <div>
                                                 <i class="far fa-clock"></i>
-                                                <span><?php echo date('M d', strtotime($item['created_at'])); ?></span>
+                                                <span><?php echo date('M d', strtotime($item['created_at'] ?? 'now')); ?></span>
                                             </div>
                                         </div>
                                     </div>
@@ -1582,32 +1634,32 @@ function getStatusBadgeClass($status) {
                                             <?php endif; ?>
                                         </td>
                                         <td>
-                                            <div style="font-weight: 600;"><?php echo htmlspecialchars($t['title']); ?></div>
-                                            <div style="font-size: 11px; color: var(--text-muted);"><?php echo htmlspecialchars($t['maintenance_type']); ?></div>
+                                            <div style="font-weight: 600;"><?php echo htmlspecialchars($t['title'] ?? 'Maintenance Work Order'); ?></div>
+                                            <div style="font-size: 11px; color: var(--text-muted);"><?php echo htmlspecialchars($t['maintenance_type'] ?? 'Corrective'); ?></div>
                                         </td>
                                         <td>
-                                            <span class="card-priority <?php echo getPriorityBadgeClass($t['priority']); ?>">
-                                                <?php echo htmlspecialchars($t['priority']); ?>
+                                            <span class="card-priority <?php echo getPriorityBadgeClass($t['priority'] ?? 'Medium'); ?>">
+                                                <?php echo htmlspecialchars($t['priority'] ?? 'Medium'); ?>
                                             </span>
                                         </td>
                                         <td>
-                                            <span class="status-pill <?php echo getStatusBadgeClass($t['status']); ?>">
-                                                <?php echo htmlspecialchars($t['status']); ?>
+                                            <span class="status-pill <?php echo getStatusBadgeClass($t['status'] ?? 'Reported'); ?>">
+                                                <?php echo htmlspecialchars($t['status'] ?? 'Reported'); ?>
                                             </span>
                                         </td>
                                         <td style="min-width: 120px;">
                                             <div class="card-progress-labels" style="margin-bottom: 3px;">
-                                                <span style="font-size: 11px;"><?php echo intval($t['progress_percent']); ?>%</span>
+                                                <span style="font-size: 11px;"><?php echo intval($t['progress_percent'] ?? 0); ?>%</span>
                                             </div>
                                             <div class="progress-bar-bg">
-                                                <div class="progress-bar-fill" style="width: <?php echo intval($t['progress_percent']); ?>%;"></div>
+                                                <div class="progress-bar-fill" style="width: <?php echo intval($t['progress_percent'] ?? 0); ?>%;"></div>
                                             </div>
                                         </td>
                                         <td>
-                                            <span style="font-weight: 500;"><?php echo htmlspecialchars($t['assigned_to'] ?: 'Unassigned'); ?></span>
+                                            <span style="font-weight: 500;"><?php echo htmlspecialchars(($t['assigned_to'] ?? '') ?: 'Unassigned'); ?></span>
                                         </td>
                                         <td style="font-size: 11.5px; color: var(--text-muted);">
-                                            <?php echo date('M d, Y', strtotime($t['created_at'])); ?>
+                                            <?php echo date('M d, Y', strtotime($t['created_at'] ?? 'now')); ?>
                                         </td>
                                         <td>
                                             <button type="button" class="btn btn-outline btn-sm" onclick="openUpdateModal(<?php echo htmlspecialchars(json_encode($t)); ?>)">
