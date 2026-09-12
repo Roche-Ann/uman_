@@ -640,7 +640,6 @@ $pipelineData = json_encode([
             margin-left: 280px;
             min-height: 100vh;
             padding: 30px 40px;
-            padding-top: calc(62px + 30px);
             transition: margin-left 0.25s ease;
             z-index: 1;
             position: relative;
@@ -1174,7 +1173,7 @@ $pipelineData = json_encode([
 
         /* ===== RESPONSIVE ===== */
         @media (max-width: 992px) {
-            .main-content { margin-left: 0; padding: 15px; padding-top: calc(56px + 10px); }
+            .main-content { margin-left: 0; padding: 20px 16px; }
             .card { padding: 20px; }
         }
 
