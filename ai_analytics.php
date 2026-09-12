@@ -619,7 +619,7 @@ $pipelineData = json_encode([
 
         body {
             min-height: 100vh;
-            display: flex;
+            display: block;
             background: url("assets/images/cityhall.jpeg") center/cover no-repeat fixed;
             position: relative;
         }
@@ -637,9 +637,8 @@ $pipelineData = json_encode([
         }
 
         .main-content {
-            flex: 1;
-            min-width: 0;
             margin-left: 280px;
+            min-height: 100vh;
             padding: 30px 40px;
             padding-top: calc(62px + 30px);
             transition: margin-left 0.25s ease;
