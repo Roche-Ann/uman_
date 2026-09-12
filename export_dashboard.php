@@ -167,8 +167,8 @@ $userName = $_SESSION['user_name'] ?? $_SESSION['full_name'] ?? 'LGU Coordinator
         <div class="instructions-card">
             <h4><i class="fas fa-info-circle"></i> Instructions</h4>
             <ul style="color:#64748b; font-size:13px; line-height:2; padding-left:20px;">
-                <li><strong>CSV</strong> – Opens in Excel / Google Sheets</li>
-                <li><strong>PDF</strong> – Printable report (requires TCPDF library)</li>
+                <li><strong>CSV</strong> – Spreadsheet format compatible with Excel / Google Sheets</li>
+                <li><strong>PDF</strong> – Formatted landscape PDF document generated directly by the system</li>
                 <li>All data is exported without filters</li>
             </ul>
         </div>

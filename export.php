@@ -77,29 +77,99 @@ if ($format === 'csv') {
 
 if ($format === 'pdf') {
     if (!class_exists('TCPDF')) {
-        // fallback to CSV
-        header('Location: export.php?type=' . $type . '&format=csv');
+        if (file_exists(__DIR__ . '/vendor/autoload.php')) {
+            require_once __DIR__ . '/vendor/autoload.php';
+        } elseif (file_exists(__DIR__ . '/vendor/tecnickcom/tcpdf/tcpdf.php')) {
+            require_once __DIR__ . '/vendor/tecnickcom/tcpdf/tcpdf.php';
+        }
+    }
+
+    if (!class_exists('TCPDF')) {
+        // Fallback: Printable report view that opens print-to-PDF dialog
+        header('Content-Type: text/html; charset=utf-8');
+        ?>
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <title><?php echo strtoupper($type); ?> Export Report</title>
+            <style>
+                body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 25px; color: #1e293b; background: #fff; }
+                h1 { font-size: 20px; color: #1e293b; text-align: center; margin-bottom: 4px; text-transform: uppercase; }
+                .meta { text-align: center; font-size: 12px; color: #64748b; margin-bottom: 20px; }
+                table { width: 100%; border-collapse: collapse; font-size: 10px; }
+                th, td { border: 1px solid #cbd5e1; padding: 6px 8px; text-align: left; }
+                th { background-color: #3762c8; color: #fff; font-weight: 600; }
+                tr:nth-child(even) { background-color: #f8fafc; }
+                .actions { margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+                .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 6px; font-weight: 600; font-size: 13px; text-decoration: none; cursor: pointer; border: 1px solid #cbd5e1; background: #f8fafc; color: #1e293b; }
+                .btn-print { background: #3762c8; color: #fff; border-color: #3762c8; }
+                @media print {
+                    .actions { display: none !important; }
+                    body { padding: 0; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="actions">
+                <a href="export_dashboard.php" class="btn">&larr; Back to Export Center</a>
+                <button onclick="window.print()" class="btn btn-print">&#128424; Print / Save as PDF</button>
+            </div>
+            <h1><?php echo htmlspecialchars(strtoupper($type)); ?> Export Report</h1>
+            <div class="meta">Generated: <?php echo date('Y-m-d H:i:s'); ?> &bull; Total Records: <?php echo count($data); ?></div>
+            <table>
+                <thead>
+                    <tr>
+                        <?php foreach ($headers as $h): ?>
+                            <th><?php echo htmlspecialchars($h); ?></th>
+                        <?php endforeach; ?>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($data as $row): ?>
+                        <tr>
+                            <?php foreach (array_values($row) as $val): ?>
+                                <td><?php echo htmlspecialchars($val === null || $val === '' ? '—' : $val); ?></td>
+                            <?php endforeach; ?>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+            <script>
+                window.onload = function() { window.print(); };
+            </script>
+        </body>
+        </html>
+        <?php
         exit;
     }
+
+    // Clean output buffer to ensure binary PDF stream is not corrupted
+    while (ob_get_level()) {
+        ob_end_clean();
+    }
+
     $pdf = new TCPDF('L', 'mm', 'A4', true, 'UTF-8', false);
     $pdf->setPrintHeader(false);
     $pdf->setPrintFooter(false);
+    $pdf->SetMargins(10, 10, 10);
+    $pdf->SetAutoPageBreak(true, 12);
     $pdf->AddPage();
     $pdf->SetFont('helvetica', 'B', 16);
     $pdf->Cell(0, 10, strtoupper($type) . ' EXPORT', 0, 1, 'C');
     $pdf->SetFont('helvetica', '', 10);
-    $pdf->Cell(0, 6, 'Generated: ' . date('Y-m-d H:i:s'), 0, 1, 'C');
-    $pdf->Ln(5);
-    $html = '<table border="1" cellpadding="4" style="font-size:9px; border-collapse:collapse;">';
-    $html .= '<thead><tr style="background-color:#3762c8; color:white;">';
-    foreach ($headers as $h) $html .= '<th style="padding:6px 8px;">' . htmlspecialchars($h) . '</th>';
+    $pdf->Cell(0, 6, 'Generated: ' . date('Y-m-d H:i:s') . ' | Total Records: ' . count($data), 0, 1, 'C');
+    $pdf->Ln(4);
+    $html = '<table border="1" cellpadding="4" style="font-size:8px; border-collapse:collapse; width:100%;">';
+    $html .= '<thead><tr style="background-color:#3762c8; color:white; font-weight:bold;">';
+    foreach ($headers as $h) $html .= '<th style="padding:6px 6px; text-align:center;">' . htmlspecialchars($h) . '</th>';
     $html .= '</tr></thead><tbody>';
-    $i=0;
+    $i = 0;
     foreach ($data as $row) {
-        $bg = ($i%2==0) ? '#f8f9fa' : '#ffffff';
-        $html .= '<tr style="background-color:'.$bg.';">';
+        $bg = ($i % 2 === 0) ? '#f8f9fa' : '#ffffff';
+        $html .= '<tr style="background-color:' . $bg . ';">';
         foreach (array_values($row) as $val) {
-            $html .= '<td style="padding:4px 6px;">' . htmlspecialchars($val === null || $val === '' ? '—' : $val) . '</td>';
+            $html .= '<td style="padding:4px 5px;">' . htmlspecialchars($val === null || $val === '' ? '—' : $val) . '</td>';
         }
         $html .= '</tr>';
         $i++;
