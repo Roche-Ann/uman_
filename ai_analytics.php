@@ -639,23 +639,20 @@ $pipelineData = json_encode([
         .main-content {
             flex: 1;
             min-width: 0;
-            overflow-x: hidden;
             margin-left: 280px;
-            max-width: calc(100vw - 280px);
             padding: 30px 40px;
-            transition: margin-left 0.25s ease, max-width 0.25s ease;
+            padding-top: calc(62px + 30px);
+            transition: margin-left 0.25s ease;
             z-index: 1;
             position: relative;
         }
 
         .main-content.collapsed {
             margin-left: 78px;
-            max-width: calc(100vw - 78px);
         }
 
         .card {
             width: 100%;
-            max-width: 100%;
             background: rgba(255, 255, 255, 0.85);
             backdrop-filter: blur(15px);
             border-radius: 18px;
@@ -663,7 +660,6 @@ $pipelineData = json_encode([
             color: #000;
             box-shadow: 0 6px 20px rgba(0,0,0,0.2);
             border: 1px solid rgba(255,255,255,0.25);
-            overflow-x: hidden;
         }
 
         .dashboard-header {
@@ -1178,9 +1174,12 @@ $pipelineData = json_encode([
         .chart-container.large { height: 350px; }
 
         /* ===== RESPONSIVE ===== */
-        @media (max-width: 768px) {
-            .main-content { padding: 15px; margin-left: 0; max-width: 100vw; }
+        @media (max-width: 992px) {
+            .main-content { margin-left: 0; padding: 15px; padding-top: calc(56px + 10px); }
             .card { padding: 20px; }
+        }
+
+        @media (max-width: 768px) {
             .dashboard-header h1 { font-size: 22px; }
             .ai-score-hero { grid-template-columns: 1fr; }
             .pipeline-steps { flex-direction: column; }
