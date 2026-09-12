@@ -9,7 +9,15 @@ if (!isLoggedIn() || !isEmployee()) {
 }
 
 $counts = [];
-$tables = ['assets'=>'utility_assets','maintenance'=>'maintenance_requests','energy'=>'energy_consumption_records','facilities'=>'public_facilities','users'=>'users'];
+$tables = [
+    'assets' => 'utility_assets',
+    'energy' => 'energy_consumption_records',
+    'water'  => 'water_consumption_records',
+    'users'  => 'users'
+];
+if (function_exists('ensureWaterSchema')) {
+    ensureWaterSchema();
+}
 foreach ($tables as $key => $table) {
     try {
         $counts[$key] = $pdo->query("SELECT COUNT(*) FROM $table")->fetchColumn();
@@ -83,7 +91,7 @@ $userName = $_SESSION['user_name'] ?? $_SESSION['full_name'] ?? 'LGU Coordinator
         .export-card .count { background:#f1f5f9; padding:2px 12px; border-radius:20px; font-size:12px; color:#475569; display:inline-block; margin-bottom:15px; }
         .export-actions { display:flex; gap:10px; flex-wrap:wrap; }
         .export-actions .btn { flex:1; justify-content:center; padding:8px 12px; font-size:12px; min-width:70px; }
-        .icon-assets { color:#4b7bec; } .icon-incidents { color:#f1c40f; } .icon-maintenance { color:#e74c3c; } .icon-energy { color:#a55eea; } .icon-facilities { color:#45aaf2; } .icon-users { color:#2ecc71; }
+        .icon-assets { color:#4b7bec; } .icon-incidents { color:#f1c40f; } .icon-maintenance { color:#e74c3c; } .icon-energy { color:#a55eea; } .icon-water { color:#0284c7; } .icon-facilities { color:#45aaf2; } .icon-users { color:#2ecc71; }
 
         .instructions-card {
             margin-top: 30px;
@@ -159,9 +167,8 @@ $userName = $_SESSION['user_name'] ?? $_SESSION['full_name'] ?? 'LGU Coordinator
         </div>
         <div class="export-grid">
             <div class="export-card"><div class="icon icon-assets"><i class="fas fa-boxes"></i></div><h3>Assets</h3><p>Export utility assets</p><span class="count"><?php echo number_format($counts['assets']); ?> records</span><div class="export-actions"><a href="export.php?type=assets&format=csv" class="btn btn-success"><i class="fas fa-file-csv"></i> CSV</a><a href="export.php?type=assets&format=pdf" class="btn btn-danger"><i class="fas fa-file-pdf"></i> PDF</a></div></div>
-            <div class="export-card"><div class="icon icon-maintenance"><i class="fas fa-tools"></i></div><h3>Maintenance</h3><p>Export maintenance requests</p><span class="count"><?php echo number_format($counts['maintenance']); ?> records</span><div class="export-actions"><a href="export.php?type=maintenance&format=csv" class="btn btn-success"><i class="fas fa-file-csv"></i> CSV</a><a href="export.php?type=maintenance&format=pdf" class="btn btn-danger"><i class="fas fa-file-pdf"></i> PDF</a></div></div>
             <div class="export-card"><div class="icon icon-energy"><i class="fas fa-bolt"></i></div><h3>Energy</h3><p>Export consumption records</p><span class="count"><?php echo number_format($counts['energy']); ?> records</span><div class="export-actions"><a href="export.php?type=energy&format=csv" class="btn btn-success"><i class="fas fa-file-csv"></i> CSV</a><a href="export.php?type=energy&format=pdf" class="btn btn-danger"><i class="fas fa-file-pdf"></i> PDF</a></div></div>
-            <div class="export-card"><div class="icon icon-facilities"><i class="fas fa-warehouse"></i></div><h3>Facilities</h3><p>Export public facilities</p><span class="count"><?php echo number_format($counts['facilities']); ?> records</span><div class="export-actions"><a href="export.php?type=facilities&format=csv" class="btn btn-success"><i class="fas fa-file-csv"></i> CSV</a><a href="export.php?type=facilities&format=pdf" class="btn btn-danger"><i class="fas fa-file-pdf"></i> PDF</a></div></div>
+            <div class="export-card"><div class="icon icon-water"><i class="fas fa-tint"></i></div><h3>Water Consumption</h3><p>Export water consumption records</p><span class="count"><?php echo number_format($counts['water']); ?> records</span><div class="export-actions"><a href="export.php?type=water&format=csv" class="btn btn-success"><i class="fas fa-file-csv"></i> CSV</a><a href="export.php?type=water&format=pdf" class="btn btn-danger"><i class="fas fa-file-pdf"></i> PDF</a></div></div>
             <div class="export-card"><div class="icon icon-users"><i class="fas fa-users"></i></div><h3>Users</h3><p>Export user accounts</p><span class="count"><?php echo number_format($counts['users']); ?> records</span><div class="export-actions"><a href="export.php?type=users&format=csv" class="btn btn-success"><i class="fas fa-file-csv"></i> CSV</a><a href="export.php?type=users&format=pdf" class="btn btn-danger"><i class="fas fa-file-pdf"></i> PDF</a></div></div>
         </div>
         <div class="instructions-card">

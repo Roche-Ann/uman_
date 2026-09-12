@@ -10,7 +10,7 @@ if (!isLoggedIn() || !isEmployee()) {
 
 $type = $_GET['type'] ?? '';
 $format = $_GET['format'] ?? 'csv';
-$allowed = ['assets','incidents','maintenance','energy','facilities','users'];
+$allowed = ['assets','incidents','maintenance','energy','water','facilities','users'];
 if (!in_array($type, $allowed)) die('Invalid type.');
 
 $data = [];
@@ -45,6 +45,16 @@ switch ($type) {
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $headers = ['Record ID','Asset Type','Facility Name','Location','Month/Year','Consumption (kWh)','Cost (PHP)','Data Source','Notes'];
         $filename = 'energy_export_' . date('Y-m-d');
+        break;
+    case 'water':
+        if (function_exists('ensureWaterSchema')) {
+            ensureWaterSchema();
+        }
+        $sql = "SELECT w.record_id AS 'Record ID', w.asset_type AS 'Asset Type', w.facility_name AS 'Facility Name', w.location AS 'Location', w.month_year AS 'Month/Year', w.consumption_m3 AS 'Consumption (m³)', w.cost AS 'Cost (PHP)', w.data_source AS 'Data Source', w.notes AS 'Notes' FROM water_consumption_records w ORDER BY w.month_year DESC, w.date_recorded DESC";
+        $stmt = $pdo->query($sql);
+        $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $headers = ['Record ID','Asset Type','Facility Name','Location','Month/Year','Consumption (m³)','Cost (PHP)','Data Source','Notes'];
+        $filename = 'water_export_' . date('Y-m-d');
         break;
     case 'facilities':
         $sql = "SELECT f.facility_id AS 'Facility ID', f.name AS 'Facility Name', f.facility_type AS 'Facility Type', f.location AS 'Location', f.utility_status AS 'Utility Status', f.description AS 'Description', s.water_available AS 'Water Available', s.electricity_available AS 'Electricity Available', s.drainage_ok AS 'Drainage OK', s.lighting_ok AS 'Lighting OK' FROM public_facilities f JOIN facility_utility_status s ON f.id = s.public_facility_id ORDER BY f.name";
