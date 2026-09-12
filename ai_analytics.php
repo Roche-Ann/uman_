@@ -118,11 +118,94 @@ try {
 } catch (Throwable $e) {}
 
 // ============================================================
-// 3. MAINTENANCE MODULE DATA
+// 3. MAINTENANCE MODULE DATA (Direct from maintenance_requests)
 // ============================================================
 $maintenance = ['total_requests' => 0, 'pending_requests' => 0, 'progress_requests' => 0, 'completed_requests' => 0, 'emergency_requests' => 0];
 try {
     $maintenance = $pdo->query("SELECT * FROM aggregated_maintenance_view")->fetch() ?: $maintenance;
+} catch (Throwable $e) {}
+
+$maintStats = [
+    'total' => 0,
+    'reported' => 0,
+    'scheduled' => 0,
+    'in_progress' => 0,
+    'testing' => 0,
+    'completed' => 0,
+    'on_hold' => 0,
+    'emergency' => 0,
+    'active' => 0,
+    'avg_progress' => 0
+];
+try {
+    $mRow = $pdo->query("
+        SELECT 
+            COUNT(*) as total,
+            SUM(CASE WHEN status = 'Reported' THEN 1 ELSE 0 END) as reported,
+            SUM(CASE WHEN status = 'Scheduled' THEN 1 ELSE 0 END) as scheduled,
+            SUM(CASE WHEN status = 'In Progress' THEN 1 ELSE 0 END) as in_progress,
+            SUM(CASE WHEN status = 'Testing' THEN 1 ELSE 0 END) as testing,
+            SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) as completed,
+            SUM(CASE WHEN status = 'On Hold' THEN 1 ELSE 0 END) as on_hold,
+            SUM(CASE WHEN priority = 'Emergency' THEN 1 ELSE 0 END) as emergency,
+            SUM(CASE WHEN status NOT IN ('Completed', 'Cancelled', 'Unrepairable') THEN 1 ELSE 0 END) as active,
+            COALESCE(AVG(CASE WHEN status NOT IN ('Completed', 'Cancelled', 'Unrepairable') THEN progress_percent ELSE NULL END), 0) as avg_progress
+        FROM maintenance_requests
+    ")->fetch(PDO::FETCH_ASSOC);
+    if ($mRow) {
+        $maintStats = array_map(function($v) { return is_numeric($v) ? (float)$v : $v; }, $mRow);
+    }
+} catch (Throwable $e) {}
+
+$inProgressMaint  = (int)($maintStats['in_progress'] ?? 0);
+$scheduledMaint   = (int)($maintStats['scheduled'] ?? 0);
+$reportedMaint    = (int)($maintStats['reported'] ?? 0);
+$activeMaintCount = (int)($maintStats['active'] ?? 0);
+$emergencyMaint   = (int)($maintStats['emergency'] ?? 0);
+$completedMaint   = (int)($maintStats['completed'] ?? 0);
+$maintAvgProgress = round((float)($maintStats['avg_progress'] ?? 0));
+
+// Active Maintenance Destinations — Where Maintenance is Going
+$activeDestinations = [];
+$topMaintLocation = null;
+try {
+    $activeDestinations = $pdo->query("
+        SELECT 
+            COALESCE(NULLIF(TRIM(location), ''), 'Field Deployment') as destination,
+            COUNT(*) as request_count,
+            SUM(CASE WHEN status = 'In Progress' THEN 1 ELSE 0 END) as in_progress_count,
+            SUM(CASE WHEN status = 'Scheduled' THEN 1 ELSE 0 END) as scheduled_count
+        FROM maintenance_requests
+        WHERE status NOT IN ('Completed', 'Cancelled', 'Unrepairable')
+        GROUP BY destination
+        ORDER BY request_count DESC
+        LIMIT 5
+    ")->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+    if (!empty($activeDestinations)) {
+        $topMaintLocation = $activeDestinations[0]['destination'];
+    }
+} catch (Throwable $e) {}
+
+// Active work orders list (for destinations preview)
+$activeWorkOrders = [];
+try {
+    $activeWorkOrders = $pdo->query("
+        SELECT m.id, m.request_id, m.title, m.location, m.status, m.priority, m.assigned_to, m.progress_percent, m.scheduled_date,
+               COALESCE(a.name, 'Municipal Asset') as asset_name
+        FROM maintenance_requests m
+        LEFT JOIN utility_assets a ON m.utility_asset_id = a.id
+        WHERE m.status NOT IN ('Completed', 'Cancelled', 'Unrepairable')
+        ORDER BY 
+            CASE m.priority 
+                WHEN 'Emergency' THEN 1 
+                WHEN 'High' THEN 2 
+                WHEN 'Medium' THEN 3 
+                ELSE 4 
+            END,
+            m.updated_at DESC
+        LIMIT 6
+    ")->fetchAll(PDO::FETCH_ASSOC) ?: [];
 } catch (Throwable $e) {}
 
 // Maintenance by priority
@@ -277,26 +360,24 @@ $emergencyMaint = (int)($maintenance['emergency_requests'] ?? 0);
 // 1. Assets: if no assets registered, default to 100% nominal; otherwise operational / total
 $assetHealthScore = ($rawTotalAssets > 0) ? max(0, min(100, round(($operationalAssets / $rawTotalAssets) * 100))) : 100;
 
-// 2. Incidents: if 0 incidents reported, community status is 100% incident-free (not 0% penalized)
-$incidentResolutionRate = ($rawTotalIncidents > 0) ? max(0, min(100, round(($resolvedIncidents / $rawTotalIncidents) * 100))) : 100;
+// 2. Maintenance Operations: evaluates active work orders and dispatch progression from Maintenance module
+$maintOpsScore = ($activeMaintCount > 0) 
+    ? max(50, min(100, 100 - ($emergencyMaint * 15) + round($maintAvgProgress * 0.2))) 
+    : 100;
 
-// 3. Maintenance: if 0 maintenance requests, maintenance health is 100% (zero ticket backlog)
-$maintCompletionRate = ($rawTotalMaint > 0) ? max(0, min(100, round(($completedMaint / $rawTotalMaint) * 100))) : 100;
-
-// 4. Energy efficiency score: lower pending advisories = better
+// 3. Energy efficiency score: lower pending advisories = better
 $energyScore = max(0, min(100, 100 - ($pendingAdvisories * 10)));
 
-// 5. Water conservation & efficiency score: lower pending advisories = better
+// 4. Water conservation & efficiency score: lower pending advisories = better
 $waterScore = max(0, min(100, 100 - ($pendingWaterAdvisories * 10)));
 
-// Weighted overall AI score across 5 municipal pillars:
-// Asset Health (25%), Incident Resolution (20%), Maintenance Completion (20%), Energy (20%), Water (15%)
+// Weighted overall AI score:
+// Asset Health (30%), Maintenance Operations (25%), Energy (25%), Water (20%)
 $aiScore = round(
-    ($assetHealthScore * 0.25) +
-    ($incidentResolutionRate * 0.20) +
-    ($maintCompletionRate * 0.20) +
-    ($energyScore * 0.20) +
-    ($waterScore * 0.15)
+    ($assetHealthScore * 0.30) +
+    ($maintOpsScore * 0.25) +
+    ($energyScore * 0.25) +
+    ($waterScore * 0.20)
 );
 
 // Risk level
@@ -440,18 +521,17 @@ $aiNarrative = "<strong>LGU AI Analytics Report — " . date('F d, Y') . "</stro
 
 $aiNarrative .= "🏢 <strong>System Health Overview:</strong><br>";
 $aiNarrative .= "The overall LGU Utility System AI Health Score is <strong>{$aiScore}/100</strong> ({$riskLevel} Risk). ";
-$aiNarrative .= "This composite metric evaluates asset integrity ({$assetHealthScore}%), incident responsiveness ({$incidentResolutionRate}%), maintenance throughput ({$maintCompletionRate}%), energy management ({$energyScore}%), and water conservation ({$waterScore}%).<br><br>";
+$aiNarrative .= "This composite metric evaluates asset integrity ({$assetHealthScore}%), active maintenance operations ({$maintOpsScore}%), energy management ({$energyScore}%), and water conservation ({$waterScore}%).<br><br>";
 
 $aiNarrative .= "📊 <strong>Module Breakdown:</strong><br>";
 $aiNarrative .= "• <strong>Assets:</strong> " . ($rawTotalAssets > 0 ? "{$rawTotalAssets} total assets tracked — {$operationalAssets} operational, {$damagedAssets} damaged, {$inspectionAssets} needing inspection." : "No assets registered.") . "<br>";
-$aiNarrative .= "• <strong>Incidents:</strong> " . ($rawTotalIncidents > 0 ? "{$rawTotalIncidents} total reports — {$resolvedIncidents} resolved ({$incidentResolutionRate}% resolution rate), {$submittedIncidents} awaiting review." : "0 active incidents reported across municipality (All clear).") . "<br>";
-$aiNarrative .= "• <strong>Maintenance:</strong> " . ($rawTotalMaint > 0 ? "{$rawTotalMaint} total requests — {$completedMaint} completed, {$emergencyMaint} emergency dispatches." : "0 maintenance requests pending (Zero backlog).") . "<br>";
+$aiNarrative .= "• <strong>Maintenance Operations:</strong> " . ($activeMaintCount > 0 ? "{$activeMaintCount} active work orders ({$inProgressMaint} in progress, {$scheduledMaint} scheduled). Leading dispatch site: " . ($topMaintLocation ? htmlspecialchars($topMaintLocation) : "Municipal network") . "." : "0 active maintenance work orders (All infrastructure cleared).") . "<br>";
 $aiNarrative .= "• <strong>Energy:</strong> " . number_format($energy['total_consumption'] ?? 0, 1) . " kWh total consumption (₱" . number_format($energy['total_cost'] ?? 0, 2) . " est. cost).<br>";
 $aiNarrative .= "• <strong>Water:</strong> " . number_format($water['total_consumption'] ?? 0, 2) . " m³ total consumption (₱" . number_format($water['total_cost'] ?? 0, 2) . " est. cost).<br><br>";
 
 $aiNarrative .= "⚠️ <strong>AI Advisory:</strong><br>";
 if ($riskAlerts > 0) {
-    $aiNarrative .= "{$riskAlerts} risk alert(s) detected across modules. Review the Recommendations panel for prioritized action items.";
+    $aiNarrative .= "{$riskAlerts} operational alert(s) detected across modules. Review the Recommendations panel for prioritized action items.";
 } else {
     $aiNarrative .= "All active municipal utility monitoring pipelines are operating within nominal thresholds. Zero critical system bottlenecks detected.";
 }
@@ -497,8 +577,8 @@ $waterTrendCost = json_encode(array_map('floatval', array_column($waterTrend, 'c
 $topWaterFacilityLabels = json_encode(array_column($topWaterFacilities, 'facility'));
 $topWaterFacilityData = json_encode(array_map('floatval', array_column($topWaterFacilities, 'total_m3')));
 
-// Radar chart data (5 pillars)
-$radarData = json_encode([$assetHealthScore, $incidentResolutionRate, $maintCompletionRate, $energyScore, $waterScore]);
+// Radar chart data (4 pillars: Asset, Maintenance, Energy, Water)
+$radarData = json_encode([$assetHealthScore, $maintOpsScore, $energyScore, $waterScore]);
 
 // Pipeline data for incidents
 $pipelineData = json_encode([
@@ -721,8 +801,20 @@ $pipelineData = json_encode([
         /* ===== STATS GRID ===== */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            grid-template-columns: repeat(3, 1fr);
             gap: 16px;
+        }
+
+        @media (max-width: 1200px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 650px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
         .stat-card {
@@ -751,12 +843,12 @@ $pipelineData = json_encode([
             box-shadow: 0 14px 32px rgba(0,0,0,0.22);
         }
 
-        .stat-card.assets      { background: linear-gradient(135deg, #3762c8 0%, #6490f5 100%); }
-        .stat-card.incidents   { background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%); }
-        .stat-card.maintenance { background: linear-gradient(135deg, #ef4444 0%, #f87171 100%); }
+        .stat-card.assets      { background: linear-gradient(135deg, #10b981 0%, #34d399 100%); }
         .stat-card.energy      { background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%); }
-        .stat-card.risk        { background: linear-gradient(135deg, #f97316 0%, #fb923c 100%); }
-        .stat-card.score       { background: linear-gradient(135deg, #10b981 0%, #34d399 100%); }
+        .stat-card.water       { background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%); }
+        .stat-card.in-progress { background: linear-gradient(135deg, #2563eb 0%, #60a5fa 100%); }
+        .stat-card.scheduled   { background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%); }
+        .stat-card.destination { background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); }
 
         .stat-card-icon {
             background: rgba(255,255,255,0.18);
@@ -1226,22 +1318,6 @@ $pipelineData = json_encode([
                         <div class="stat-sub"><?php echo $rawTotalAssets > 0 ? "{$operationalAssets}/{$rawTotalAssets} operational" : "No assets logged"; ?></div>
                     </div>
                 </div>
-                <div class="stat-card incidents">
-                    <div class="stat-card-icon"><i class="fas fa-bullhorn"></i></div>
-                    <div class="stat-info">
-                        <h3><?php echo $incidentResolutionRate; ?>%</h3>
-                        <p>Resolution Rate</p>
-                        <div class="stat-sub"><?php echo $rawTotalIncidents > 0 ? "{$resolvedIncidents}/{$rawTotalIncidents} resolved" : "0 incidents (All clear)"; ?></div>
-                    </div>
-                </div>
-                <div class="stat-card maintenance">
-                    <div class="stat-card-icon"><i class="fas fa-tools"></i></div>
-                    <div class="stat-info">
-                        <h3><?php echo $maintCompletionRate; ?>%</h3>
-                        <p>Maint. Completion</p>
-                        <div class="stat-sub"><?php echo $rawTotalMaint > 0 ? "{$completedMaint}/{$rawTotalMaint} completed" : "0 requests (No backlog)"; ?></div>
-                    </div>
-                </div>
                 <div class="stat-card energy">
                     <div class="stat-card-icon"><i class="fas fa-bolt"></i></div>
                     <div class="stat-info">
@@ -1250,7 +1326,7 @@ $pipelineData = json_encode([
                         <div class="stat-sub"><?php echo $pendingAdvisories; ?> pending advisories</div>
                     </div>
                 </div>
-                <div class="stat-card water" style="background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);">
+                <div class="stat-card water">
                     <div class="stat-card-icon"><i class="fas fa-tint"></i></div>
                     <div class="stat-info">
                         <h3><?php echo $waterScore; ?>%</h3>
@@ -1258,12 +1334,28 @@ $pipelineData = json_encode([
                         <div class="stat-sub"><?php echo $pendingWaterAdvisories; ?> pending advisories</div>
                     </div>
                 </div>
-                <div class="stat-card risk">
-                    <div class="stat-card-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                <div class="stat-card in-progress">
+                    <div class="stat-card-icon"><i class="fas fa-tools"></i></div>
                     <div class="stat-info">
-                        <h3><?php echo $riskAlerts; ?></h3>
-                        <p>Risk Alerts</p>
-                        <div class="stat-sub"><?php echo $riskLevel; ?> threat level</div>
+                        <h3><?php echo $inProgressMaint; ?></h3>
+                        <p>In Progress</p>
+                        <div class="stat-sub"><?php echo $inProgressMaint > 0 ? "Field repairs underway" : "0 active operations"; ?></div>
+                    </div>
+                </div>
+                <div class="stat-card scheduled">
+                    <div class="stat-card-icon"><i class="fas fa-calendar-alt"></i></div>
+                    <div class="stat-info">
+                        <h3><?php echo $scheduledMaint; ?></h3>
+                        <p>Scheduled Dispatches</p>
+                        <div class="stat-sub"><?php echo $scheduledMaint > 0 ? "Upcoming field deployments" : "0 queued dispatches"; ?></div>
+                    </div>
+                </div>
+                <div class="stat-card destination">
+                    <div class="stat-card-icon"><i class="fas fa-map-marker-alt"></i></div>
+                    <div class="stat-info">
+                        <h3><?php echo $activeMaintCount; ?></h3>
+                        <p>Active Work Orders</p>
+                        <div class="stat-sub"><?php echo $topMaintLocation ? "Headed to: " . htmlspecialchars($topMaintLocation) : ($activeMaintCount > 0 ? "Dispatched across sites" : "All sites clear"); ?></div>
                     </div>
                 </div>
             </div>
@@ -1307,38 +1399,29 @@ $pipelineData = json_encode([
                     <div class="score-bars">
                         <div class="score-bar-item">
                             <div class="score-bar-label">
-                                <span><i class="fas fa-warehouse" style="color:#3762c8;margin-right:6px;"></i>Asset Health</span>
+                                <span><i class="fas fa-warehouse" style="color:#10b981;margin-right:6px;"></i>Asset Health</span>
                                 <span><?php echo $assetHealthScore; ?>%</span>
                             </div>
                             <div class="score-bar-track">
-                                <div class="score-bar-fill" style="width:0%;background:linear-gradient(90deg,#3762c8,#6384d2);" data-width="<?php echo $assetHealthScore; ?>"></div>
+                                <div class="score-bar-fill" style="width:0%;background:linear-gradient(90deg,#10b981,#34d399);" data-width="<?php echo $assetHealthScore; ?>"></div>
                             </div>
                         </div>
                         <div class="score-bar-item">
                             <div class="score-bar-label">
-                                <span><i class="fas fa-bullhorn" style="color:#f1c40f;margin-right:6px;"></i>Incident Resolution</span>
-                                <span><?php echo $incidentResolutionRate; ?>%</span>
+                                <span><i class="fas fa-tools" style="color:#2563eb;margin-right:6px;"></i>Maintenance Operations</span>
+                                <span><?php echo $maintOpsScore; ?>%</span>
                             </div>
                             <div class="score-bar-track">
-                                <div class="score-bar-fill" style="width:0%;background:linear-gradient(90deg,#f1c40f,#f39c12);" data-width="<?php echo $incidentResolutionRate; ?>"></div>
+                                <div class="score-bar-fill" style="width:0%;background:linear-gradient(90deg,#2563eb,#60a5fa);" data-width="<?php echo $maintOpsScore; ?>"></div>
                             </div>
                         </div>
                         <div class="score-bar-item">
                             <div class="score-bar-label">
-                                <span><i class="fas fa-tools" style="color:#e74c3c;margin-right:6px;"></i>Maintenance Completion</span>
-                                <span><?php echo $maintCompletionRate; ?>%</span>
-                            </div>
-                            <div class="score-bar-track">
-                                <div class="score-bar-fill" style="width:0%;background:linear-gradient(90deg,#e74c3c,#f87171);" data-width="<?php echo $maintCompletionRate; ?>"></div>
-                            </div>
-                        </div>
-                        <div class="score-bar-item">
-                            <div class="score-bar-label">
-                                <span><i class="fas fa-bolt" style="color:#a55eea;margin-right:6px;"></i>Energy Efficiency</span>
+                                <span><i class="fas fa-bolt" style="color:#8b5cf6;margin-right:6px;"></i>Energy Efficiency</span>
                                 <span><?php echo $energyScore; ?>%</span>
                             </div>
                             <div class="score-bar-track">
-                                <div class="score-bar-fill" style="width:0%;background:linear-gradient(90deg,#a55eea,#c084fc);" data-width="<?php echo $energyScore; ?>"></div>
+                                <div class="score-bar-fill" style="width:0%;background:linear-gradient(90deg,#8b5cf6,#a78bfa);" data-width="<?php echo $energyScore; ?>"></div>
                             </div>
                         </div>
                         <div class="score-bar-item">
@@ -1369,6 +1452,74 @@ $pipelineData = json_encode([
                         </div>
                         <?php endforeach; ?>
                     </div>
+                </div>
+            </div>
+
+            <!-- Active Maintenance Dispatches & Destinations (Where Maintenance is Going) -->
+            <div class="dashboard-layout" style="grid-template-columns: 1fr; margin-top: 25px;">
+                <div class="box">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;flex-wrap:wrap;gap:10px;">
+                        <h3 style="margin:0;"><i class="fas fa-truck-pickup"></i> Active Maintenance Dispatches & Destinations <span style="background:#2563eb;color:#fff;font-size:11px;padding:3px 10px;border-radius:99px;margin-left:8px;"><?php echo $activeMaintCount; ?> Active Work Orders</span></h3>
+                        <a href="maintenance_list.php" class="btn btn-primary" style="padding:6px 14px;font-size:12px;"><i class="fas fa-external-link-alt"></i> Open Maintenance Module</a>
+                    </div>
+                    <p style="color:#64748b;font-size:13px;margin-bottom:15px;">Live monitoring of where maintenance teams and field dispatches are currently headed across municipal infrastructure, collected from the Maintenance module.</p>
+                    <?php if (empty($activeWorkOrders)): ?>
+                        <div style="padding:30px;text-align:center;background:rgba(16,185,129,0.06);border:1px dashed #10b981;border-radius:12px;">
+                            <i class="fas fa-check-circle" style="font-size:32px;color:#10b981;margin-bottom:8px;"></i>
+                            <p style="font-weight:600;color:#10b981;font-size:15px;margin:0;">All Maintenance Operations Cleared</p>
+                            <p style="color:#64748b;font-size:13px;margin-top:4px;">No active field work orders or pending dispatches. Municipal assets are operating nominally.</p>
+                        </div>
+                    <?php else: ?>
+                        <div style="overflow-x:auto;">
+                            <table class="risk-table">
+                                <thead>
+                                    <tr>
+                                        <th>Work Order</th>
+                                        <th>Title & Target Asset</th>
+                                        <th>Destination / Where It's Going</th>
+                                        <th>Assigned Team</th>
+                                        <th>Scheduled Date</th>
+                                        <th>Status</th>
+                                        <th>Progress</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($activeWorkOrders as $wo): ?>
+                                    <tr>
+                                        <td style="font-weight:700;color:#2563eb;font-size:13px;"><?php echo htmlspecialchars($wo['request_id']); ?></td>
+                                        <td>
+                                            <div style="font-weight:600;"><?php echo htmlspecialchars($wo['title']); ?></div>
+                                            <div style="font-size:11px;color:#94a3b8;"><?php echo htmlspecialchars($wo['asset_name']); ?></div>
+                                        </td>
+                                        <td>
+                                            <span style="display:inline-flex;align-items:center;gap:6px;font-weight:600;color:#e11d48;">
+                                                <i class="fas fa-map-marker-alt"></i>
+                                                <?php echo htmlspecialchars($wo['location'] ?: 'Municipal Facility'); ?>
+                                            </span>
+                                        </td>
+                                        <td><?php echo htmlspecialchars($wo['assigned_to'] ?: 'Unassigned'); ?></td>
+                                        <td style="font-size:12px;color:#64748b;">
+                                            <?php echo !empty($wo['scheduled_date']) ? date('M d, Y', strtotime($wo['scheduled_date'])) : '—'; ?>
+                                        </td>
+                                        <td>
+                                            <span class="status-badge" style="background:<?php echo $wo['status'] === 'In Progress' ? '#dbeafe' : ($wo['status'] === 'Scheduled' ? '#fef3c7' : '#f1f5f9'); ?>;color:<?php echo $wo['status'] === 'In Progress' ? '#1d4ed8' : ($wo['status'] === 'Scheduled' ? '#b45309' : '#475569'); ?>;">
+                                                <?php echo htmlspecialchars($wo['status']); ?>
+                                            </span>
+                                        </td>
+                                        <td style="min-width:140px;">
+                                            <div style="display:flex;align-items:center;gap:8px;">
+                                                <div style="flex:1;height:8px;background:#e2e8f0;border-radius:99px;overflow:hidden;">
+                                                    <div style="width:<?php echo (int)$wo['progress_percent']; ?>%;height:100%;background:#2563eb;border-radius:99px;"></div>
+                                                </div>
+                                                <span style="font-size:12px;font-weight:600;"><?php echo (int)$wo['progress_percent']; ?>%</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -1690,7 +1841,7 @@ $pipelineData = json_encode([
     new Chart(document.getElementById('radarChart'), {
         type: 'radar',
         data: {
-            labels: ['Asset Health', 'Incident Resolution', 'Maintenance Completion', 'Energy Efficiency', 'Water Conservation'],
+            labels: ['Asset Health', 'Maintenance Operations', 'Energy Efficiency', 'Water Conservation'],
             datasets: [{
                 label: 'Module Score',
                 data: <?php echo $radarData; ?>,
