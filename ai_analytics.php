@@ -52,7 +52,7 @@ try {
         SELECT COUNT(*) FROM utility_assets a 
         WHERE a.condition_status = 'Damaged' 
         AND a.id NOT IN (
-            SELECT DISTINCT COALESCE(asset_id, 0) FROM maintenance_requests WHERE asset_id IS NOT NULL
+            SELECT DISTINCT COALESCE(utility_asset_id, 0) FROM maintenance_requests WHERE utility_asset_id IS NOT NULL
         )
     ")->fetchColumn();
 } catch (Throwable $e) {}
@@ -61,7 +61,7 @@ try {
 $recentDamaged = [];
 try {
     $recentDamaged = $pdo->query("
-        SELECT a.asset_name, a.location, a.condition_status, t.name as type_name, a.updated_at
+        SELECT a.name as asset_name, a.location, a.condition_status, t.name as type_name, a.updated_at
         FROM utility_assets a
         JOIN asset_types t ON a.asset_type_id = t.id
         WHERE a.condition_status IN ('Damaged', 'Needs Inspection')
@@ -206,36 +206,97 @@ try {
 } catch (Throwable $e) {}
 
 // ============================================================
+// 4b. WATER MODULE DATA
+// ============================================================
+$water = ['total_consumption' => 0, 'total_cost' => 0, 'total_records' => 0];
+try {
+    $water = $pdo->query("
+        SELECT 
+            COALESCE(SUM(consumption_m3), 0) as total_consumption,
+            COALESCE(SUM(cost), 0) as total_cost,
+            COUNT(id) as total_records
+        FROM water_consumption_records
+    ")->fetch() ?: $water;
+} catch (Throwable $e) {}
+
+$successfulWaterSyncs = 0;
+try {
+    $successfulWaterSyncs = (int)$pdo->query("SELECT COUNT(*) FROM water_sync_logs WHERE status = 'Successful'")->fetchColumn();
+} catch (Throwable $e) {}
+
+$pendingWaterAdvisories = 0;
+try {
+    $pendingWaterAdvisories = (int)$pdo->query("SELECT COUNT(*) FROM water_recommendations WHERE status = 'Pending'")->fetchColumn();
+} catch (Throwable $e) {}
+
+// Water monthly trend
+$waterTrend = [];
+try {
+    $waterTrend = $pdo->query("
+        SELECT month_year, SUM(consumption_m3) as m3, SUM(cost) as cost
+        FROM water_consumption_records
+        GROUP BY month_year
+        ORDER BY month_year ASC
+        LIMIT 12
+    ")->fetchAll() ?: [];
+} catch (Throwable $e) {}
+
+// Top water consuming facilities
+$topWaterFacilities = [];
+try {
+    $topWaterFacilities = $pdo->query("
+        SELECT COALESCE(facility_name, CONCAT(asset_type, ' - ', location)) as facility,
+               SUM(consumption_m3) as total_m3, SUM(cost) as total_cost
+        FROM water_consumption_records
+        GROUP BY facility
+        ORDER BY total_m3 DESC
+        LIMIT 5
+    ")->fetchAll() ?: [];
+} catch (Throwable $e) {}
+
+// ============================================================
 // 5. COMPUTE AI HEALTH SCORE (0-100)
 // ============================================================
-$totalAssets = max((int)($assets['total_assets'] ?? 0), 1);
+$rawTotalAssets = (int)($assets['total_assets'] ?? 0);
+$totalAssets = max($rawTotalAssets, 1);
 $operationalAssets = (int)($assets['operational_assets'] ?? 0);
 $damagedAssets = (int)($assets['damaged_assets'] ?? 0);
 $inspectionAssets = (int)($assets['inspection_assets'] ?? 0);
 
-$totalIncidents = max((int)($incidents['total_incidents'] ?? 0), 1);
+$rawTotalIncidents = (int)($incidents['total_incidents'] ?? 0);
+$totalIncidents = max($rawTotalIncidents, 1);
 $resolvedIncidents = (int)($incidents['resolved_incidents'] ?? 0);
 $submittedIncidents = (int)($incidents['submitted_incidents'] ?? 0);
 
-$totalMaint = max((int)($maintenance['total_requests'] ?? 0), 1);
+$rawTotalMaint = (int)($maintenance['total_requests'] ?? 0);
+$totalMaint = max($rawTotalMaint, 1);
 $completedMaint = (int)($maintenance['completed_requests'] ?? 0);
 $emergencyMaint = (int)($maintenance['emergency_requests'] ?? 0);
 
 // Sub-scores (each 0-100)
-$assetHealthScore = ($totalAssets > 0) ? round(($operationalAssets / $totalAssets) * 100) : 100;
-$incidentResolutionRate = ($totalIncidents > 0) ? round(($resolvedIncidents / $totalIncidents) * 100) : 100;
-$maintCompletionRate = ($totalMaint > 0) ? round(($completedMaint / $totalMaint) * 100) : 100;
+// 1. Assets: if no assets registered, default to 100% nominal; otherwise operational / total
+$assetHealthScore = ($rawTotalAssets > 0) ? max(0, min(100, round(($operationalAssets / $rawTotalAssets) * 100))) : 100;
 
-// Energy efficiency score: lower pending advisories = better
-$energyScore = max(0, 100 - ($pendingAdvisories * 10));
-$energyScore = min(100, $energyScore);
+// 2. Incidents: if 0 incidents reported, community status is 100% incident-free (not 0% penalized)
+$incidentResolutionRate = ($rawTotalIncidents > 0) ? max(0, min(100, round(($resolvedIncidents / $rawTotalIncidents) * 100))) : 100;
 
-// Weighted overall AI score
+// 3. Maintenance: if 0 maintenance requests, maintenance health is 100% (zero ticket backlog)
+$maintCompletionRate = ($rawTotalMaint > 0) ? max(0, min(100, round(($completedMaint / $rawTotalMaint) * 100))) : 100;
+
+// 4. Energy efficiency score: lower pending advisories = better
+$energyScore = max(0, min(100, 100 - ($pendingAdvisories * 10)));
+
+// 5. Water conservation & efficiency score: lower pending advisories = better
+$waterScore = max(0, min(100, 100 - ($pendingWaterAdvisories * 10)));
+
+// Weighted overall AI score across 5 municipal pillars:
+// Asset Health (25%), Incident Resolution (20%), Maintenance Completion (20%), Energy (20%), Water (15%)
 $aiScore = round(
-    ($assetHealthScore * 0.30) +
-    ($incidentResolutionRate * 0.25) +
-    ($maintCompletionRate * 0.25) +
-    ($energyScore * 0.20)
+    ($assetHealthScore * 0.25) +
+    ($incidentResolutionRate * 0.20) +
+    ($maintCompletionRate * 0.20) +
+    ($energyScore * 0.20) +
+    ($waterScore * 0.15)
 );
 
 // Risk level
@@ -265,6 +326,7 @@ if ($emergencyIncidents > 0) $riskAlerts++;
 if ($submittedIncidents > 3) $riskAlerts++;
 if ($damagedNoMaintenance > 0) $riskAlerts++;
 if ($pendingAdvisories > 2) $riskAlerts++;
+if ($pendingWaterAdvisories > 2) $riskAlerts++;
 
 // ============================================================
 // 6. GENERATE AI RECOMMENDATIONS
@@ -331,7 +393,17 @@ if ($pendingAdvisories > 0) {
     ];
 }
 
-if ($incidentResolutionRate < 50 && $totalIncidents > 1) {
+if ($pendingWaterAdvisories > 0) {
+    $recommendations[] = [
+        'priority' => 'Medium',
+        'icon' => 'fa-tint',
+        'color' => '#0284c7',
+        'title' => 'Water Management Advisories Pending',
+        'text' => "{$pendingWaterAdvisories} water conservation recommendation(s) are pending action. Addressing these helps optimize municipal utility conservation."
+    ];
+}
+
+if ($incidentResolutionRate < 50 && $rawTotalIncidents > 1) {
     $recommendations[] = [
         'priority' => 'Medium',
         'icon' => 'fa-chart-line',
@@ -341,7 +413,7 @@ if ($incidentResolutionRate < 50 && $totalIncidents > 1) {
     ];
 }
 
-if ($maintCompletionRate < 50 && $totalMaint > 1) {
+if ($maintCompletionRate < 50 && $rawTotalMaint > 1) {
     $recommendations[] = [
         'priority' => 'Medium',
         'icon' => 'fa-wrench',
@@ -368,19 +440,20 @@ $aiNarrative = "<strong>LGU AI Analytics Report — " . date('F d, Y') . "</stro
 
 $aiNarrative .= "🏢 <strong>System Health Overview:</strong><br>";
 $aiNarrative .= "The overall LGU Utility System AI Health Score is <strong>{$aiScore}/100</strong> ({$riskLevel} Risk). ";
-$aiNarrative .= "This score is computed from asset health ({$assetHealthScore}%), incident resolution ({$incidentResolutionRate}%), maintenance completion ({$maintCompletionRate}%), and energy efficiency ({$energyScore}%).<br><br>";
+$aiNarrative .= "This composite metric evaluates asset integrity ({$assetHealthScore}%), incident responsiveness ({$incidentResolutionRate}%), maintenance throughput ({$maintCompletionRate}%), energy management ({$energyScore}%), and water conservation ({$waterScore}%).<br><br>";
 
 $aiNarrative .= "📊 <strong>Module Breakdown:</strong><br>";
-$aiNarrative .= "• <strong>Assets:</strong> {$totalAssets} total assets tracked — {$operationalAssets} operational, {$damagedAssets} damaged, {$inspectionAssets} needing inspection.<br>";
-$aiNarrative .= "• <strong>Incidents:</strong> {$totalIncidents} total reports — {$resolvedIncidents} resolved (" . $incidentResolutionRate . "% resolution rate), {$submittedIncidents} awaiting review.<br>";
-$aiNarrative .= "• <strong>Maintenance:</strong> " . ($maintenance['total_requests'] ?? 0) . " total requests — {$completedMaint} completed, {$emergencyMaint} emergency dispatches.<br>";
-$aiNarrative .= "• <strong>Energy:</strong> " . number_format($energy['total_consumption'] ?? 0, 1) . " kWh total consumption (₱" . number_format($energy['total_cost'] ?? 0, 2) . " est. cost).<br><br>";
+$aiNarrative .= "• <strong>Assets:</strong> " . ($rawTotalAssets > 0 ? "{$rawTotalAssets} total assets tracked — {$operationalAssets} operational, {$damagedAssets} damaged, {$inspectionAssets} needing inspection." : "No assets registered.") . "<br>";
+$aiNarrative .= "• <strong>Incidents:</strong> " . ($rawTotalIncidents > 0 ? "{$rawTotalIncidents} total reports — {$resolvedIncidents} resolved ({$incidentResolutionRate}% resolution rate), {$submittedIncidents} awaiting review." : "0 active incidents reported across municipality (All clear).") . "<br>";
+$aiNarrative .= "• <strong>Maintenance:</strong> " . ($rawTotalMaint > 0 ? "{$rawTotalMaint} total requests — {$completedMaint} completed, {$emergencyMaint} emergency dispatches." : "0 maintenance requests pending (Zero backlog).") . "<br>";
+$aiNarrative .= "• <strong>Energy:</strong> " . number_format($energy['total_consumption'] ?? 0, 1) . " kWh total consumption (₱" . number_format($energy['total_cost'] ?? 0, 2) . " est. cost).<br>";
+$aiNarrative .= "• <strong>Water:</strong> " . number_format($water['total_consumption'] ?? 0, 2) . " m³ total consumption (₱" . number_format($water['total_cost'] ?? 0, 2) . " est. cost).<br><br>";
 
 $aiNarrative .= "⚠️ <strong>AI Advisory:</strong><br>";
 if ($riskAlerts > 0) {
     $aiNarrative .= "{$riskAlerts} risk alert(s) detected across modules. Review the Recommendations panel for prioritized action items.";
 } else {
-    $aiNarrative .= "All active utility monitoring and maintenance pipelines are operating within nominal queue limits. No immediate action required.";
+    $aiNarrative .= "All active municipal utility monitoring pipelines are operating within nominal thresholds. Zero critical system bottlenecks detected.";
 }
 
 // ============================================================
@@ -417,8 +490,15 @@ $energyTypeData = json_encode(array_map('floatval', array_column($energyByType, 
 $topFacilityLabels = json_encode(array_column($topFacilities, 'facility'));
 $topFacilityData = json_encode(array_map('floatval', array_column($topFacilities, 'total_kwh')));
 
-// Radar chart data
-$radarData = json_encode([$assetHealthScore, $incidentResolutionRate, $maintCompletionRate, $energyScore]);
+$waterTrendLabels = json_encode(array_column($waterTrend, 'month_year'));
+$waterTrendM3 = json_encode(array_map('floatval', array_column($waterTrend, 'm3')));
+$waterTrendCost = json_encode(array_map('floatval', array_column($waterTrend, 'cost')));
+
+$topWaterFacilityLabels = json_encode(array_column($topWaterFacilities, 'facility'));
+$topWaterFacilityData = json_encode(array_map('floatval', array_column($topWaterFacilities, 'total_m3')));
+
+// Radar chart data (5 pillars)
+$radarData = json_encode([$assetHealthScore, $incidentResolutionRate, $maintCompletionRate, $energyScore, $waterScore]);
 
 // Pipeline data for incidents
 $pipelineData = json_encode([
@@ -1143,7 +1223,7 @@ $pipelineData = json_encode([
                     <div class="stat-info">
                         <h3><?php echo $assetHealthScore; ?>%</h3>
                         <p>Asset Health</p>
-                        <div class="stat-sub"><?php echo $operationalAssets; ?>/<?php echo $totalAssets; ?> operational</div>
+                        <div class="stat-sub"><?php echo $rawTotalAssets > 0 ? "{$operationalAssets}/{$rawTotalAssets} operational" : "No assets logged"; ?></div>
                     </div>
                 </div>
                 <div class="stat-card incidents">
@@ -1151,7 +1231,7 @@ $pipelineData = json_encode([
                     <div class="stat-info">
                         <h3><?php echo $incidentResolutionRate; ?>%</h3>
                         <p>Resolution Rate</p>
-                        <div class="stat-sub"><?php echo $resolvedIncidents; ?>/<?php echo $totalIncidents; ?> resolved</div>
+                        <div class="stat-sub"><?php echo $rawTotalIncidents > 0 ? "{$resolvedIncidents}/{$rawTotalIncidents} resolved" : "0 incidents (All clear)"; ?></div>
                     </div>
                 </div>
                 <div class="stat-card maintenance">
@@ -1159,7 +1239,7 @@ $pipelineData = json_encode([
                     <div class="stat-info">
                         <h3><?php echo $maintCompletionRate; ?>%</h3>
                         <p>Maint. Completion</p>
-                        <div class="stat-sub"><?php echo $completedMaint; ?>/<?php echo (int)($maintenance['total_requests'] ?? 0); ?> completed</div>
+                        <div class="stat-sub"><?php echo $rawTotalMaint > 0 ? "{$completedMaint}/{$rawTotalMaint} completed" : "0 requests (No backlog)"; ?></div>
                     </div>
                 </div>
                 <div class="stat-card energy">
@@ -1170,20 +1250,20 @@ $pipelineData = json_encode([
                         <div class="stat-sub"><?php echo $pendingAdvisories; ?> pending advisories</div>
                     </div>
                 </div>
+                <div class="stat-card water" style="background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);">
+                    <div class="stat-card-icon"><i class="fas fa-tint"></i></div>
+                    <div class="stat-info">
+                        <h3><?php echo $waterScore; ?>%</h3>
+                        <p>Water Conservation</p>
+                        <div class="stat-sub"><?php echo $pendingWaterAdvisories; ?> pending advisories</div>
+                    </div>
+                </div>
                 <div class="stat-card risk">
                     <div class="stat-card-icon"><i class="fas fa-exclamation-triangle"></i></div>
                     <div class="stat-info">
                         <h3><?php echo $riskAlerts; ?></h3>
                         <p>Risk Alerts</p>
                         <div class="stat-sub"><?php echo $riskLevel; ?> threat level</div>
-                    </div>
-                </div>
-                <div class="stat-card score">
-                    <div class="stat-card-icon"><i class="fas fa-sync-alt"></i></div>
-                    <div class="stat-info">
-                        <h3><?php echo $successfulSyncs; ?></h3>
-                        <p>Data Syncs</p>
-                        <div class="stat-sub">Energy system exports</div>
                     </div>
                 </div>
             </div>
@@ -1195,6 +1275,7 @@ $pipelineData = json_encode([
             <button class="tab-btn" onclick="switchTab(event, 'assets-pane')"><i class="fas fa-warehouse"></i> Assets Intelligence</button>
             <button class="tab-btn" onclick="switchTab(event, 'incidents-pane')"><i class="fas fa-bullhorn"></i> Incidents & Maintenance</button>
             <button class="tab-btn" onclick="switchTab(event, 'energy-pane')"><i class="fas fa-bolt"></i> Energy Intelligence</button>
+            <button class="tab-btn" onclick="switchTab(event, 'water-pane')"><i class="fas fa-tint"></i> Water Intelligence</button>
         </div>
 
         <!-- =============================== -->
@@ -1258,6 +1339,15 @@ $pipelineData = json_encode([
                             </div>
                             <div class="score-bar-track">
                                 <div class="score-bar-fill" style="width:0%;background:linear-gradient(90deg,#a55eea,#c084fc);" data-width="<?php echo $energyScore; ?>"></div>
+                            </div>
+                        </div>
+                        <div class="score-bar-item">
+                            <div class="score-bar-label">
+                                <span><i class="fas fa-tint" style="color:#0284c7;margin-right:6px;"></i>Water Conservation</span>
+                                <span><?php echo $waterScore; ?>%</span>
+                            </div>
+                            <div class="score-bar-track">
+                                <div class="score-bar-fill" style="width:0%;background:linear-gradient(90deg,#0284c7,#38bdf8);" data-width="<?php echo $waterScore; ?>"></div>
                             </div>
                         </div>
                     </div>
@@ -1481,6 +1571,61 @@ $pipelineData = json_encode([
             </div>
         </div>
 
+        <!-- =============================== -->
+        <!-- TAB 5: WATER INTELLIGENCE       -->
+        <!-- =============================== -->
+        <div id="water-pane" class="tab-pane">
+            <div class="dashboard-layout">
+                <div class="box">
+                    <h3><i class="fas fa-chart-area"></i> Water Consumption Trend</h3>
+                    <div class="chart-container medium">
+                        <canvas id="waterTrendChart"></canvas>
+                    </div>
+                </div>
+                <div class="box">
+                    <h3><i class="fas fa-faucet"></i> Top Consuming Facilities</h3>
+                    <div class="chart-container medium">
+                        <canvas id="topWaterFacilityChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-layout" style="grid-template-columns: 1fr;">
+                <div class="box" style="display:flex;flex-direction:column;justify-content:center;">
+                    <h3><i class="fas fa-hand-holding-water"></i> Water Resources & Conservation Summary</h3>
+                    <div style="font-size:13px;color:#64748b;line-height:1.7;">
+                        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:20px;margin-bottom:15px;">
+                            <div>
+                                <strong style="color:#2c3e50;font-size:14px;">Total Water Consumption:</strong><br>
+                                <span style="font-size:28px;font-weight:700;color:#0284c7;"><?php echo number_format($water['total_consumption'] ?? 0, 2); ?></span> <span style="font-size:14px;">m³</span>
+                            </div>
+                            <div>
+                                <strong style="color:#2c3e50;font-size:14px;">Estimated Utility Cost:</strong><br>
+                                <span style="font-size:28px;font-weight:700;color:#e74c3c;">₱<?php echo number_format($water['total_cost'] ?? 0, 2); ?></span>
+                            </div>
+                            <div>
+                                <strong style="color:#2c3e50;font-size:14px;">Records Logged:</strong><br>
+                                <span style="font-size:28px;font-weight:700;color:#10b981;"><?php echo number_format($water['total_records'] ?? 0); ?></span>
+                            </div>
+                            <div>
+                                <strong style="color:#2c3e50;font-size:14px;">Successful Syncs:</strong><br>
+                                <span style="font-size:28px;font-weight:700;color:#8b5cf6;"><?php echo $successfulWaterSyncs; ?></span> <span style="font-size:12px;">CPRF / Water Logs</span>
+                            </div>
+                        </div>
+                        <?php if ($pendingWaterAdvisories > 0): ?>
+                        <p style="margin-top:12px;padding:12px;background:#e0f2fe;border-radius:8px;color:#0369a1;font-weight:500;border:1px solid #bae6fd;">
+                            <i class="fas fa-tint" style="color:#0284c7;"></i> <?php echo $pendingWaterAdvisories; ?> water conservation recommendation(s) pending action. Review municipal advisories for high-draw facilities.
+                        </p>
+                        <?php else: ?>
+                        <p style="margin-top:12px;padding:12px;background:#ecfdf5;border-radius:8px;color:#047857;font-weight:500;border:1px solid #a7f3d0;">
+                            <i class="fas fa-check-circle" style="color:#10b981;"></i> Water usage and monitoring parameters are fully nominal. No water conservation warnings active.
+                        </p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 </main>
 
@@ -1545,7 +1690,7 @@ $pipelineData = json_encode([
     new Chart(document.getElementById('radarChart'), {
         type: 'radar',
         data: {
-            labels: ['Asset Health', 'Incident Resolution', 'Maintenance Completion', 'Energy Efficiency'],
+            labels: ['Asset Health', 'Incident Resolution', 'Maintenance Completion', 'Energy Efficiency', 'Water Conservation'],
             datasets: [{
                 label: 'Module Score',
                 data: <?php echo $radarData; ?>,
@@ -1858,6 +2003,97 @@ $pipelineData = json_encode([
             }
         }
     });
+
+    // ===== 12. WATER CONSUMPTION TREND CHART =====
+    const waterTrendEl = document.getElementById('waterTrendChart');
+    if (waterTrendEl) {
+        new Chart(waterTrendEl, {
+            type: 'line',
+            data: {
+                labels: <?php echo $waterTrendLabels; ?>,
+                datasets: [{
+                    label: 'Consumption (m³)',
+                    data: <?php echo $waterTrendM3; ?>,
+                    borderColor: '#0284c7',
+                    backgroundColor: 'rgba(2, 132, 199, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    pointBackgroundColor: '#0284c7',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointRadius: 5,
+                    yAxisID: 'y'
+                },{
+                    label: 'Cost (₱)',
+                    data: <?php echo $waterTrendCost; ?>,
+                    borderColor: '#e74c3c',
+                    backgroundColor: 'rgba(231, 76, 60, 0.05)',
+                    fill: true,
+                    tension: 0.4,
+                    pointBackgroundColor: '#e74c3c',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    yAxisID: 'y1'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { position: 'top', labels: { padding: 15, font: { size: 11 } } }
+                },
+                scales: {
+                    y: {
+                        type: 'linear',
+                        position: 'left',
+                        beginAtZero: true,
+                        grid: { color: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' },
+                        title: { display: true, text: 'm³', font: { size: 11 } }
+                    },
+                    y1: {
+                        type: 'linear',
+                        position: 'right',
+                        beginAtZero: true,
+                        grid: { display: false },
+                        title: { display: true, text: '₱ Cost', font: { size: 11 } }
+                    },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+    }
+
+    // ===== 13. TOP WATER FACILITIES CHART =====
+    const topWaterEl = document.getElementById('topWaterFacilityChart');
+    if (topWaterEl) {
+        new Chart(topWaterEl, {
+            type: 'bar',
+            data: {
+                labels: <?php echo $topWaterFacilityLabels; ?>,
+                datasets: [{
+                    label: 'm³',
+                    data: <?php echo $topWaterFacilityData; ?>,
+                    backgroundColor: 'rgba(2, 132, 199, 0.75)',
+                    borderColor: '#0284c7',
+                    borderWidth: 1,
+                    borderRadius: 6,
+                    borderSkipped: false
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { beginAtZero: true, grid: { color: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' }, title: { display: true, text: 'm³', font: { size: 11 } } },
+                    y: { grid: { display: false } }
+                }
+            }
+        });
+    }
 </script>
 
 </body>
