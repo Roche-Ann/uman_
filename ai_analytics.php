@@ -619,7 +619,7 @@ $pipelineData = json_encode([
 
         body {
             min-height: 100vh;
-            display: flex;
+            display: block;
             background: url("assets/images/cityhall.jpeg") center/cover no-repeat fixed;
             position: relative;
         }
@@ -637,16 +637,18 @@ $pipelineData = json_encode([
         }
 
         .main-content {
-            flex: 1;
             margin-left: 280px;
-            padding: 30px 40px 60px;
-            transition: margin-left 0.25s ease;
+            padding: 20px 40px 60px;
+            transition: margin-left 0.25s ease, width 0.25s ease;
             z-index: 1;
             position: relative;
+            width: calc(100% - 280px);
+            box-sizing: border-box;
         }
 
         .main-content.collapsed {
             margin-left: 78px;
+            width: calc(100% - 78px);
         }
 
         .card {
