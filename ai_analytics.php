@@ -350,11 +350,13 @@ $rawTotalIncidents = (int)($incidents['total_incidents'] ?? 0);
 $totalIncidents = max($rawTotalIncidents, 1);
 $resolvedIncidents = (int)($incidents['resolved_incidents'] ?? 0);
 $submittedIncidents = (int)($incidents['submitted_incidents'] ?? 0);
+$incidentResolutionRate = ($rawTotalIncidents > 0) ? round(($resolvedIncidents / $rawTotalIncidents) * 100) : 0;
 
 $rawTotalMaint = (int)($maintenance['total_requests'] ?? 0);
 $totalMaint = max($rawTotalMaint, 1);
 $completedMaint = (int)($maintenance['completed_requests'] ?? 0);
 $emergencyMaint = (int)($maintenance['emergency_requests'] ?? 0);
+$maintCompletionRate = ($rawTotalMaint > 0) ? round(($completedMaint / $rawTotalMaint) * 100) : 0;
 
 // Sub-scores (each 0-100)
 // 1. Assets: if no assets registered, default to 100% nominal; otherwise operational / total
